@@ -1,7 +1,7 @@
 export const FUNCOES = [
   "Atendente",
   "Pizzaiolo",
-  "Auxiliar de cozinha",
+  "Aux. pizzaiolo",
   "Motoqueiro",
 ] as const;
 

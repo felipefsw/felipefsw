@@ -26,7 +26,7 @@ model Loja {
 model Diarista {
   id          String   @id @default(cuid())
   nome        String
-  funcao      String? // Atendente | Pizzaiolo | Auxiliar de cozinha | Motoqueiro
+  funcao      String? // Atendente | Pizzaiolo | Aux. pizzaiolo | Motoqueiro
   telefone    String?
   chavePix    String?
   valorDiaria Int      @default(0) // centavos
