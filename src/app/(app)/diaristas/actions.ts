@@ -22,6 +22,8 @@ export async function createDiarista(formData: FormData) {
   await prisma.diarista.create({
     data: {
       nome,
+      cpf: String(formData.get("cpf") ?? "").trim() || null,
+      dataNascimento: String(formData.get("dataNascimento") ?? "").trim() || null,
       funcao: String(formData.get("funcao") ?? "").trim() || null,
       telefone: String(formData.get("telefone") ?? "").trim() || null,
       chavePix: String(formData.get("chavePix") ?? "").trim() || null,
@@ -43,6 +45,8 @@ export async function updateDiarista(formData: FormData) {
     where: { id },
     data: {
       nome,
+      cpf: String(formData.get("cpf") ?? "").trim() || null,
+      dataNascimento: String(formData.get("dataNascimento") ?? "").trim() || null,
       funcao: String(formData.get("funcao") ?? "").trim() || null,
       telefone: String(formData.get("telefone") ?? "").trim() || null,
       chavePix: String(formData.get("chavePix") ?? "").trim() || null,

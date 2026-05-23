@@ -42,7 +42,7 @@ export default async function FecharRequisicaoPage({
     );
   }
 
-  const [diaristas, escalasNoDia] = await Promise.all([
+  const [diaristas, escalasNoDia, inscricoes] = await Promise.all([
     prisma.diarista.findMany({
       where: {
         ativo: true,
@@ -56,10 +56,18 @@ export default async function FecharRequisicaoPage({
       where: { data: requisicao.data },
       include: { loja: { select: { nome: true } } },
     }),
+    prisma.inscricao.findMany({
+      where: { requisicaoId: requisicao.id },
+      select: { diaristaId: true },
+    }),
   ]);
 
   const ocupadoEm = new Map<string, string>();
   for (const e of escalasNoDia) ocupadoEm.set(e.diaristaId, e.loja.nome);
+
+  // Quem se inscreveu nessa requisição aparece primeiro.
+  const inscritos = new Set(inscricoes.map((i) => i.diaristaId));
+  diaristas.sort((a, b) => Number(inscritos.has(b.id)) - Number(inscritos.has(a.id)));
 
   return (
     <div className="space-y-4">
@@ -156,6 +164,11 @@ export default async function FecharRequisicaoPage({
                             {d.funcao && (
                               <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
                                 {d.funcao}
+                              </span>
+                            )}
+                            {inscritos.has(d.id) && (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                se inscreveu
                               </span>
                             )}
                           </span>

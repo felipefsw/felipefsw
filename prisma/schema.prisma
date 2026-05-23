@@ -33,6 +33,8 @@ model Loja {
 model Diarista {
   id          String      @id @default(cuid())
   nome        String
+  cpf         String?
+  dataNascimento String? // "AAAA-MM-DD"
   funcao      String? // Atendente | Pizzaiolo | Aux. pizzaiolo | Motoqueiro
   telefone    String?
   chavePix    String?
@@ -44,6 +46,7 @@ model Diarista {
   escalas     Escala[]
   avaliacoes  Avaliacao[]
   avaliacoesDeLoja AvaliacaoLoja[]
+  inscricoes  Inscricao[]
   // Até 3 lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
   lojasPreferidas Loja[] @relation("LojaPreferida")
 }
@@ -92,9 +95,25 @@ model Requisicao {
   lojaId  String
   loja    Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   escalas Escala[]
+  inscricoes Inscricao[]
 
   @@index([status])
   @@index([data])
+}
+
+// Diarista se candidata (inscreve) a uma requisição aberta de uma loja.
+model Inscricao {
+  id       String   @id @default(cuid())
+  status   String   @default("PENDENTE") // PENDENTE | ACEITA
+  criadoEm DateTime @default(now())
+
+  requisicaoId String
+  requisicao   Requisicao @relation(fields: [requisicaoId], references: [id], onDelete: Cascade)
+  diaristaId   String
+  diarista     Diarista   @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+
+  @@unique([requisicaoId, diaristaId])
+  @@index([diaristaId])
 }
 
 // Avaliação de uma diária (escala): notas de 0 a 10 por aspecto.

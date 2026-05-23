@@ -5,6 +5,8 @@ import { FUNCOES } from "@/lib/funcoes";
 type DiaristaDefaults = {
   id?: string;
   nome?: string;
+  cpf?: string | null;
+  dataNascimento?: string | null;
   funcao?: string | null;
   telefone?: string | null;
   chavePix?: string | null;
@@ -48,6 +50,34 @@ export default function DiaristaForm({
             placeholder="Nome completo"
             className={inputClass}
           />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass} htmlFor="cpf">
+              CPF
+            </label>
+            <input
+              id="cpf"
+              name="cpf"
+              inputMode="numeric"
+              defaultValue={diarista?.cpf ?? ""}
+              placeholder="000.000.000-00"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="dataNascimento">
+              Data de nascimento
+            </label>
+            <input
+              id="dataNascimento"
+              name="dataNascimento"
+              type="date"
+              defaultValue={diarista?.dataNascimento ?? ""}
+              className={inputClass}
+            />
+          </div>
         </div>
 
         <div>

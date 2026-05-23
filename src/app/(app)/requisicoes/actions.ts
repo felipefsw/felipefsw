@@ -69,6 +69,10 @@ export async function fecharRequisicao(formData: FormData) {
       })),
     }),
     prisma.requisicao.update({ where: { id }, data: { status: "ATENDIDA" } }),
+    prisma.inscricao.updateMany({
+      where: { requisicaoId: id, diaristaId: { in: livres } },
+      data: { status: "ACEITA" },
+    }),
   ]);
 
   revalidatePath("/requisicoes");

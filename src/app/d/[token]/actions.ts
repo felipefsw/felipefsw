@@ -23,6 +23,28 @@ export async function confirmarPresenca(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function inscreverNaDiaria(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const requisicaoId = String(formData.get("requisicaoId") ?? "");
+  if (!token || !requisicaoId) return;
+
+  const diarista = await prisma.diarista.findUnique({ where: { token } });
+  if (!diarista) return;
+
+  // só permite inscrição em requisição ainda aberta
+  const requisicao = await prisma.requisicao.findUnique({ where: { id: requisicaoId } });
+  if (!requisicao || requisicao.status !== "ABERTA") return;
+
+  await prisma.inscricao.upsert({
+    where: { requisicaoId_diaristaId: { requisicaoId, diaristaId: diarista.id } },
+    update: {},
+    create: { requisicaoId, diaristaId: diarista.id },
+  });
+
+  revalidatePath(`/d/${token}`);
+  revalidatePath("/requisicoes");
+}
+
 function notaLoja(formData: FormData, campo: string): number {
   const n = Number.parseInt(String(formData.get(campo) ?? ""), 10);
   if (Number.isNaN(n)) return 0;

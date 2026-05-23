@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO } from "@/lib/dates";
-import { confirmarPresenca } from "./actions";
+import { confirmarPresenca, inscreverNaDiaria } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,8 @@ export default async function DiaristaLinkPage({
         include: { loja: true, avaliacaoLoja: { select: { id: true } } },
         orderBy: { data: "asc" },
       },
+      inscricoes: { select: { requisicaoId: true } },
+      lojasPreferidas: { select: { id: true } },
     },
   });
 
@@ -40,6 +42,18 @@ export default async function DiaristaLinkPage({
   const proximas = diarista.escalas.filter((e) => e.data >= hoje);
   const recentes = diarista.escalas.filter((e) => e.data < hoje).reverse();
 
+  const inscritoEm = new Set(diarista.inscricoes.map((i) => i.requisicaoId));
+  const preferidas = new Set(diarista.lojasPreferidas.map((l) => l.id));
+  const jaTrabalhou = new Set(diarista.escalas.map((e) => e.lojaId));
+  const ehPreferida = (lojaId: string) => preferidas.has(lojaId) || jaTrabalhou.has(lojaId);
+
+  const disponiveis = await prisma.requisicao.findMany({
+    where: { status: "ABERTA", data: { gte: hoje } },
+    include: { loja: true },
+    orderBy: { data: "asc" },
+  });
+  disponiveis.sort((a, b) => Number(ehPreferida(b.lojaId)) - Number(ehPreferida(a.lojaId)));
+
   return (
     <div className="mx-auto max-w-md">
       <header className="bg-teal-700 px-5 py-6 text-white">
@@ -51,6 +65,63 @@ export default async function DiaristaLinkPage({
       </header>
 
       <main className="space-y-6 p-5">
+        <section>
+          <h2 className="mb-2 font-semibold text-gray-900">Agende sua diária</h2>
+          {disponiveis.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-500">
+              Nenhuma diária disponível no momento.
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {disponiveis.map((r) => {
+                const inscrito = inscritoEm.has(r.id);
+                const pref = ehPreferida(r.lojaId);
+                return (
+                  <li
+                    key={r.id}
+                    className={`rounded-xl border bg-white p-4 shadow-sm ${
+                      pref ? "border-teal-300" : "border-gray-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{r.loja.nome}</p>
+                      {pref && (
+                        <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                          você já fez diária aqui
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm capitalize text-gray-600">
+                      {formatDateWithWeekday(r.data)} · {r.horaInicio}–{r.horaFim}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {formatBRL(r.valorDiaria)}
+                      {r.funcao ? ` · ${r.funcao}` : ""}
+                    </p>
+
+                    {inscrito ? (
+                      <span className="mt-2 inline-block text-sm font-medium text-teal-600">
+                        ✓ inscrição enviada
+                      </span>
+                    ) : (
+                      <form action={inscreverNaDiaria} className="mt-3">
+                        <input type="hidden" name="token" value={token} />
+                        <input type="hidden" name="requisicaoId" value={r.id} />
+                        <button
+                          type="submit"
+                          className="w-full rounded-lg bg-teal-700 py-2 font-medium text-white hover:bg-teal-800"
+                        >
+                          Quero esta diária
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
         <section>
           <h2 className="mb-2 font-semibold text-gray-900">Próximos dias</h2>
           {proximas.length === 0 ? (
