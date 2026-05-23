@@ -9,11 +9,9 @@ export default function AppLayout({
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-teal-700 text-white">
         <div className="flex items-center gap-2 px-4 py-3">
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-              <circle cx="12" cy="8" r="3.4" />
-              <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
-            </svg>
-            Gestão de Diaristas · Pizzarias RWP
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/rwp-logo.svg" alt="RWP" className="h-7 w-auto" />
+            <span>Gestão de Diaristas · Pizzarias RWP</span>
           </Link>
         </div>
       </header>

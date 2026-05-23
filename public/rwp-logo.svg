@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" fill="none" role="img" aria-label="RWP">
+  <g transform="rotate(-16 180 100)" stroke="#ffffff" fill="none" stroke-linecap="round">
+    <ellipse cx="180" cy="100" rx="170" ry="80" stroke-width="15"/>
+    <ellipse cx="180" cy="100" rx="150" ry="64" stroke-width="6"/>
+  </g>
+  <text x="180" y="104" text-anchor="middle" dominant-baseline="central"
+        font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="118"
+        letter-spacing="2" fill="#ffffff">RWP</text>
+</svg>

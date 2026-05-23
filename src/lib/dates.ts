@@ -37,6 +37,23 @@ export function isISODate(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
+/** Número máximo de dias de antecedência permitido para agendar. */
+export const MAX_DIAS_AGENDAMENTO = 7;
+
+/** Última data agendável: hoje + MAX_DIAS_AGENDAMENTO (formato "AAAA-MM-DD"). */
+export function maxAgendamentoISO(): string {
+  return addDias(hojeISO(), MAX_DIAS_AGENDAMENTO);
+}
+
+/**
+ * Diz se a data está na janela permitida para agendamento:
+ * de hoje (não pode no passado) até no máximo 7 dias à frente.
+ */
+export function dentroDaJanelaAgendamento(data: string): boolean {
+  const hoje = hojeISO();
+  return data >= hoje && data <= maxAgendamentoISO();
+}
+
 /** Hora atual no formato "HH:MM" (horário local do servidor). */
 export function agoraHHMM(): string {
   const d = new Date();

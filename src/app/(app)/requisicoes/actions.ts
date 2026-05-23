@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { inicioDaSemana, isHHMM, isISODate } from "@/lib/dates";
+import { dentroDaJanelaAgendamento, inicioDaSemana, isHHMM, isISODate } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
 
 export async function createRequisicao(formData: FormData) {
@@ -16,8 +16,15 @@ export async function createRequisicao(formData: FormData) {
   const valorDiaria = parseBRLToCents(String(formData.get("valorDiaria") ?? ""));
   const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
 
-  // valor da diária é obrigatório (> 0)
-  if (!lojaId || !isISODate(data) || !isHHMM(horaInicio) || !isHHMM(horaFim) || valorDiaria <= 0) {
+  // valor da diária é obrigatório (> 0); data dentro da janela (hoje..+7)
+  if (
+    !lojaId ||
+    !isISODate(data) ||
+    !dentroDaJanelaAgendamento(data) ||
+    !isHHMM(horaInicio) ||
+    !isHHMM(horaFim) ||
+    valorDiaria <= 0
+  ) {
     return;
   }
 
@@ -35,20 +42,24 @@ export async function fecharRequisicao(formData: FormData) {
   const data = String(formData.get("data") ?? "");
   const diaristaIds = formData.getAll("diaristaIds").map(String).filter(Boolean);
 
-  if (!id || !isISODate(data) || diaristaIds.length === 0) return;
+  if (!id || !isISODate(data) || !dentroDaJanelaAgendamento(data) || diaristaIds.length === 0) return;
 
   const requisicao = await prisma.requisicao.findUnique({ where: { id } });
   if (!requisicao) return;
 
-  const diaristas = await prisma.diarista.findMany({
-    where: { id: { in: diaristaIds } },
-    select: { id: true, valorDiaria: true },
+  // Evita conflito: remove quem já está escalado nesse dia (em qualquer loja).
+  const jaEscalados = await prisma.escala.findMany({
+    where: { data, diaristaId: { in: diaristaIds } },
+    select: { diaristaId: true },
   });
+  const ocupados = new Set(jaEscalados.map((e) => e.diaristaId));
+  const livres = diaristaIds.filter((d) => !ocupados.has(d));
+  if (livres.length === 0) return;
 
   await prisma.$transaction([
     prisma.escala.createMany({
-      data: diaristas.map((d) => ({
-        diaristaId: d.id,
+      data: livres.map((diaristaId) => ({
+        diaristaId,
         lojaId: requisicao.lojaId,
         data,
         horaInicio: requisicao.horaInicio,

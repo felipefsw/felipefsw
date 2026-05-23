@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO } from "@/lib/dates";
@@ -19,7 +20,7 @@ export default async function DiaristaLinkPage({
     include: {
       escalas: {
         where: { data: { gte: desde } },
-        include: { loja: true },
+        include: { loja: true, avaliacaoLoja: { select: { id: true } } },
         orderBy: { data: "asc" },
       },
     },
@@ -42,6 +43,8 @@ export default async function DiaristaLinkPage({
   return (
     <div className="mx-auto max-w-md">
       <header className="bg-teal-700 px-5 py-6 text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
         <p className="text-sm text-teal-100">Olá,</p>
         <h1 className="text-2xl font-bold">{diarista.nome}</h1>
         <p className="mt-1 text-sm text-teal-100">Sua agenda de trabalho</p>
@@ -109,18 +112,33 @@ export default async function DiaristaLinkPage({
               {recentes.map((e) => (
                 <li
                   key={e.id}
-                  className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm"
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm"
                 >
-                  <span className="capitalize text-gray-600">
-                    {formatDateWithWeekday(e.data)} · {e.loja.nome}
-                  </span>
-                  {e.presenca === "PRESENTE" ? (
-                    <span className="text-green-600">presente</span>
-                  ) : e.presenca === "FALTOU" ? (
-                    <span className="text-red-500">faltou</span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="capitalize text-gray-600">
+                      {formatDateWithWeekday(e.data)} · {e.loja.nome}
+                    </span>
+                    {e.presenca === "PRESENTE" ? (
+                      <span className="text-green-600">presente</span>
+                    ) : e.presenca === "FALTOU" ? (
+                      <span className="text-red-500">faltou</span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </div>
+                  {e.presenca === "PRESENTE" &&
+                    (e.avaliacaoLoja ? (
+                      <span className="mt-1 inline-block text-xs text-teal-600">
+                        ★ loja avaliada
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/d/${token}/avaliar-loja/${e.id}`}
+                        className="mt-2 inline-block rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-800"
+                      >
+                        Avaliar loja
+                      </Link>
+                    ))}
                 </li>
               ))}
             </ul>

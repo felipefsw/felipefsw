@@ -9,7 +9,7 @@ import {
   inputClass,
   labelClass,
 } from "@/components/ui";
-import { hojeISO } from "@/lib/dates";
+import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
 import { FUNCOES } from "@/lib/funcoes";
 import { createRequisicao } from "../actions";
 
@@ -64,6 +64,8 @@ export default async function NovaRequisicaoPage() {
                 name="data"
                 type="date"
                 required
+                min={hojeISO()}
+                max={maxAgendamentoISO()}
                 defaultValue={hojeISO()}
                 className={inputClass}
               />

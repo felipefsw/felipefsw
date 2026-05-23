@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseBRLToCents } from "@/lib/format";
-import { inicioDaSemana, isISODate } from "@/lib/dates";
+import { dentroDaJanelaAgendamento, inicioDaSemana, isISODate } from "@/lib/dates";
 
 export async function createEscala(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
@@ -12,7 +12,7 @@ export async function createEscala(formData: FormData) {
   const data = String(formData.get("data") ?? "");
   const valorTexto = String(formData.get("valor") ?? "").trim();
 
-  if (!diaristaId || !lojaId || !isISODate(data)) return;
+  if (!diaristaId || !lojaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
 
   let valor = parseBRLToCents(valorTexto);
   if (!valor) {

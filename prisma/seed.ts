@@ -132,6 +132,19 @@ async function main() {
         comentario: "Ótima diária, chegou no horário.",
       },
     });
+    await prisma.avaliacaoLoja.create({
+      data: {
+        escalaId: escalaPresente.id,
+        lojaId: escalaPresente.lojaId,
+        diaristaId: a.id,
+        ambiente: 8,
+        tratamento: 9,
+        pagamentoEmDia: 10,
+        organizacao: 7,
+        seguranca: 9,
+        comentario: "Equipe receptiva, pagamento certinho.",
+      },
+    });
   }
 
   console.log("Pronto! Dados de exemplo criados.");

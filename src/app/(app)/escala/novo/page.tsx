@@ -9,7 +9,7 @@ import {
   inputClass,
   labelClass,
 } from "@/components/ui";
-import { hojeISO, isISODate } from "@/lib/dates";
+import { hojeISO, isISODate, maxAgendamentoISO } from "@/lib/dates";
 import { createEscala } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,10 @@ export default async function NovoAgendamentoPage({
   searchParams: Promise<{ data?: string }>;
 }) {
   const sp = await searchParams;
-  const dataInicial = sp.data && isISODate(sp.data) ? sp.data : hojeISO();
+  const hoje = hojeISO();
+  const max = maxAgendamentoISO();
+  const dataInicial =
+    sp.data && isISODate(sp.data) && sp.data >= hoje && sp.data <= max ? sp.data : hoje;
 
   const [diaristas, lojas] = await Promise.all([
     prisma.diarista.findMany({ where: { ativo: true }, orderBy: { nome: "asc" } }),
@@ -91,6 +94,8 @@ export default async function NovoAgendamentoPage({
                 name="data"
                 type="date"
                 required
+                min={hoje}
+                max={max}
                 defaultValue={dataInicial}
                 className={inputClass}
               />

@@ -11,6 +11,7 @@ import {
   labelClass,
 } from "@/components/ui";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
+import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
 import { fecharRequisicao } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -41,13 +42,24 @@ export default async function FecharRequisicaoPage({
     );
   }
 
-  const diaristas = await prisma.diarista.findMany({
-    where: {
-      ativo: true,
-      ...(requisicao.funcao ? { funcao: requisicao.funcao } : {}),
-    },
-    orderBy: { nome: "asc" },
-  });
+  const [diaristas, escalasNoDia] = await Promise.all([
+    prisma.diarista.findMany({
+      where: {
+        ativo: true,
+        ...(requisicao.funcao ? { funcao: requisicao.funcao } : {}),
+      },
+      orderBy: { nome: "asc" },
+    }),
+    // Diaristas já escalados nesse mesmo dia (em qualquer loja) não podem ser
+    // selecionados de novo, para evitar conflito de agenda.
+    prisma.escala.findMany({
+      where: { data: requisicao.data },
+      include: { loja: { select: { nome: true } } },
+    }),
+  ]);
+
+  const ocupadoEm = new Map<string, string>();
+  for (const e of escalasNoDia) ocupadoEm.set(e.diaristaId, e.loja.nome);
 
   return (
     <div className="space-y-4">
@@ -89,6 +101,8 @@ export default async function FecharRequisicaoPage({
                 name="data"
                 type="date"
                 required
+                min={hojeISO()}
+                max={maxAgendamentoISO()}
                 defaultValue={requisicao.data}
                 className={inputClass}
               />
@@ -97,28 +111,59 @@ export default async function FecharRequisicaoPage({
             <div>
               <p className={labelClass}>Escolha os diaristas</p>
               <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
-                {diaristas.map((d) => (
-                  <li key={d.id}>
-                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        name="diaristaIds"
-                        value={d.id}
-                        className="h-5 w-5 rounded border-gray-300 text-teal-700 focus:ring-teal-600"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-gray-900">{d.nome}</span>
-                          {d.funcao && (
-                            <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
-                              {d.funcao}
-                            </span>
-                          )}
+                {diaristas.map((d) => {
+                  const ocupada = ocupadoEm.get(d.id);
+                  if (ocupada) {
+                    return (
+                      <li
+                        key={d.id}
+                        className="flex items-center gap-3 px-3 py-2.5 opacity-60"
+                        title={`Já selecionado para ${ocupada} nesse dia`}
+                      >
+                        <input
+                          type="checkbox"
+                          disabled
+                          className="h-5 w-5 rounded border-gray-300"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-gray-500 line-through">{d.nome}</span>
+                            {d.funcao && (
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400">
+                                {d.funcao}
+                              </span>
+                            )}
+                          </span>
+                          <span className="block text-xs text-gray-400">
+                            Já selecionado para {ocupada} nesse dia
+                          </span>
                         </span>
-                      </span>
-                    </label>
-                  </li>
-                ))}
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={d.id}>
+                      <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          name="diaristaIds"
+                          value={d.id}
+                          className="h-5 w-5 rounded border-gray-300 text-teal-700 focus:ring-teal-600"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-gray-900">{d.nome}</span>
+                            {d.funcao && (
+                              <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                                {d.funcao}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
               </ul>
               <p className="mt-1 text-xs text-gray-400">
                 Cada diarista marcado vira um agendamento na escala, no horário e valor (

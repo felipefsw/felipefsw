@@ -26,6 +26,7 @@ model Loja {
   criadoEm    DateTime     @default(now())
   escalas     Escala[]
   requisicoes Requisicao[]
+  avaliacoesRecebidas AvaliacaoLoja[]
   diaristasPreferem Diarista[] @relation("LojaPreferida")
 }
 
@@ -42,6 +43,7 @@ model Diarista {
   criadoEm    DateTime    @default(now())
   escalas     Escala[]
   avaliacoes  Avaliacao[]
+  avaliacoesDeLoja AvaliacaoLoja[]
   // Até 3 lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
   lojasPreferidas Loja[] @relation("LojaPreferida")
 }
@@ -66,7 +68,8 @@ model Escala {
   requisicaoId String?
   requisicao   Requisicao? @relation(fields: [requisicaoId], references: [id], onDelete: SetNull)
 
-  avaliacao Avaliacao?
+  avaliacao     Avaliacao?
+  avaliacaoLoja AvaliacaoLoja?
 
   @@index([data])
   @@index([diaristaId])
@@ -114,4 +117,28 @@ model Avaliacao {
   diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
 
   @@index([diaristaId])
+}
+
+// Avaliação da LOJA feita pelo diarista após a diária.
+// Visível apenas na área de gestão (RH/devs) — não aparece para lojista nem diarista.
+model AvaliacaoLoja {
+  id             String   @id @default(cuid())
+  ambiente       Int
+  tratamento     Int
+  pagamentoEmDia Int
+  organizacao    Int
+  seguranca      Int
+  comentario     String?
+  criadoEm       DateTime @default(now())
+
+  escalaId String @unique
+  escala   Escala @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+
+  lojaId String
+  loja   Loja   @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+
+  diaristaId String
+  diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+
+  @@index([lojaId])
 }
