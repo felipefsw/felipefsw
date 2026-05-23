@@ -4,6 +4,7 @@ import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO } from "@/lib/dates";
 import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
+import PushToggle from "@/components/PushToggle";
 import { confirmarPresenca, fazerCheckin, inscreverNaDiaria, responderConvocacao } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -113,6 +114,8 @@ export default async function DiaristaLinkPage({
             Você parece estar longe da loja. Faça o check-in quando chegar no local.
           </div>
         )}
+
+        <PushToggle token={token} />
 
         <div className="flex gap-3">
           <Link

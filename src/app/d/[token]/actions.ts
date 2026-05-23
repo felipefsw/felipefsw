@@ -47,6 +47,22 @@ export async function fazerCheckin(formData: FormData) {
   redirect(`/d/${token}?checkin=ok`);
 }
 
+export async function salvarPushSubscription(
+  token: string,
+  endpoint: string,
+  p256dh: string,
+  auth: string,
+) {
+  if (!token || !endpoint || !p256dh || !auth) return;
+  const diarista = await prisma.diarista.findUnique({ where: { token }, select: { id: true } });
+  if (!diarista) return;
+  await prisma.pushSubscription.upsert({
+    where: { endpoint },
+    update: { p256dh, auth, diaristaId: diarista.id },
+    create: { endpoint, p256dh, auth, diaristaId: diarista.id },
+  });
+}
+
 export async function confirmarPresenca(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const token = String(formData.get("token") ?? "");

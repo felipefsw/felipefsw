@@ -77,8 +77,22 @@ model Diarista {
   convocacoes Convocacao[]
   bonificacoes Bonificacao[]
   convidadoEm Requisicao[] @relation("ConvidadosRequisicao")
+  pushSubscriptions PushSubscription[]
   // Lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
   lojasPreferidas Loja[] @relation("LojaPreferida")
+}
+
+// Inscrição de push web (um aparelho/navegador do diarista).
+model PushSubscription {
+  id         String   @id @default(cuid())
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  criadoEm   DateTime @default(now())
+  diaristaId String
+  diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+
+  @@index([diaristaId])
 }
 
 // Bonificação paga ao diarista: cashback (5 diárias com média alta) ou top do mês.

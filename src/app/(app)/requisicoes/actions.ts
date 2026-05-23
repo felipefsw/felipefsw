@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dentroDaJanelaAgendamento, inicioDaSemana, isHHMM, isISODate } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
+import { notificarNovaDiaria } from "@/lib/push";
 
 export async function createRequisicao(formData: FormData) {
   const lojaId = String(formData.get("lojaId") ?? "");
@@ -46,6 +47,8 @@ export async function createRequisicao(formData: FormData) {
       convidados: { connect: convidadosUnicos },
     },
   });
+
+  await notificarNovaDiaria(lojaId, data, [...new Set(convidados)]);
 
   revalidatePath("/requisicoes");
   revalidatePath("/");

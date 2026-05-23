@@ -7,6 +7,7 @@ import { contextoLoja, getSessao, setSessao } from "@/lib/auth";
 import { dentroDaJanelaAgendamento, isHHMM, isISODate } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
 import { valorProporcional } from "@/lib/geo";
+import { notificarNovaDiaria } from "@/lib/push";
 
 // Loja ativa da sessão (loja avulsa ou gestor). Redireciona se não houver.
 async function lojaSessaoId(): Promise<string> {
@@ -58,11 +59,11 @@ export async function criarRequisicaoLoja(formData: FormData) {
     return;
   }
 
-  const convidadosUnicos = [
+  const convidadoIds = [
     ...new Set(
       [1, 2, 3].map((i) => String(formData.get(`convidado${i}`) ?? "")).filter(Boolean),
     ),
-  ].map((id) => ({ id }));
+  ];
 
   await prisma.requisicao.create({
     data: {
@@ -74,9 +75,11 @@ export async function criarRequisicaoLoja(formData: FormData) {
       quantidade,
       valorDiaria,
       observacoes,
-      convidados: { connect: convidadosUnicos },
+      convidados: { connect: convidadoIds.map((id) => ({ id })) },
     },
   });
+
+  await notificarNovaDiaria(lojaId, data, convidadoIds);
 
   revalidatePath("/loja");
   revalidatePath("/requisicoes");
