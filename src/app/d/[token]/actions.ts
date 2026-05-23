@@ -35,6 +35,16 @@ export async function inscreverNaDiaria(formData: FormData) {
   const requisicao = await prisma.requisicao.findUnique({ where: { id: requisicaoId } });
   if (!requisicao || requisicao.status !== "ABERTA") return;
 
+  // não permite inscrição se a diarista estiver bloqueada nessa loja
+  const bloqueio = await prisma.bloqueio.findFirst({
+    where: {
+      lojaId: requisicao.lojaId,
+      diaristaId: diarista.id,
+      OR: [{ ate: null }, { ate: { gt: new Date() } }],
+    },
+  });
+  if (bloqueio) return;
+
   await prisma.inscricao.upsert({
     where: { requisicaoId_diaristaId: { requisicaoId, diaristaId: diarista.id } },
     update: {},

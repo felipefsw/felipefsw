@@ -5,7 +5,7 @@ import CopyLink from "@/components/CopyLink";
 import { formatDate } from "@/lib/format";
 import { ASPECTOS } from "@/lib/aspectos";
 import DiaristaForm from "../DiaristaForm";
-import { updateDiarista } from "../actions";
+import { bloquearPermanente, removerBloqueio, updateDiarista } from "../actions";
 
 export default async function EditarDiaristaPage({
   params,
@@ -26,22 +26,33 @@ export default async function EditarDiaristaPage({
   ]);
   if (!diarista) notFound();
 
-  const avaliacoes = await prisma.avaliacao.findMany({
-    where: { diaristaId: id },
-    include: { escala: { include: { loja: true } } },
-    orderBy: { criadoEm: "desc" },
-  });
+  const [avaliacoes, bloqueios] = await Promise.all([
+    prisma.avaliacao.findMany({
+      where: { diaristaId: id },
+      include: { escala: { include: { loja: true } } },
+      orderBy: { criadoEm: "desc" },
+    }),
+    prisma.bloqueio.findMany({
+      where: { diaristaId: id },
+      include: { loja: { select: { nome: true } } },
+      orderBy: { criadoEm: "desc" },
+    }),
+  ]);
+
+  // A nota só aparece após 5 diárias avaliadas; usa a média das 5 mais recentes.
+  const MIN_AVALIACOES = 5;
   const total = avaliacoes.length;
+  const notaLiberada = total >= MIN_AVALIACOES;
+  const usadas = avaliacoes.slice(0, MIN_AVALIACOES);
   const mediaDe = (key: string) =>
-    total
-      ? avaliacoes.reduce((s, a) => s + (a as unknown as Record<string, number>)[key], 0) / total
+    usadas.length
+      ? usadas.reduce((s, a) => s + (a as unknown as Record<string, number>)[key], 0) / usadas.length
       : 0;
-  const mediaGeral = total
-    ? ASPECTOS.reduce((s, a) => s + mediaDe(a.key), 0) / ASPECTOS.length
-    : 0;
+  const mediaGeral = ASPECTOS.reduce((s, a) => s + mediaDe(a.key), 0) / ASPECTOS.length;
   const mediaDaAvaliacao = (a: (typeof avaliacoes)[number]) =>
     ASPECTOS.reduce((s, asp) => s + (a as unknown as Record<string, number>)[asp.key], 0) /
     ASPECTOS.length;
+  const agora = new Date();
 
   return (
     <div className="space-y-4">
@@ -65,17 +76,16 @@ export default async function EditarDiaristaPage({
       <Card>
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Avaliações</h2>
-          {total > 0 && (
+          {notaLiberada && (
             <span className="text-sm text-gray-500">
-              média <strong className="text-teal-700">{mediaGeral.toFixed(1)}</strong> · {total}{" "}
-              diária(s)
+              nota <strong className="text-teal-700">{mediaGeral.toFixed(1)}</strong> (últimas 5)
             </span>
           )}
         </div>
 
-        {total === 0 ? (
+        {!notaLiberada ? (
           <p className="mt-2 text-sm text-gray-500">
-            Ainda sem avaliações. Avalie pela tela de <strong>Escala</strong>, em cada diária.
+            Nota disponível após <strong>5 diárias</strong> avaliadas ({total}/5).
           </p>
         ) : (
           <>
@@ -108,6 +118,68 @@ export default async function EditarDiaristaPage({
             </ul>
           </>
         )}
+      </Card>
+
+      <Card>
+        <h2 className="font-semibold text-gray-900">Bloqueios</h2>
+        <p className="mt-1 text-xs text-gray-400">
+          Diarista bloqueada não pode ser escalada nem se inscrever naquela loja.
+        </p>
+
+        {bloqueios.length > 0 && (
+          <ul className="mt-3 divide-y divide-gray-100">
+            {bloqueios.map((b) => {
+              const ativo = b.ate === null || b.ate > agora;
+              return (
+                <li key={b.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span>
+                    <span className="font-medium text-gray-900">{b.loja.nome}</span>{" "}
+                    <span className={ativo ? "text-red-600" : "text-gray-400"}>
+                      {b.origem === "RH"
+                        ? "· permanente (RH)"
+                        : b.ate
+                          ? `· até ${formatDate(b.ate.toISOString().slice(0, 10))}`
+                          : ""}
+                      {!ativo ? " (expirado)" : ""}
+                    </span>
+                  </span>
+                  <form action={removerBloqueio}>
+                    <input type="hidden" name="id" value={b.id} />
+                    <input type="hidden" name="diaristaId" value={diarista.id} />
+                    <button type="submit" className="text-xs text-teal-700 underline">
+                      remover
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <form action={bloquearPermanente} className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+          <input type="hidden" name="diaristaId" value={diarista.id} />
+          <select
+            name="lojaId"
+            required
+            defaultValue=""
+            className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          >
+            <option value="" disabled>
+              Escolha a loja
+            </option>
+            {lojas.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.nome}
+              </option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+          >
+            Bloquear (permanente)
+          </button>
+        </form>
       </Card>
     </div>
   );

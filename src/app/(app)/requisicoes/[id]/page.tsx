@@ -42,7 +42,7 @@ export default async function FecharRequisicaoPage({
     );
   }
 
-  const [diaristas, escalasNoDia, inscricoes] = await Promise.all([
+  const [diaristas, escalasNoDia, inscricoes, bloqueios] = await Promise.all([
     prisma.diarista.findMany({
       where: {
         ativo: true,
@@ -60,10 +60,15 @@ export default async function FecharRequisicaoPage({
       where: { requisicaoId: requisicao.id },
       select: { diaristaId: true },
     }),
+    prisma.bloqueio.findMany({
+      where: { lojaId: requisicao.lojaId, OR: [{ ate: null }, { ate: { gt: new Date() } }] },
+      select: { diaristaId: true },
+    }),
   ]);
 
   const ocupadoEm = new Map<string, string>();
   for (const e of escalasNoDia) ocupadoEm.set(e.diaristaId, e.loja.nome);
+  const bloqueados = new Set(bloqueios.map((b) => b.diaristaId));
 
   // Quem se inscreveu nessa requisição aparece primeiro.
   const inscritos = new Set(inscricoes.map((i) => i.diaristaId));
@@ -121,12 +126,17 @@ export default async function FecharRequisicaoPage({
               <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
                 {diaristas.map((d) => {
                   const ocupada = ocupadoEm.get(d.id);
-                  if (ocupada) {
+                  const motivo = ocupada
+                    ? `Já selecionado para ${ocupada} nesse dia`
+                    : bloqueados.has(d.id)
+                      ? "Bloqueado nesta loja"
+                      : null;
+                  if (motivo) {
                     return (
                       <li
                         key={d.id}
                         className="flex items-center gap-3 px-3 py-2.5 opacity-60"
-                        title={`Já selecionado para ${ocupada} nesse dia`}
+                        title={motivo}
                       >
                         <input
                           type="checkbox"
@@ -142,9 +152,7 @@ export default async function FecharRequisicaoPage({
                               </span>
                             )}
                           </span>
-                          <span className="block text-xs text-gray-400">
-                            Já selecionado para {ocupada} nesse dia
-                          </span>
+                          <span className="block text-xs text-gray-400">{motivo}</span>
                         </span>
                       </li>
                     );

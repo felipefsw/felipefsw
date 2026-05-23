@@ -68,6 +68,24 @@ export async function toggleDiaristaAtivo(formData: FormData) {
   revalidatePath("/diaristas");
 }
 
+export async function bloquearPermanente(formData: FormData) {
+  const diaristaId = String(formData.get("diaristaId") ?? "");
+  const lojaId = String(formData.get("lojaId") ?? "");
+  if (!diaristaId || !lojaId) return;
+  await prisma.bloqueio.create({
+    data: { diaristaId, lojaId, origem: "RH", ate: null },
+  });
+  revalidatePath(`/diaristas/${diaristaId}`);
+}
+
+export async function removerBloqueio(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const diaristaId = String(formData.get("diaristaId") ?? "");
+  if (!id) return;
+  await prisma.bloqueio.delete({ where: { id } });
+  if (diaristaId) revalidatePath(`/diaristas/${diaristaId}`);
+}
+
 export async function deleteDiarista(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;

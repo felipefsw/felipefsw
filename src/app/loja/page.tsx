@@ -2,8 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, btnPrimary } from "@/components/ui";
-import { formatBRL, formatDateWithWeekday } from "@/lib/format";
+import { formatBRL, formatDate, formatDateWithWeekday } from "@/lib/format";
+import { turnoFinalizado } from "@/lib/dates";
 import { getSessao } from "@/lib/auth";
+import {
+  bloquearDiaristaLoja,
+  desbloquearDiaristaLoja,
+  desfazerAvaliacaoDiarista,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,28 +22,50 @@ function statusLabel(s: string) {
 export default async function LojaHome() {
   const sessao = await getSessao();
   if (!sessao || sessao.tipo !== "loja") redirect("/entrar");
+  const lojaId = sessao.lojaId;
 
-  const [requisicoes, escalas] = await Promise.all([
+  const agora = new Date();
+  const [requisicoes, escalas, bloqueios] = await Promise.all([
     prisma.requisicao.findMany({
-      where: { lojaId: sessao.lojaId },
+      where: { lojaId },
       include: { _count: { select: { escalas: true, inscricoes: true } } },
       orderBy: [{ data: "asc" }, { criadoEm: "desc" }],
     }),
     prisma.escala.findMany({
-      where: { lojaId: sessao.lojaId },
-      include: { diarista: { select: { id: true, nome: true, funcao: true } } },
+      where: { lojaId },
+      include: {
+        diarista: { select: { id: true, nome: true, funcao: true } },
+        avaliacao: { select: { id: true } },
+      },
       orderBy: { data: "desc" },
+    }),
+    prisma.bloqueio.findMany({
+      where: { lojaId, OR: [{ ate: null }, { ate: { gt: agora } }] },
     }),
   ]);
 
-  // Diaristas distintos que já vieram para esta loja.
+  const bloqueioPorDiarista = new Map<string, { ate: Date | null; origem: string }>();
+  for (const b of bloqueios) {
+    const cur = bloqueioPorDiarista.get(b.diaristaId);
+    // RH (permanente) prevalece sobre bloqueio temporário da loja.
+    if (!cur || b.origem === "RH") bloqueioPorDiarista.set(b.diaristaId, { ate: b.ate, origem: b.origem });
+  }
+
+  // Diárias já realizadas (presente e turno encerrado) — para avaliar.
+  const aAvaliar = escalas.filter(
+    (e) => e.presenca === "PRESENTE" && turnoFinalizado(e.data, e.horaFim),
+  );
+
+  // Diaristas distintos que já vieram.
   const vistos = new Map<string, { nome: string; funcao: string | null; vezes: number }>();
   for (const e of escalas) {
     const cur = vistos.get(e.diarista.id);
     if (cur) cur.vezes += 1;
     else vistos.set(e.diarista.id, { nome: e.diarista.nome, funcao: e.diarista.funcao, vezes: 1 });
   }
-  const diaristas = [...vistos.values()].sort((a, b) => b.vezes - a.vezes);
+  const diaristas = [...vistos.entries()]
+    .map(([id, v]) => ({ id, ...v }))
+    .sort((a, b) => b.vezes - a.vezes);
 
   return (
     <div className="space-y-5">
@@ -84,30 +112,119 @@ export default async function LojaHome() {
         )}
       </section>
 
+      {aAvaliar.length > 0 && (
+        <section>
+          <h2 className="mb-2 font-semibold text-gray-900">Avaliar diaristas</h2>
+          <Card>
+            <ul className="divide-y divide-gray-100">
+              {aAvaliar.map((e) => (
+                <li key={e.id} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-gray-900">{e.diarista.nome}</p>
+                    <p className="text-sm capitalize text-gray-500">{formatDate(e.data)}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <Link
+                      href={`/loja/avaliar/${e.id}`}
+                      className={
+                        e.avaliacao
+                          ? "text-sm font-medium text-teal-600 hover:underline"
+                          : "rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"
+                      }
+                    >
+                      {e.avaliacao ? "★ editar" : "★ Avaliar"}
+                    </Link>
+                    {e.avaliacao && (
+                      <form action={desfazerAvaliacaoDiarista}>
+                        <input type="hidden" name="escalaId" value={e.id} />
+                        <button type="submit" className="text-xs text-gray-400 underline hover:text-red-600">
+                          desfazer
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      )}
+
       <section>
         <h2 className="mb-2 font-semibold text-gray-900">Diaristas que já vieram</h2>
         {diaristas.length === 0 ? (
           <EmptyState>Ninguém escalado para esta loja ainda.</EmptyState>
         ) : (
-          <Card>
-            <ul className="divide-y divide-gray-100">
-              {diaristas.map((d) => (
-                <li key={d.nome} className="flex items-center justify-between gap-3 py-2">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-gray-900">{d.nome}</span>
-                    {d.funcao && (
-                      <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
-                        {d.funcao}
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-sm text-gray-500">{d.vezes}× aqui</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          <div className="space-y-2">
+            {diaristas.map((d) => {
+              const bloq = bloqueioPorDiarista.get(d.id);
+              return (
+                <Card key={d.id}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-gray-900">{d.nome}</span>
+                      {d.funcao && (
+                        <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                          {d.funcao}
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-sm text-gray-500">{d.vezes}× aqui</span>
+                  </div>
+
+                  {bloq ? (
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-gray-100 pt-2">
+                      {bloq.origem === "RH" ? (
+                        <span className="text-xs font-medium text-red-600">
+                          Bloqueado pelo RH (permanente)
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-xs font-medium text-red-600">
+                            Bloqueado até {bloq.ate ? formatDate(bloq.ate.toISOString().slice(0, 10)) : ""}
+                          </span>
+                          <form action={desbloquearDiaristaLoja}>
+                            <input type="hidden" name="diaristaId" value={d.id} />
+                            <button type="submit" className="text-xs text-teal-700 underline">
+                              desbloquear
+                            </button>
+                          </form>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <form
+                      action={bloquearDiaristaLoja}
+                      className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2"
+                    >
+                      <input type="hidden" name="diaristaId" value={d.id} />
+                      <select
+                        name="dias"
+                        defaultValue="7"
+                        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm"
+                      >
+                        <option value="7">7 dias</option>
+                        <option value="14">14 dias</option>
+                        <option value="30">1 mês</option>
+                      </select>
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-red-200 bg-white px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50"
+                      >
+                        Bloquear
+                      </button>
+                    </form>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
         )}
       </section>
+
+      <p className="px-1 text-xs text-gray-400">
+        Bloquear demais pode deixar sua loja sem diaristas suficientes nas próximas diárias.
+      </p>
     </div>
   );
 }

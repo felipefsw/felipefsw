@@ -47,13 +47,25 @@ export async function fecharRequisicao(formData: FormData) {
   const requisicao = await prisma.requisicao.findUnique({ where: { id } });
   if (!requisicao) return;
 
-  // Evita conflito: remove quem já está escalado nesse dia (em qualquer loja).
-  const jaEscalados = await prisma.escala.findMany({
-    where: { data, diaristaId: { in: diaristaIds } },
-    select: { diaristaId: true },
-  });
+  // Evita conflito: remove quem já está escalado nesse dia (em qualquer loja)
+  // ou quem está bloqueado nesta loja.
+  const [jaEscalados, bloqueados] = await Promise.all([
+    prisma.escala.findMany({
+      where: { data, diaristaId: { in: diaristaIds } },
+      select: { diaristaId: true },
+    }),
+    prisma.bloqueio.findMany({
+      where: {
+        lojaId: requisicao.lojaId,
+        diaristaId: { in: diaristaIds },
+        OR: [{ ate: null }, { ate: { gt: new Date() } }],
+      },
+      select: { diaristaId: true },
+    }),
+  ]);
   const ocupados = new Set(jaEscalados.map((e) => e.diaristaId));
-  const livres = diaristaIds.filter((d) => !ocupados.has(d));
+  const bloqSet = new Set(bloqueados.map((b) => b.diaristaId));
+  const livres = diaristaIds.filter((d) => !ocupados.has(d) && !bloqSet.has(d));
   if (livres.length === 0) return;
 
   await prisma.$transaction([

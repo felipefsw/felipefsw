@@ -28,6 +28,7 @@ model Loja {
   escalas     Escala[]
   requisicoes Requisicao[]
   avaliacoesRecebidas AvaliacaoLoja[]
+  bloqueios   Bloqueio[]
   diaristasPreferem Diarista[] @relation("LojaPreferida")
 }
 
@@ -48,6 +49,7 @@ model Diarista {
   avaliacoes  Avaliacao[]
   avaliacoesDeLoja AvaliacaoLoja[]
   inscricoes  Inscricao[]
+  bloqueios   Bloqueio[]
   // Até 3 lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
   lojasPreferidas Loja[] @relation("LojaPreferida")
 }
@@ -136,6 +138,25 @@ model Avaliacao {
   diaristaId String
   diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
 
+  @@index([diaristaId])
+}
+
+// Bloqueio de um diarista em uma loja.
+// origem LOJA: temporário (campo "ate" com data). origem RH: permanente (ate = null).
+model Bloqueio {
+  id         String    @id @default(cuid())
+  origem     String // LOJA | RH
+  ate        DateTime? // null = permanente
+  motivo     String?
+  criadoEm   DateTime  @default(now())
+
+  lojaId String
+  loja   Loja   @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+
+  diaristaId String
+  diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+
+  @@index([lojaId])
   @@index([diaristaId])
 }
 

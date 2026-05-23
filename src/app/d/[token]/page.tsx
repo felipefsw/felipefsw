@@ -25,6 +25,10 @@ export default async function DiaristaLinkPage({
       },
       inscricoes: { select: { requisicaoId: true } },
       lojasPreferidas: { select: { id: true } },
+      bloqueios: {
+        where: { OR: [{ ate: null }, { ate: { gt: new Date() } }] },
+        select: { lojaId: true },
+      },
     },
   });
 
@@ -47,11 +51,13 @@ export default async function DiaristaLinkPage({
   const jaTrabalhou = new Set(diarista.escalas.map((e) => e.lojaId));
   const ehPreferida = (lojaId: string) => preferidas.has(lojaId) || jaTrabalhou.has(lojaId);
 
-  const disponiveis = await prisma.requisicao.findMany({
+  const lojasBloqueadas = new Set(diarista.bloqueios.map((b) => b.lojaId));
+  const disponiveisRaw = await prisma.requisicao.findMany({
     where: { status: "ABERTA", data: { gte: hoje } },
     include: { loja: true },
     orderBy: { data: "asc" },
   });
+  const disponiveis = disponiveisRaw.filter((r) => !lojasBloqueadas.has(r.lojaId));
   disponiveis.sort((a, b) => Number(ehPreferida(b.lojaId)) - Number(ehPreferida(a.lojaId)));
 
   return (
