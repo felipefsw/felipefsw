@@ -17,28 +17,30 @@ datasource db {
 }
 
 model Loja {
-  id       String   @id @default(cuid())
-  nome     String
-  cnpj     String?
-  cidade   String?
-  endereco String?
-  ativo    Boolean  @default(true)
-  criadoEm DateTime @default(now())
-  escalas  Escala[]
+  id          String       @id @default(cuid())
+  nome        String
+  cnpj        String?
+  cidade      String?
+  endereco    String?
+  ativo       Boolean      @default(true)
+  criadoEm    DateTime     @default(now())
+  escalas     Escala[]
+  requisicoes Requisicao[]
 }
 
 model Diarista {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   nome        String
   funcao      String? // Atendente | Pizzaiolo | Aux. pizzaiolo | Motoqueiro
   telefone    String?
   chavePix    String?
-  valorDiaria Int      @default(0) // centavos
+  valorDiaria Int         @default(0) // centavos
   observacoes String?
-  ativo       Boolean  @default(true)
-  token       String   @unique @default(cuid()) // usado no link pessoal /d/[token]
-  criadoEm    DateTime @default(now())
+  ativo       Boolean     @default(true)
+  token       String      @unique @default(cuid()) // usado no link pessoal /d/[token]
+  criadoEm    DateTime    @default(now())
   escalas     Escala[]
+  avaliacoes  Avaliacao[]
 }
 
 model Escala {
@@ -56,7 +58,52 @@ model Escala {
   lojaId     String
   loja       Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
 
+  requisicaoId String?
+  requisicao   Requisicao? @relation(fields: [requisicaoId], references: [id], onDelete: SetNull)
+
+  avaliacao Avaliacao?
+
   @@index([data])
   @@index([diaristaId])
   @@index([lojaId])
+}
+
+// Pedido de diaristas feito por uma loja; o RH atende criando as escalas.
+model Requisicao {
+  id          String   @id @default(cuid())
+  data        String // "AAAA-MM-DD" - dia em que a loja precisa
+  funcao      String? // função desejada (opcional)
+  quantidade  Int      @default(1)
+  observacoes String?
+  status      String   @default("ABERTA") // ABERTA | ATENDIDA | CANCELADA
+  criadoEm    DateTime @default(now())
+
+  lojaId  String
+  loja    Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  escalas Escala[]
+
+  @@index([status])
+  @@index([data])
+}
+
+// Avaliação de uma diária (escala): notas de 0 a 10 por aspecto.
+model Avaliacao {
+  id                String   @id @default(cuid())
+  pontualidade      Int
+  limpeza           Int
+  educacao          Int
+  rapidez           Int
+  habilidadeTecnica Int
+  respeito          Int
+  espiritoEquipe    Int
+  comentario        String?
+  criadoEm          DateTime @default(now())
+
+  escalaId String @unique
+  escala   Escala @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+
+  diaristaId String
+  diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+
+  @@index([diaristaId])
 }

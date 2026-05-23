@@ -21,7 +21,7 @@ export default async function EscalaPage({
 
   const escalas = await prisma.escala.findMany({
     where: { data: { gte: dias[0], lte: dias[6] } },
-    include: { diarista: true, loja: true },
+    include: { diarista: true, loja: true, avaliacao: { select: { id: true } } },
     orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
   });
 
@@ -153,6 +153,17 @@ export default async function EscalaPage({
                             </form>
                           </div>
                         )}
+
+                        <Link
+                          href={`/escala/${e.id}/avaliar`}
+                          className={`text-xs font-medium ${
+                            e.avaliacao
+                              ? "text-teal-600 hover:underline"
+                              : "text-gray-400 hover:text-teal-700"
+                          }`}
+                        >
+                          {e.avaliacao ? "★ avaliada" : "avaliar"}
+                        </Link>
 
                         <form action={deleteEscala}>
                           <input type="hidden" name="id" value={e.id} />

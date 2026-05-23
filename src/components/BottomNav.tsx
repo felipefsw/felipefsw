@@ -28,6 +28,16 @@ const items: Item[] = [
     ),
   },
   {
+    href: "/requisicoes",
+    label: "Pedidos",
+    icon: (
+      <>
+        <rect x="6" y="4" width="12" height="17" rx="2" />
+        <path d="M9.5 4V3h5v1M9 11h6M9 15h4" />
+      </>
+    ),
+  },
+  {
     href: "/diaristas",
     label: "Diaristas",
     icon: (

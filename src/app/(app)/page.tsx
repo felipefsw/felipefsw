@@ -9,20 +9,22 @@ export const dynamic = "force-dynamic";
 export default async function InicioPage() {
   const hoje = hojeISO();
 
-  const [escalasHoje, pendentes, aPagar, diaristasAtivas, lojasAtivas] = await Promise.all([
-    prisma.escala.findMany({
-      where: { data: hoje },
-      include: { diarista: true, loja: true },
-      orderBy: { criadoEm: "asc" },
-    }),
-    prisma.escala.count({ where: { data: { lte: hoje }, presenca: "PENDENTE" } }),
-    prisma.escala.findMany({
-      where: { presenca: "PRESENTE", pago: false },
-      select: { valor: true },
-    }),
-    prisma.diarista.count({ where: { ativo: true } }),
-    prisma.loja.count({ where: { ativo: true } }),
-  ]);
+  const [escalasHoje, pendentes, aPagar, diaristasAtivas, lojasAtivas, requisicoesAbertas] =
+    await Promise.all([
+      prisma.escala.findMany({
+        where: { data: hoje },
+        include: { diarista: true, loja: true },
+        orderBy: { criadoEm: "asc" },
+      }),
+      prisma.escala.count({ where: { data: { lte: hoje }, presenca: "PENDENTE" } }),
+      prisma.escala.findMany({
+        where: { presenca: "PRESENTE", pago: false },
+        select: { valor: true },
+      }),
+      prisma.diarista.count({ where: { ativo: true } }),
+      prisma.loja.count({ where: { ativo: true } }),
+      prisma.requisicao.count({ where: { status: "ABERTA" } }),
+    ]);
 
   const totalAPagar = aPagar.reduce((s, e) => s + e.valor, 0);
 
@@ -50,6 +52,26 @@ export default async function InicioPage() {
             >
               {pendentes}
             </p>
+          </Card>
+        </Link>
+        <Link href="/requisicoes" className="col-span-2">
+          <Card className={`h-full ${requisicoesAbertas > 0 ? "border-amber-300 bg-amber-50" : ""}`}>
+            <div className="flex items-center justify-between">
+              <p
+                className={`text-sm font-medium ${
+                  requisicoesAbertas > 0 ? "text-amber-800" : "text-gray-500"
+                }`}
+              >
+                Requisições abertas
+              </p>
+              <p
+                className={`text-2xl font-bold ${
+                  requisicoesAbertas > 0 ? "text-amber-700" : "text-gray-900"
+                }`}
+              >
+                {requisicoesAbertas}
+              </p>
+            </div>
           </Card>
         </Link>
         <Link href="/pagamentos" className="col-span-2">

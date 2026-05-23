@@ -98,6 +98,38 @@ async function main() {
     ],
   });
 
+  console.log("Criando requisição de exemplo...");
+  await prisma.requisicao.create({
+    data: {
+      lojaId: centro.id,
+      data: addDias(1),
+      funcao: "Pizzaiolo",
+      quantidade: 2,
+      observacoes: "Turno da noite",
+    },
+  });
+
+  console.log("Criando avaliação de exemplo...");
+  const escalaPresente = await prisma.escala.findFirst({
+    where: { presenca: "PRESENTE", diaristaId: a.id },
+  });
+  if (escalaPresente) {
+    await prisma.avaliacao.create({
+      data: {
+        escalaId: escalaPresente.id,
+        diaristaId: a.id,
+        pontualidade: 9,
+        limpeza: 8,
+        educacao: 10,
+        rapidez: 7,
+        habilidadeTecnica: 8,
+        respeito: 10,
+        espiritoEquipe: 9,
+        comentario: "Ótima diária, chegou no horário.",
+      },
+    });
+  }
+
   console.log("Pronto! Dados de exemplo criados.");
 }
 
