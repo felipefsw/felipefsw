@@ -2,9 +2,18 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO } from "@/lib/dates";
+import CopyButton from "@/components/CopyButton";
 import { confirmarPresenca, inscreverNaDiaria } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+function enderecoCompleto(l: {
+  endereco: string | null;
+  bairro: string | null;
+  cidade: string | null;
+}): string {
+  return [l.endereco, l.bairro, l.cidade].filter(Boolean).join(", ");
+}
 
 export default async function DiaristaLinkPage({
   params,
@@ -97,6 +106,9 @@ export default async function DiaristaLinkPage({
                         </span>
                       )}
                     </div>
+                    {enderecoCompleto(r.loja) && (
+                      <p className="text-sm text-gray-500">{enderecoCompleto(r.loja)}</p>
+                    )}
                     <p className="mt-1 text-sm capitalize text-gray-600">
                       {formatDateWithWeekday(r.data)} · {r.horaInicio}–{r.horaFim}
                     </p>
@@ -152,10 +164,13 @@ export default async function DiaristaLinkPage({
                         )}
                       </p>
                       <p className="text-sm text-gray-500">{e.loja.nome}</p>
-                      {e.loja.endereco && (
-                        <p className="text-xs text-gray-400">{e.loja.endereco}</p>
+                      {enderecoCompleto(e.loja) && (
+                        <p className="text-xs text-gray-400">{enderecoCompleto(e.loja)}</p>
                       )}
-                      <p className="mt-1 text-sm text-gray-600">{formatBRL(e.valor)}</p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim} · ` : ""}
+                        {formatBRL(e.valor)}
+                      </p>
                     </div>
                     {e.presenca === "PRESENTE" ? (
                       <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
@@ -175,6 +190,31 @@ export default async function DiaristaLinkPage({
                         Confirmar presença
                       </button>
                     </form>
+                  )}
+
+                  {e.presenca === "PRESENTE" && enderecoCompleto(e.loja) && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoCompleto(e.loja))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
+                      >
+                        Google Maps
+                      </a>
+                      <a
+                        href={`https://waze.com/ul?q=${encodeURIComponent(enderecoCompleto(e.loja))}&navigate=yes`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white"
+                      >
+                        Waze
+                      </a>
+                      <CopyButton
+                        text={enderecoCompleto(e.loja)}
+                        className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+                      />
+                    </div>
                   )}
                 </li>
               ))}
