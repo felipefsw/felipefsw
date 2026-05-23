@@ -143,12 +143,12 @@ export default function DiaristaForm({
         </div>
 
         <div>
-          <p className={labelClass}>Lojas preferidas (até 3)</p>
+          <p className={labelClass}>Lojas preferidas (até 5)</p>
           <p className="mb-2 -mt-0.5 text-xs text-gray-400">
             Só um norte de onde a pessoa prefere trabalhar — não impede de ir a outras.
           </p>
           <div className="space-y-2">
-            {[0, 1, 2].map((i) => (
+            {[0, 1, 2, 3, 4].map((i) => (
               <select
                 key={i}
                 name={`lojaPreferida${i + 1}`}

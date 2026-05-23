@@ -23,6 +23,61 @@ export async function confirmarPresenca(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function responderConvocacao(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const convocacaoId = String(formData.get("convocacaoId") ?? "");
+  const resposta = String(formData.get("resposta") ?? "");
+  if (!token || !convocacaoId || !["ACEITA", "RECUSADA"].includes(resposta)) return;
+
+  const convocacao = await prisma.convocacao.findUnique({
+    where: { id: convocacaoId },
+    include: { diarista: { select: { token: true, valorDiaria: true } } },
+  });
+  if (!convocacao || convocacao.diarista.token !== token || convocacao.status !== "PENDENTE") return;
+
+  if (resposta === "ACEITA") {
+    await prisma.$transaction([
+      prisma.convocacao.update({ where: { id: convocacaoId }, data: { status: "ACEITA" } }),
+      prisma.escala.create({
+        data: {
+          diaristaId: convocacao.diaristaId,
+          lojaId: convocacao.lojaId,
+          data: convocacao.data,
+          valor: convocacao.diarista.valorDiaria,
+        },
+      }),
+    ]);
+  } else {
+    await prisma.convocacao.update({ where: { id: convocacaoId }, data: { status: "RECUSADA" } });
+  }
+
+  revalidatePath(`/d/${token}`);
+  revalidatePath("/escala");
+  revalidatePath("/loja");
+}
+
+export async function salvarPreferencias(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  if (!token) return;
+  const diarista = await prisma.diarista.findUnique({
+    where: { token },
+    select: { id: true },
+  });
+  if (!diarista) return;
+
+  const ids = [...new Set(formData.getAll("lojaIds").map(String).filter(Boolean))]
+    .slice(0, 5)
+    .map((id) => ({ id }));
+
+  await prisma.diarista.update({
+    where: { id: diarista.id },
+    data: { lojasPreferidas: { set: ids } },
+  });
+
+  revalidatePath(`/d/${token}`);
+  redirect(`/d/${token}`);
+}
+
 export async function inscreverNaDiaria(formData: FormData) {
   const token = String(formData.get("token") ?? "");
   const requisicaoId = String(formData.get("requisicaoId") ?? "");

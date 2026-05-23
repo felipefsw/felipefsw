@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO } from "@/lib/dates";
 import CopyButton from "@/components/CopyButton";
-import { confirmarPresenca, inscreverNaDiaria } from "./actions";
+import { confirmarPresenca, inscreverNaDiaria, responderConvocacao } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,11 @@ export default async function DiaristaLinkPage({
       bloqueios: {
         where: { OR: [{ ate: null }, { ate: { gt: new Date() } }] },
         select: { lojaId: true },
+      },
+      convocacoes: {
+        where: { status: "PENDENTE" },
+        include: { loja: true },
+        orderBy: { data: "asc" },
       },
     },
   });
@@ -72,14 +77,72 @@ export default async function DiaristaLinkPage({
   return (
     <div className="mx-auto max-w-md">
       <header className="bg-teal-700 px-5 py-6 text-white">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
+        <div className="flex items-start justify-between">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
+          <a href="/entrar" className="text-xs font-medium text-teal-100 underline">
+            Sair
+          </a>
+        </div>
         <p className="text-sm text-teal-100">Olá,</p>
         <h1 className="text-2xl font-bold">{diarista.nome}</h1>
         <p className="mt-1 text-sm text-teal-100">Sua agenda de trabalho</p>
       </header>
 
       <main className="space-y-6 p-5">
+        <Link
+          href={`/d/${token}/preferencias`}
+          className="block rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-800"
+        >
+          ⭐ Minhas lojas de preferência →
+        </Link>
+
+        {diarista.convocacoes.length > 0 && (
+          <section>
+            <h2 className="mb-2 font-semibold text-gray-900">Convocações</h2>
+            <ul className="space-y-3">
+              {diarista.convocacoes.map((c) => (
+                <li key={c.id} className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+                  <p className="font-medium text-gray-900">{c.loja.nome}</p>
+                  {enderecoCompleto(c.loja) && (
+                    <p className="text-sm text-gray-500">{enderecoCompleto(c.loja)}</p>
+                  )}
+                  <p className="mt-1 text-sm capitalize text-gray-700">
+                    {formatDateWithWeekday(c.data)}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Esta loja convocou você para esta diária.
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <form action={responderConvocacao} className="flex-1">
+                      <input type="hidden" name="token" value={token} />
+                      <input type="hidden" name="convocacaoId" value={c.id} />
+                      <input type="hidden" name="resposta" value="ACEITA" />
+                      <button
+                        type="submit"
+                        className="w-full rounded-lg bg-green-600 py-2 font-medium text-white hover:bg-green-700"
+                      >
+                        Aceitar
+                      </button>
+                    </form>
+                    <form action={responderConvocacao} className="flex-1">
+                      <input type="hidden" name="token" value={token} />
+                      <input type="hidden" name="convocacaoId" value={c.id} />
+                      <input type="hidden" name="resposta" value="RECUSADA" />
+                      <button
+                        type="submit"
+                        className="w-full rounded-lg border border-gray-300 bg-white py-2 font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Recusar
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section>
           <h2 className="mb-2 font-semibold text-gray-900">Agende sua diária</h2>
           {disponiveis.length === 0 ? (

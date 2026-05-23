@@ -137,6 +137,18 @@ export async function desfazerAvaliacaoDiarista(formData: FormData) {
   revalidatePath(`/diaristas/${escala.diaristaId}`);
 }
 
+export async function convocarDiarista(formData: FormData) {
+  const lojaId = await lojaSessaoId();
+  const diaristaId = String(formData.get("diaristaId") ?? "");
+  const data = String(formData.get("data") ?? "");
+  if (!diaristaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
+
+  await prisma.convocacao.create({
+    data: { lojaId, diaristaId, data },
+  });
+  revalidatePath("/loja");
+}
+
 export async function bloquearDiaristaLoja(formData: FormData) {
   const lojaId = await lojaSessaoId();
   const diaristaId = String(formData.get("diaristaId") ?? "");

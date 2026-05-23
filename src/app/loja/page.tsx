@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import { formatBRL, formatDate, formatDateWithWeekday } from "@/lib/format";
-import { turnoFinalizado } from "@/lib/dates";
+import { hojeISO, maxAgendamentoISO, turnoFinalizado } from "@/lib/dates";
+import { ASPECTOS } from "@/lib/aspectos";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   bloquearDiaristaLoja,
+  convocarDiarista,
   desbloquearDiaristaLoja,
   desfazerAvaliacaoDiarista,
 } from "./actions";
@@ -35,7 +37,7 @@ export default async function LojaHome() {
       where: { lojaId },
       include: {
         diarista: { select: { id: true, nome: true, funcao: true } },
-        avaliacao: { select: { id: true } },
+        avaliacao: true,
       },
       orderBy: { data: "desc" },
     }),
@@ -56,15 +58,40 @@ export default async function LojaHome() {
     (e) => e.presenca === "PRESENTE" && turnoFinalizado(e.data, e.horaFim),
   );
 
-  // Diaristas distintos que já vieram.
-  const vistos = new Map<string, { nome: string; funcao: string | null; vezes: number }>();
+  // Diaristas distintos que já vieram, com datas e notas dadas por esta loja.
+  type Info = {
+    nome: string;
+    funcao: string | null;
+    datas: string[];
+    somaNotas: number;
+    qtdNotas: number;
+  };
+  const vistos = new Map<string, Info>();
   for (const e of escalas) {
-    const cur = vistos.get(e.diarista.id);
-    if (cur) cur.vezes += 1;
-    else vistos.set(e.diarista.id, { nome: e.diarista.nome, funcao: e.diarista.funcao, vezes: 1 });
+    const cur =
+      vistos.get(e.diarista.id) ??
+      { nome: e.diarista.nome, funcao: e.diarista.funcao, datas: [], somaNotas: 0, qtdNotas: 0 };
+    cur.datas.push(e.data);
+    if (e.avaliacao) {
+      const m =
+        ASPECTOS.reduce(
+          (s, a) => s + (e.avaliacao as unknown as Record<string, number>)[a.key],
+          0,
+        ) / ASPECTOS.length;
+      cur.somaNotas += m;
+      cur.qtdNotas += 1;
+    }
+    vistos.set(e.diarista.id, cur);
   }
   const diaristas = [...vistos.entries()]
-    .map(([id, v]) => ({ id, ...v }))
+    .map(([id, v]) => ({
+      id,
+      nome: v.nome,
+      funcao: v.funcao,
+      vezes: v.datas.length,
+      datas: v.datas,
+      nota: v.qtdNotas ? v.somaNotas / v.qtdNotas : null,
+    }))
     .sort((a, b) => b.vezes - a.vezes);
 
   return (
@@ -172,6 +199,14 @@ export default async function LojaHome() {
                     <span className="shrink-0 text-sm text-gray-500">{d.vezes}× aqui</span>
                   </div>
 
+                  <p className="mt-1 text-xs text-gray-500">
+                    {d.nota !== null && (
+                      <span className="font-medium text-teal-700">nota {d.nota.toFixed(1)} · </span>
+                    )}
+                    {d.datas.slice(0, 5).map(formatDate).join(", ")}
+                    {d.datas.length > 5 ? "…" : ""}
+                  </p>
+
                   {bloq ? (
                     <div className="mt-2 flex items-center justify-between gap-2 border-t border-gray-100 pt-2">
                       {bloq.origem === "RH" ? (
@@ -215,6 +250,28 @@ export default async function LojaHome() {
                       </button>
                     </form>
                   )}
+
+                  <form
+                    action={convocarDiarista}
+                    className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2"
+                  >
+                    <input type="hidden" name="diaristaId" value={d.id} />
+                    <input
+                      type="date"
+                      name="data"
+                      required
+                      min={hojeISO()}
+                      max={maxAgendamentoISO()}
+                      defaultValue={hojeISO()}
+                      className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-teal-700 px-3 py-1 text-sm font-medium text-white hover:bg-teal-800"
+                    >
+                      Convocar
+                    </button>
+                  </form>
                 </Card>
               );
             })}

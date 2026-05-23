@@ -23,11 +23,15 @@ async function main() {
   await prisma.diarista.deleteMany();
   await prisma.loja.deleteMany();
 
-  console.log("Criando gestor de exemplo...");
+  console.log("Criando gestores...");
   await prisma.gestor.deleteMany();
-  const gestor = await prisma.gestor.create({
-    data: { nome: "Gestor Exemplo", usuario: "gestor1", senha: "123456" },
-  });
+  const nomesGestores = ["Felipe", "Darlan", "Robson", "Wendel", "Daniel"];
+  for (const nome of nomesGestores) {
+    await prisma.gestor.create({
+      data: { nome, usuario: nome.toLowerCase(), senha: "123456" },
+    });
+  }
+  const gestor = await prisma.gestor.findUniqueOrThrow({ where: { usuario: "felipe" } });
 
   console.log("Criando lojas de exemplo...");
   const centro = await prisma.loja.create({

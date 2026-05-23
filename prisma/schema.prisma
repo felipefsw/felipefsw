@@ -32,6 +32,7 @@ model Loja {
   requisicoes Requisicao[]
   avaliacoesRecebidas AvaliacaoLoja[]
   bloqueios   Bloqueio[]
+  convocacoes Convocacao[]
   diaristasPreferem Diarista[] @relation("LojaPreferida")
 }
 
@@ -64,7 +65,8 @@ model Diarista {
   avaliacoesDeLoja AvaliacaoLoja[]
   inscricoes  Inscricao[]
   bloqueios   Bloqueio[]
-  // Até 3 lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
+  convocacoes Convocacao[]
+  // Lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
   lojasPreferidas Loja[] @relation("LojaPreferida")
 }
 
@@ -153,6 +155,23 @@ model Avaliacao {
   diaristaId String
   diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
 
+  @@index([diaristaId])
+}
+
+// Convocação direta: a loja chama um diarista para uma data; ele aceita ou recusa.
+model Convocacao {
+  id       String   @id @default(cuid())
+  data     String // "AAAA-MM-DD"
+  status   String   @default("PENDENTE") // PENDENTE | ACEITA | RECUSADA
+  criadoEm DateTime @default(now())
+
+  lojaId String
+  loja   Loja   @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+
+  diaristaId String
+  diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+
+  @@index([lojaId])
   @@index([diaristaId])
 }
 

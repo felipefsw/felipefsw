@@ -5,14 +5,12 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseBRLToCents } from "@/lib/format";
 
-// Lê as 3 lojas preferidas do formulário, remove vazias e duplicadas (máx. 3).
+// Lê as lojas preferidas do formulário, remove vazias e duplicadas (máx. 5).
 function lojasPreferidasIds(formData: FormData): { id: string }[] {
-  const ids = [
-    String(formData.get("lojaPreferida1") ?? ""),
-    String(formData.get("lojaPreferida2") ?? ""),
-    String(formData.get("lojaPreferida3") ?? ""),
-  ].filter(Boolean);
-  return [...new Set(ids)].slice(0, 3).map((id) => ({ id }));
+  const ids = [1, 2, 3, 4, 5]
+    .map((i) => String(formData.get(`lojaPreferida${i}`) ?? ""))
+    .filter(Boolean);
+  return [...new Set(ids)].slice(0, 5).map((id) => ({ id }));
 }
 
 export async function createDiarista(formData: FormData) {
