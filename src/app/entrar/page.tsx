@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card, btnPrimary, inputClass, labelClass } from "@/components/ui";
-import { entrarDiarista, loginGestao, loginLoja } from "./actions";
+import { entrarDiarista, loginGestao, loginGestor, loginLoja } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +71,33 @@ export default async function EntrarPage({
                 Senha
               </label>
               <input id="senha-loja" name="senha" type="password" required className={inputClass} />
+            </div>
+            <button type="submit" className={`${btnPrimary} w-full`}>
+              Entrar
+            </button>
+          </form>
+        </Card>
+
+        <Card>
+          <h2 className="font-semibold text-gray-900">Sou gestor</h2>
+          <p className="mb-3 mt-1 text-sm text-gray-500">
+            Administro uma ou mais lojas. Entro com usuário e senha.
+          </p>
+          {erro === "gestor" && (
+            <p className="mb-2 text-sm text-red-600">Usuário ou senha incorretos.</p>
+          )}
+          <form action={loginGestor} className="space-y-3">
+            <div>
+              <label className={labelClass} htmlFor="usuario">
+                Usuário
+              </label>
+              <input id="usuario" name="usuario" required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="senha-gestor">
+                Senha
+              </label>
+              <input id="senha-gestor" name="senha" type="password" required className={inputClass} />
             </div>
             <button type="submit" className={`${btnPrimary} w-full`}>
               Entrar

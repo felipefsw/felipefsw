@@ -4,7 +4,8 @@ import crypto from "crypto";
 // Sessão simples por cookie assinado (HMAC). App interno; sem contas/senhas por usuário.
 export type Sessao =
   | { tipo: "gestao"; perfil: "rh" | "ti" }
-  | { tipo: "loja"; lojaId: string };
+  | { tipo: "loja"; lojaId: string }
+  | { tipo: "gestor"; gestorId: string; lojaId: string };
 
 const COOKIE = "sessao";
 const SECRET = process.env.SESSION_SECRET || "dev-secret-troque-no-vercel";
@@ -50,6 +51,15 @@ export async function setSessao(s: Sessao): Promise<void> {
 export async function limparSessao(): Promise<void> {
   const c = await cookies();
   c.delete(COOKIE);
+}
+
+// Contexto "lado loja": loja avulsa (login por CNPJ) ou gestor (com loja ativa).
+// Retorna a lojaId ativa e o gestorId (quando houver), ou null se não for sessão de loja/gestor.
+export function contextoLoja(s: Sessao | null): { lojaId: string; gestorId: string | null } | null {
+  if (!s) return null;
+  if (s.tipo === "loja") return { lojaId: s.lojaId, gestorId: null };
+  if (s.tipo === "gestor") return { lojaId: s.lojaId, gestorId: s.gestorId };
+  return null;
 }
 
 // Senhas de gestão: padrão 123456, sobrescrevíveis por variável no Vercel.

@@ -14,12 +14,17 @@ export default async function EditarLojaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [loja, avaliacoes] = await Promise.all([
+  const [loja, avaliacoes, gestores] = await Promise.all([
     prisma.loja.findUnique({ where: { id } }),
     prisma.avaliacaoLoja.findMany({
       where: { lojaId: id },
       include: { diarista: { select: { nome: true } }, escala: { select: { data: true } } },
       orderBy: { criadoEm: "desc" },
+    }),
+    prisma.gestor.findMany({
+      where: { ativo: true },
+      orderBy: { nome: "asc" },
+      select: { id: true, nome: true },
     }),
   ]);
   if (!loja) notFound();
@@ -36,7 +41,7 @@ export default async function EditarLojaPage({
   return (
     <div className="space-y-4">
       <PageHeader title="Editar loja" subtitle={loja.nome} />
-      <LojaForm action={updateLoja} loja={loja} submitLabel="Salvar alterações" />
+      <LojaForm action={updateLoja} loja={loja} gestores={gestores} submitLabel="Salvar alterações" />
 
       <Card>
         <div className="flex items-center justify-between">

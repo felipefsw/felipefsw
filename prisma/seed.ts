@@ -23,13 +23,21 @@ async function main() {
   await prisma.diarista.deleteMany();
   await prisma.loja.deleteMany();
 
+  console.log("Criando gestor de exemplo...");
+  await prisma.gestor.deleteMany();
+  const gestor = await prisma.gestor.create({
+    data: { nome: "Gestor Exemplo", usuario: "gestor1", senha: "123456" },
+  });
+
   console.log("Criando lojas de exemplo...");
   const centro = await prisma.loja.create({
     data: {
       nome: "Loja Exemplo Centro",
       cnpj: "00.000.000/0001-00",
       cidade: "Cidade Exemplo",
-      endereco: "Rua das Flores, 100 - Centro",
+      bairro: "Centro",
+      endereco: "Rua das Flores, 100",
+      gestorId: gestor.id,
     },
   });
   const shopping = await prisma.loja.create({
@@ -37,7 +45,9 @@ async function main() {
       nome: "Loja Exemplo Shopping",
       cnpj: "11.111.111/0001-11",
       cidade: "Cidade Exemplo",
+      bairro: "Norte",
       endereco: "Av. Brasil, 2000 - Shopping Norte",
+      gestorId: gestor.id,
     },
   });
   const bairro = await prisma.loja.create({
@@ -45,7 +55,8 @@ async function main() {
       nome: "Loja Exemplo Bairro",
       cnpj: "22.222.222/0001-22",
       cidade: "Cidade Exemplo",
-      endereco: "Rua Verde, 45 - Jardim",
+      bairro: "Jardim",
+      endereco: "Rua Verde, 45",
     },
   });
 

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import {
   Card,
   PageHeader,
@@ -9,16 +11,52 @@ import {
 } from "@/components/ui";
 import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
 import { FUNCOES } from "@/lib/funcoes";
+import { contextoLoja, getSessao } from "@/lib/auth";
 import { criarRequisicaoLoja } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
-export default function NovaRequisicaoLojaPage() {
+export default async function NovaRequisicaoLojaPage() {
+  const sessao = await getSessao();
+  const ctx = contextoLoja(sessao);
+  if (!ctx) redirect("/entrar");
+
+  // Gestor escolhe a loja; loja avulsa já está fixa.
+  const lojasDoGestor =
+    sessao?.tipo === "gestor"
+      ? await prisma.loja.findMany({
+          where: { gestorId: sessao.gestorId, ativo: true },
+          orderBy: { nome: "asc" },
+          select: { id: true, nome: true },
+        })
+      : [];
+
   return (
     <div>
       <PageHeader title="Solicitar diaristas" subtitle="Para um dia e horário" />
       <Card>
         <form action={criarRequisicaoLoja} className="space-y-4">
+          {lojasDoGestor.length > 0 && (
+            <div>
+              <label className={labelClass} htmlFor="lojaId">
+                Loja *
+              </label>
+              <select
+                id="lojaId"
+                name="lojaId"
+                required
+                defaultValue={ctx.lojaId}
+                className={inputClass}
+              >
+                {lojasDoGestor.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass} htmlFor="data">

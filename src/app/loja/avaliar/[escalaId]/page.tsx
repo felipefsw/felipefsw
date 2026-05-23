@@ -11,7 +11,7 @@ import {
 } from "@/components/ui";
 import { formatDateWithWeekday } from "@/lib/format";
 import { ASPECTOS } from "@/lib/aspectos";
-import { getSessao } from "@/lib/auth";
+import { contextoLoja, getSessao } from "@/lib/auth";
 import { avaliarDiaristaLoja } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -23,15 +23,15 @@ export default async function LojaAvaliarPage({
 }: {
   params: Promise<{ escalaId: string }>;
 }) {
-  const sessao = await getSessao();
-  if (!sessao || sessao.tipo !== "loja") redirect("/entrar");
+  const ctx = contextoLoja(await getSessao());
+  if (!ctx) redirect("/entrar");
 
   const { escalaId } = await params;
   const escala = await prisma.escala.findUnique({
     where: { id: escalaId },
     include: { diarista: true, avaliacao: true },
   });
-  if (!escala || escala.lojaId !== sessao.lojaId) notFound();
+  if (!escala || escala.lojaId !== ctx.lojaId) notFound();
 
   const atual = escala.avaliacao as Record<string, number> | null;
 

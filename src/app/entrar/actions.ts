@@ -35,6 +35,23 @@ export async function loginLoja(formData: FormData) {
   redirect("/loja");
 }
 
+export async function loginGestor(formData: FormData) {
+  const usuario = String(formData.get("usuario") ?? "").trim();
+  const senha = String(formData.get("senha") ?? "");
+  if (!usuario) redirect("/entrar?erro=gestor");
+
+  const gestor = await prisma.gestor.findUnique({
+    where: { usuario },
+    include: { lojas: { where: { ativo: true }, select: { id: true }, orderBy: { nome: "asc" } } },
+  });
+
+  if (!gestor || !gestor.ativo || gestor.senha !== senha || gestor.lojas.length === 0) {
+    redirect("/entrar?erro=gestor");
+  }
+  await setSessao({ tipo: "gestor", gestorId: gestor.id, lojaId: gestor.lojas[0].id });
+  redirect("/loja");
+}
+
 export async function entrarDiarista(formData: FormData) {
   const cpf = soDigitos(String(formData.get("cpf") ?? ""));
   if (!cpf) redirect("/entrar?erro=diarista");

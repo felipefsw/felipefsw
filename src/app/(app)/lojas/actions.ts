@@ -8,7 +8,9 @@ export async function createLoja(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   const cnpj = String(formData.get("cnpj") ?? "").trim();
   const cidade = String(formData.get("cidade") ?? "").trim();
+  const bairro = String(formData.get("bairro") ?? "").trim();
   const endereco = String(formData.get("endereco") ?? "").trim();
+  const gestorId = String(formData.get("gestorId") ?? "").trim();
   if (!nome) return;
 
   await prisma.loja.create({
@@ -16,7 +18,9 @@ export async function createLoja(formData: FormData) {
       nome,
       cnpj: cnpj || null,
       cidade: cidade || null,
+      bairro: bairro || null,
       endereco: endereco || null,
+      gestorId: gestorId || null,
     },
   });
   revalidatePath("/lojas");
@@ -28,7 +32,9 @@ export async function updateLoja(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   const cnpj = String(formData.get("cnpj") ?? "").trim();
   const cidade = String(formData.get("cidade") ?? "").trim();
+  const bairro = String(formData.get("bairro") ?? "").trim();
   const endereco = String(formData.get("endereco") ?? "").trim();
+  const gestorId = String(formData.get("gestorId") ?? "").trim();
   if (!id || !nome) return;
 
   await prisma.loja.update({
@@ -37,7 +43,9 @@ export async function updateLoja(formData: FormData) {
       nome,
       cnpj: cnpj || null,
       cidade: cidade || null,
+      bairro: bairro || null,
       endereco: endereco || null,
+      gestorId: gestorId || null,
     },
   });
   revalidatePath("/lojas");

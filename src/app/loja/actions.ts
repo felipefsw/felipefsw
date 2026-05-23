@@ -3,14 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getSessao } from "@/lib/auth";
+import { contextoLoja, getSessao, setSessao } from "@/lib/auth";
 import { dentroDaJanelaAgendamento, isHHMM, isISODate } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
 
+// Loja ativa da sessão (loja avulsa ou gestor). Redireciona se não houver.
 async function lojaSessaoId(): Promise<string> {
-  const sessao = await getSessao();
-  if (!sessao || sessao.tipo !== "loja") redirect("/entrar");
-  return sessao.lojaId;
+  const ctx = contextoLoja(await getSessao());
+  if (!ctx) redirect("/entrar");
+  return ctx.lojaId;
 }
 
 function nota(formData: FormData, campo: string): number {
@@ -21,7 +22,22 @@ function nota(formData: FormData, campo: string): number {
 
 export async function criarRequisicaoLoja(formData: FormData) {
   const sessao = await getSessao();
-  if (!sessao || sessao.tipo !== "loja") redirect("/entrar");
+  const ctx = contextoLoja(sessao);
+  if (!ctx) redirect("/entrar");
+
+  // Gestor pode escolher para qual das SUAS lojas é a requisição.
+  let lojaId = ctx.lojaId;
+  if (sessao?.tipo === "gestor") {
+    const escolhida = String(formData.get("lojaId") ?? "");
+    if (escolhida) {
+      const ok = await prisma.loja.findFirst({
+        where: { id: escolhida, gestorId: sessao.gestorId },
+        select: { id: true },
+      });
+      if (!ok) redirect("/entrar");
+      lojaId = escolhida;
+    }
+  }
 
   const data = String(formData.get("data") ?? "");
   const horaInicio = String(formData.get("horaInicio") ?? "");
@@ -43,7 +59,7 @@ export async function criarRequisicaoLoja(formData: FormData) {
 
   await prisma.requisicao.create({
     data: {
-      lojaId: sessao.lojaId,
+      lojaId,
       data,
       horaInicio,
       horaFim,
@@ -56,6 +72,19 @@ export async function criarRequisicaoLoja(formData: FormData) {
 
   revalidatePath("/loja");
   revalidatePath("/requisicoes");
+  redirect("/loja");
+}
+
+export async function trocarLoja(formData: FormData) {
+  const sessao = await getSessao();
+  if (!sessao || sessao.tipo !== "gestor") redirect("/entrar");
+  const lojaId = String(formData.get("lojaId") ?? "");
+  const ok = await prisma.loja.findFirst({
+    where: { id: lojaId, gestorId: sessao.gestorId },
+    select: { id: true },
+  });
+  if (!ok) redirect("/entrar");
+  await setSessao({ tipo: "gestor", gestorId: sessao.gestorId, lojaId });
   redirect("/loja");
 }
 

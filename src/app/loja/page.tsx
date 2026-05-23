@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import { formatBRL, formatDate, formatDateWithWeekday } from "@/lib/format";
 import { turnoFinalizado } from "@/lib/dates";
-import { getSessao } from "@/lib/auth";
+import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   bloquearDiaristaLoja,
   desbloquearDiaristaLoja,
@@ -20,9 +20,9 @@ function statusLabel(s: string) {
 }
 
 export default async function LojaHome() {
-  const sessao = await getSessao();
-  if (!sessao || sessao.tipo !== "loja") redirect("/entrar");
-  const lojaId = sessao.lojaId;
+  const ctx = contextoLoja(await getSessao());
+  if (!ctx) redirect("/entrar");
+  const lojaId = ctx.lojaId;
 
   const agora = new Date();
   const [requisicoes, escalas, bloqueios] = await Promise.all([

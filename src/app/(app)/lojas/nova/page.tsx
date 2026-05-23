@@ -1,12 +1,21 @@
 import { PageHeader } from "@/components/ui";
+import { prisma } from "@/lib/prisma";
 import LojaForm from "../LojaForm";
 import { createLoja } from "../actions";
 
-export default function NovaLojaPage() {
+export const dynamic = "force-dynamic";
+
+export default async function NovaLojaPage() {
+  const gestores = await prisma.gestor.findMany({
+    where: { ativo: true },
+    orderBy: { nome: "asc" },
+    select: { id: true, nome: true },
+  });
+
   return (
     <div>
       <PageHeader title="Nova loja" subtitle="Cadastre um local de trabalho" />
-      <LojaForm action={createLoja} submitLabel="Salvar loja" />
+      <LojaForm action={createLoja} gestores={gestores} submitLabel="Salvar loja" />
     </div>
   );
 }

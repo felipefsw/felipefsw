@@ -20,6 +20,12 @@ export default async function LojasPage() {
         action={{ href: "/lojas/nova", label: "+ Nova" }}
       />
 
+      <div className="mb-4">
+        <Link href="/gestores" className="text-sm font-medium text-teal-700 hover:underline">
+          Gerenciar gestores →
+        </Link>
+      </div>
+
       {lojas.length === 0 ? (
         <EmptyState>
           Nenhuma loja cadastrada ainda.

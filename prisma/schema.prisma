@@ -22,14 +22,28 @@ model Loja {
   cnpj        String?
   senha       String       @default("123456") // senha do lojista (login por CNPJ + senha)
   cidade      String?
+  bairro      String?
   endereco    String?
   ativo       Boolean      @default(true)
   criadoEm    DateTime     @default(now())
+  gestorId    String?
+  gestor      Gestor?      @relation(fields: [gestorId], references: [id], onDelete: SetNull)
   escalas     Escala[]
   requisicoes Requisicao[]
   avaliacoesRecebidas AvaliacaoLoja[]
   bloqueios   Bloqueio[]
   diaristasPreferem Diarista[] @relation("LojaPreferida")
+}
+
+// Gestor: pessoa que administra uma ou mais lojas. Loga com usuário + senha.
+model Gestor {
+  id       String   @id @default(cuid())
+  nome     String
+  usuario  String   @unique
+  senha    String   @default("123456")
+  ativo    Boolean  @default(true)
+  criadoEm DateTime @default(now())
+  lojas    Loja[]
 }
 
 model Diarista {
