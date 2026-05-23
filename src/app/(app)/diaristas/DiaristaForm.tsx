@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Card, btnPrimary, btnSecondary, inputClass, labelClass } from "@/components/ui";
+import { FUNCOES } from "@/lib/funcoes";
 
 type DiaristaDefaults = {
   id?: string;
   nome?: string;
+  funcao?: string | null;
   telefone?: string | null;
   chavePix?: string | null;
   valorDiaria?: number; // centavos
@@ -41,6 +43,25 @@ export default function DiaristaForm({
             placeholder="Nome completo"
             className={inputClass}
           />
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="funcao">
+            Função
+          </label>
+          <select
+            id="funcao"
+            name="funcao"
+            defaultValue={diarista?.funcao ?? ""}
+            className={inputClass}
+          >
+            <option value="">— Selecione —</option>
+            {FUNCOES.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -3,14 +3,28 @@ import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, btnDanger } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { formatBRL } from "@/lib/format";
+import { FUNCOES } from "@/lib/funcoes";
 import { deleteDiarista, toggleDiaristaAtivo } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function DiaristasPage() {
+export default async function DiaristasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ funcao?: string }>;
+}) {
+  const { funcao } = await searchParams;
+  const filtro = FUNCOES.find((f) => f === funcao);
+
   const diaristas = await prisma.diarista.findMany({
+    where: filtro ? { funcao: filtro } : undefined,
     orderBy: [{ ativo: "desc" }, { nome: "asc" }],
   });
+
+  const chipBase =
+    "rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap";
+  const chipOn = "border-teal-700 bg-teal-700 text-white";
+  const chipOff = "border-gray-300 bg-white text-gray-700 hover:bg-gray-50";
 
   return (
     <div>
@@ -20,11 +34,32 @@ export default async function DiaristasPage() {
         action={{ href: "/diaristas/nova", label: "+ Nova" }}
       />
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Link href="/diaristas" className={`${chipBase} ${filtro ? chipOff : chipOn}`}>
+          Todas
+        </Link>
+        {FUNCOES.map((f) => (
+          <Link
+            key={f}
+            href={`/diaristas?funcao=${encodeURIComponent(f)}`}
+            className={`${chipBase} ${filtro === f ? chipOn : chipOff}`}
+          >
+            {f}
+          </Link>
+        ))}
+      </div>
+
       {diaristas.length === 0 ? (
         <EmptyState>
-          Nenhuma diarista cadastrada ainda.
-          <br />
-          Toque em <strong>+ Nova</strong> para começar.
+          {filtro ? (
+            <>Nenhuma diarista com a função <strong>{filtro}</strong>.</>
+          ) : (
+            <>
+              Nenhuma diarista cadastrada ainda.
+              <br />
+              Toque em <strong>+ Nova</strong> para começar.
+            </>
+          )}
         </EmptyState>
       ) : (
         <div className="space-y-3">
@@ -34,6 +69,11 @@ export default async function DiaristasPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-900">{d.nome}</span>
+                    {d.funcao && (
+                      <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                        {d.funcao}
+                      </span>
+                    )}
                     {!d.ativo && (
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                         inativa

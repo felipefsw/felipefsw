@@ -53,6 +53,7 @@ async function main() {
   const a = await prisma.diarista.create({
     data: {
       nome: "Diarista Exemplo 1",
+      funcao: "Atendente",
       telefone: "(00) 90000-0001",
       chavePix: "exemplo1@email.com",
       valorDiaria: 12000, // R$ 120,00
@@ -61,6 +62,7 @@ async function main() {
   const b = await prisma.diarista.create({
     data: {
       nome: "Diarista Exemplo 2",
+      funcao: "Pizzaiolo",
       telefone: "(00) 90000-0002",
       chavePix: "00900000002",
       valorDiaria: 13000, // R$ 130,00
@@ -69,6 +71,7 @@ async function main() {
   const c = await prisma.diarista.create({
     data: {
       nome: "Diarista Exemplo 3",
+      funcao: "Motoqueiro",
       telefone: "(00) 90000-0003",
       chavePix: "exemplo3@email.com",
       valorDiaria: 11000, // R$ 110,00
