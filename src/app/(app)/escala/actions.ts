@@ -1,5 +1,6 @@
 "use server";
 
+import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -49,6 +50,23 @@ export async function deleteEscala(formData: FormData) {
   revalidatePath("/escala");
   revalidatePath("/");
   revalidatePath("/pagamentos");
+}
+
+export async function gerarLinkConfirmacao(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const escala = await prisma.escala.findUnique({
+    where: { id },
+    select: { tokenConfirmacao: true },
+  });
+  if (!escala) return;
+  if (!escala.tokenConfirmacao) {
+    await prisma.escala.update({
+      where: { id },
+      data: { tokenConfirmacao: crypto.randomUUID() },
+    });
+  }
+  revalidatePath("/escala");
 }
 
 function nota(formData: FormData, campo: string): number {

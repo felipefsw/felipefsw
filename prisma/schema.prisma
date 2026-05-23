@@ -78,6 +78,7 @@ model Escala {
   pago        Boolean   @default(false)
   pagoEm      DateTime?
   observacoes String?
+  tokenConfirmacao String? @unique // link público de confirmação (gerado pelo RH)
   criadoEm    DateTime  @default(now())
 
   diaristaId String

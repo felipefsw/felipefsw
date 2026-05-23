@@ -26,7 +26,7 @@ export default async function EditarDiaristaPage({
   ]);
   if (!diarista) notFound();
 
-  const [avaliacoes, bloqueios] = await Promise.all([
+  const [avaliacoes, bloqueios, historico] = await Promise.all([
     prisma.avaliacao.findMany({
       where: { diaristaId: id },
       include: { escala: { include: { loja: true } } },
@@ -37,7 +37,14 @@ export default async function EditarDiaristaPage({
       include: { loja: { select: { nome: true } } },
       orderBy: { criadoEm: "desc" },
     }),
+    prisma.escala.findMany({
+      where: { diaristaId: id },
+      include: { loja: { select: { nome: true } } },
+      orderBy: { data: "desc" },
+      take: 50,
+    }),
   ]);
+  const totalDiarias = historico.filter((e) => e.presenca === "PRESENTE").length;
 
   // A nota só aparece após 5 diárias avaliadas; usa a média das 5 mais recentes.
   const MIN_AVALIACOES = 5;
@@ -117,6 +124,36 @@ export default async function EditarDiaristaPage({
               ))}
             </ul>
           </>
+        )}
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Histórico de diárias</h2>
+          <span className="text-sm text-gray-500">{totalDiarias} concluída(s)</span>
+        </div>
+        {historico.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-500">Sem diárias registradas ainda.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-gray-100">
+            {historico.map((e) => (
+              <li key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="min-w-0">
+                  <span className="text-gray-700">{formatDate(e.data)}</span>{" "}
+                  <span className="text-gray-500">· {e.loja.nome}</span>
+                </span>
+                <span className="shrink-0">
+                  {e.presenca === "PRESENTE" ? (
+                    <span className="text-green-600">presente</span>
+                  ) : e.presenca === "FALTOU" ? (
+                    <span className="text-red-500">faltou</span>
+                  ) : (
+                    <span className="text-gray-400">pendente</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
 
