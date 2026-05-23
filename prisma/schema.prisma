@@ -1,0 +1,55 @@
+// Banco de dados do app de gestão de diaristas.
+// Em desenvolvimento usamos Postgres local; em produção, o Postgres da Vercel.
+// Valores em dinheiro são guardados em CENTAVOS (inteiro) para evitar erros de arredondamento.
+// Datas de trabalho são guardadas como texto "AAAA-MM-DD" para evitar confusão de fuso horário.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Loja {
+  id       String   @id @default(cuid())
+  nome     String
+  endereco String?
+  ativo    Boolean  @default(true)
+  criadoEm DateTime @default(now())
+  escalas  Escala[]
+}
+
+model Diarista {
+  id          String   @id @default(cuid())
+  nome        String
+  telefone    String?
+  chavePix    String?
+  valorDiaria Int      @default(0) // centavos
+  observacoes String?
+  ativo       Boolean  @default(true)
+  token       String   @unique @default(cuid()) // usado no link pessoal /d/[token]
+  criadoEm    DateTime @default(now())
+  escalas     Escala[]
+}
+
+model Escala {
+  id          String    @id @default(cuid())
+  data        String // "AAAA-MM-DD"
+  valor       Int // centavos
+  presenca    String    @default("PENDENTE") // PENDENTE | PRESENTE | FALTOU
+  pago        Boolean   @default(false)
+  pagoEm      DateTime?
+  observacoes String?
+  criadoEm    DateTime  @default(now())
+
+  diaristaId String
+  diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+  lojaId     String
+  loja       Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+
+  @@index([data])
+  @@index([diaristaId])
+  @@index([lojaId])
+}
