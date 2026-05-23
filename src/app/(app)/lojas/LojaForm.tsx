@@ -4,6 +4,8 @@ import { Card, btnPrimary, btnSecondary, inputClass, labelClass } from "@/compon
 type LojaDefaults = {
   id?: string;
   nome?: string;
+  cnpj?: string | null;
+  cidade?: string | null;
   endereco?: string | null;
 };
 
@@ -33,6 +35,34 @@ export default function LojaForm({
             placeholder="Ex.: Loja Centro"
             className={inputClass}
           />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass} htmlFor="cnpj">
+              CNPJ
+            </label>
+            <input
+              id="cnpj"
+              name="cnpj"
+              defaultValue={loja?.cnpj ?? ""}
+              placeholder="00.000.000/0000-00"
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass} htmlFor="cidade">
+              Cidade
+            </label>
+            <input
+              id="cidade"
+              name="cidade"
+              defaultValue={loja?.cidade ?? ""}
+              placeholder="Ex.: Fortaleza"
+              className={inputClass}
+            />
+          </div>
         </div>
 
         <div>

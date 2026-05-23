@@ -6,11 +6,18 @@ import { prisma } from "@/lib/prisma";
 
 export async function createLoja(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
+  const cnpj = String(formData.get("cnpj") ?? "").trim();
+  const cidade = String(formData.get("cidade") ?? "").trim();
   const endereco = String(formData.get("endereco") ?? "").trim();
   if (!nome) return;
 
   await prisma.loja.create({
-    data: { nome, endereco: endereco || null },
+    data: {
+      nome,
+      cnpj: cnpj || null,
+      cidade: cidade || null,
+      endereco: endereco || null,
+    },
   });
   revalidatePath("/lojas");
   redirect("/lojas");
@@ -19,12 +26,19 @@ export async function createLoja(formData: FormData) {
 export async function updateLoja(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const nome = String(formData.get("nome") ?? "").trim();
+  const cnpj = String(formData.get("cnpj") ?? "").trim();
+  const cidade = String(formData.get("cidade") ?? "").trim();
   const endereco = String(formData.get("endereco") ?? "").trim();
   if (!id || !nome) return;
 
   await prisma.loja.update({
     where: { id },
-    data: { nome, endereco: endereco || null },
+    data: {
+      nome,
+      cnpj: cnpj || null,
+      cidade: cidade || null,
+      endereco: endereco || null,
+    },
   });
   revalidatePath("/lojas");
   redirect("/lojas");

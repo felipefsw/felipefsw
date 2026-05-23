@@ -40,6 +40,12 @@ export default async function LojasPage() {
                       </span>
                     )}
                   </div>
+                  {loja.cidade && (
+                    <p className="text-sm text-gray-500">{loja.cidade}</p>
+                  )}
+                  {loja.cnpj && (
+                    <p className="text-sm text-gray-500">CNPJ: {loja.cnpj}</p>
+                  )}
                   {loja.endereco && (
                     <p className="text-sm text-gray-500">{loja.endereco}</p>
                   )}
