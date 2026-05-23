@@ -8,8 +8,12 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Em runtime (Vercel) usamos a conexão "pooled" (com pgbouncer).
+  url       = env("DATABASE_URL")
+  // Para rodar migrations precisamos de uma conexão direta (sem pooler).
+  // Em desenvolvimento local pode ser igual à DATABASE_URL.
+  directUrl = env("DIRECT_URL")
 }
 
 model Loja {
