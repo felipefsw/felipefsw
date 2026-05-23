@@ -20,6 +20,7 @@ model Loja {
   id          String       @id @default(cuid())
   nome        String
   cnpj        String?
+  senha       String       @default("123456") // senha do lojista (login por CNPJ + senha)
   cidade      String?
   endereco    String?
   ativo       Boolean      @default(true)

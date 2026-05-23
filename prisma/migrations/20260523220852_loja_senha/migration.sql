@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Loja" ADD COLUMN     "senha" TEXT NOT NULL DEFAULT '123456';

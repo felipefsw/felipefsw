@@ -53,6 +53,8 @@ async function main() {
   const a = await prisma.diarista.create({
     data: {
       nome: "Diarista Exemplo 1",
+      cpf: "111.111.111-11",
+      dataNascimento: "1995-03-10",
       funcao: "Atendente",
       telefone: "(00) 90000-0001",
       chavePix: "exemplo1@email.com",

@@ -1,0 +1,130 @@
+import Link from "next/link";
+import {
+  Card,
+  PageHeader,
+  btnPrimary,
+  btnSecondary,
+  inputClass,
+  labelClass,
+} from "@/components/ui";
+import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
+import { FUNCOES } from "@/lib/funcoes";
+import { criarRequisicaoLoja } from "../../actions";
+
+export const dynamic = "force-dynamic";
+
+export default function NovaRequisicaoLojaPage() {
+  return (
+    <div>
+      <PageHeader title="Solicitar diaristas" subtitle="Para um dia e horário" />
+      <Card>
+        <form action={criarRequisicaoLoja} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass} htmlFor="data">
+                Data *
+              </label>
+              <input
+                id="data"
+                name="data"
+                type="date"
+                required
+                min={hojeISO()}
+                max={maxAgendamentoISO()}
+                defaultValue={hojeISO()}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="quantidade">
+                Quantidade *
+              </label>
+              <input
+                id="quantidade"
+                name="quantidade"
+                type="number"
+                min={1}
+                required
+                defaultValue={1}
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass} htmlFor="horaInicio">
+                Início *
+              </label>
+              <input
+                id="horaInicio"
+                name="horaInicio"
+                type="time"
+                required
+                defaultValue="18:00"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="horaFim">
+                Fim *
+              </label>
+              <input
+                id="horaFim"
+                name="horaFim"
+                type="time"
+                required
+                defaultValue="23:00"
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass} htmlFor="valorDiaria">
+              Valor da diária (R$) *
+            </label>
+            <input
+              id="valorDiaria"
+              name="valorDiaria"
+              inputMode="decimal"
+              required
+              placeholder="ex.: 120,00"
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass} htmlFor="funcao">
+              Função (opcional)
+            </label>
+            <select id="funcao" name="funcao" defaultValue="" className={inputClass}>
+              <option value="">— Qualquer —</option>
+              {FUNCOES.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass} htmlFor="observacoes">
+              Observações (opcional)
+            </label>
+            <textarea id="observacoes" name="observacoes" rows={3} className={inputClass} />
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button type="submit" className={btnPrimary}>
+              Enviar solicitação
+            </button>
+            <Link href="/loja" className={btnSecondary}>
+              Cancelar
+            </Link>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
