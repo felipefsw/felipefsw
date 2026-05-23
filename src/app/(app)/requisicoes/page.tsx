@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, btnDanger } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
-import { formatDateWithWeekday } from "@/lib/format";
+import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { cancelarRequisicao, deleteRequisicao, reabrirRequisicao } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -84,11 +84,11 @@ export default async function RequisicoesPage({
                     </span>
                   </div>
                   <p className="mt-1 text-sm capitalize text-gray-600">
-                    {formatDateWithWeekday(r.data)}
+                    {formatDateWithWeekday(r.data)} · {r.horaInicio}–{r.horaFim}
                   </p>
                   <p className="mt-1 text-sm text-gray-600">
                     <strong>{r.quantidade}</strong> diarista(s)
-                    {r.funcao ? <> · {r.funcao}</> : null}
+                    {r.funcao ? <> · {r.funcao}</> : null} · {formatBRL(r.valorDiaria)}
                   </p>
                   {r._count.escalas > 0 && (
                     <p className="mt-1 text-sm text-teal-700">

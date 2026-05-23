@@ -13,7 +13,17 @@ export default async function EditarDiaristaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const diarista = await prisma.diarista.findUnique({ where: { id } });
+  const [diarista, lojas] = await Promise.all([
+    prisma.diarista.findUnique({
+      where: { id },
+      include: { lojasPreferidas: { select: { id: true } } },
+    }),
+    prisma.loja.findMany({
+      where: { ativo: true },
+      orderBy: { nome: "asc" },
+      select: { id: true, nome: true },
+    }),
+  ]);
   if (!diarista) notFound();
 
   const avaliacoes = await prisma.avaliacao.findMany({
@@ -39,6 +49,7 @@ export default async function EditarDiaristaPage({
       <DiaristaForm
         action={updateDiarista}
         diarista={diarista}
+        lojas={lojas}
         submitLabel="Salvar alterações"
       />
 

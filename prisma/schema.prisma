@@ -26,6 +26,7 @@ model Loja {
   criadoEm    DateTime     @default(now())
   escalas     Escala[]
   requisicoes Requisicao[]
+  diaristasPreferem Diarista[] @relation("LojaPreferida")
 }
 
 model Diarista {
@@ -41,11 +42,15 @@ model Diarista {
   criadoEm    DateTime    @default(now())
   escalas     Escala[]
   avaliacoes  Avaliacao[]
+  // Até 3 lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
+  lojasPreferidas Loja[] @relation("LojaPreferida")
 }
 
 model Escala {
   id          String    @id @default(cuid())
   data        String // "AAAA-MM-DD"
+  horaInicio  String? // "HH:MM"
+  horaFim     String? // "HH:MM"
   valor       Int // centavos
   presenca    String    @default("PENDENTE") // PENDENTE | PRESENTE | FALTOU
   pago        Boolean   @default(false)
@@ -72,8 +77,11 @@ model Escala {
 model Requisicao {
   id          String   @id @default(cuid())
   data        String // "AAAA-MM-DD" - dia em que a loja precisa
+  horaInicio  String // "HH:MM"
+  horaFim     String // "HH:MM"
   funcao      String? // função desejada (opcional)
   quantidade  Int      @default(1)
+  valorDiaria Int // centavos - valor pago por diarista nessa requisição
   observacoes String?
   status      String   @default("ABERTA") // ABERTA | ATENDIDA | CANCELADA
   criadoEm    DateTime @default(now())

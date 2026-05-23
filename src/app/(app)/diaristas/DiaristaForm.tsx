@@ -10,21 +10,26 @@ type DiaristaDefaults = {
   chavePix?: string | null;
   valorDiaria?: number; // centavos
   observacoes?: string | null;
+  lojasPreferidas?: { id: string }[];
 };
 
 export default function DiaristaForm({
   action,
   diarista,
+  lojas,
   submitLabel,
 }: {
   action: (formData: FormData) => void;
   diarista?: DiaristaDefaults;
+  lojas: { id: string; nome: string }[];
   submitLabel: string;
 }) {
   const valorStr =
     diarista?.valorDiaria != null && diarista.valorDiaria > 0
       ? (diarista.valorDiaria / 100).toFixed(2).replace(".", ",")
       : "";
+
+  const preferidas = diarista?.lojasPreferidas?.map((l) => l.id) ?? [];
 
   return (
     <Card>
@@ -80,12 +85,13 @@ export default function DiaristaForm({
 
           <div>
             <label className={labelClass} htmlFor="valorDiaria">
-              Valor da diária (R$)
+              Valor da diária (R$) *
             </label>
             <input
               id="valorDiaria"
               name="valorDiaria"
               inputMode="decimal"
+              required
               defaultValue={valorStr}
               placeholder="120,00"
               className={inputClass}
@@ -104,6 +110,30 @@ export default function DiaristaForm({
             placeholder="CPF, e-mail, telefone ou chave aleatória"
             className={inputClass}
           />
+        </div>
+
+        <div>
+          <p className={labelClass}>Lojas preferidas (até 3)</p>
+          <p className="mb-2 -mt-0.5 text-xs text-gray-400">
+            Só um norte de onde a pessoa prefere trabalhar — não impede de ir a outras.
+          </p>
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <select
+                key={i}
+                name={`lojaPreferida${i + 1}`}
+                defaultValue={preferidas[i] ?? ""}
+                className={inputClass}
+              >
+                <option value="">— {i + 1}ª opção (nenhuma) —</option>
+                {lojas.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.nome}
+                  </option>
+                ))}
+              </select>
+            ))}
+          </div>
         </div>
 
         <div>

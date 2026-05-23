@@ -5,6 +5,16 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseBRLToCents } from "@/lib/format";
 
+// Lê as 3 lojas preferidas do formulário, remove vazias e duplicadas (máx. 3).
+function lojasPreferidasIds(formData: FormData): { id: string }[] {
+  const ids = [
+    String(formData.get("lojaPreferida1") ?? ""),
+    String(formData.get("lojaPreferida2") ?? ""),
+    String(formData.get("lojaPreferida3") ?? ""),
+  ].filter(Boolean);
+  return [...new Set(ids)].slice(0, 3).map((id) => ({ id }));
+}
+
 export async function createDiarista(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) return;
@@ -17,6 +27,7 @@ export async function createDiarista(formData: FormData) {
       chavePix: String(formData.get("chavePix") ?? "").trim() || null,
       valorDiaria: parseBRLToCents(String(formData.get("valorDiaria") ?? "")),
       observacoes: String(formData.get("observacoes") ?? "").trim() || null,
+      lojasPreferidas: { connect: lojasPreferidasIds(formData) },
     },
   });
   revalidatePath("/diaristas");
@@ -37,6 +48,7 @@ export async function updateDiarista(formData: FormData) {
       chavePix: String(formData.get("chavePix") ?? "").trim() || null,
       valorDiaria: parseBRLToCents(String(formData.get("valorDiaria") ?? "")),
       observacoes: String(formData.get("observacoes") ?? "").trim() || null,
+      lojasPreferidas: { set: lojasPreferidasIds(formData) },
     },
   });
   revalidatePath("/diaristas");

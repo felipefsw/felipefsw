@@ -13,7 +13,7 @@ export default function AppLayout({
               <circle cx="12" cy="8" r="3.4" />
               <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
             </svg>
-            Gestão de Diaristas
+            Gestão de Diaristas · Pizzarias RWP
           </Link>
         </div>
       </header>

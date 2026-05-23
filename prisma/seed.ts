@@ -57,6 +57,7 @@ async function main() {
       telefone: "(00) 90000-0001",
       chavePix: "exemplo1@email.com",
       valorDiaria: 12000, // R$ 120,00
+      lojasPreferidas: { connect: [{ id: centro.id }, { id: shopping.id }] },
     },
   });
   const b = await prisma.diarista.create({
@@ -103,8 +104,11 @@ async function main() {
     data: {
       lojaId: centro.id,
       data: addDias(1),
+      horaInicio: "18:00",
+      horaFim: "23:00",
       funcao: "Pizzaiolo",
       quantidade: 2,
+      valorDiaria: 12000,
       observacoes: "Turno da noite",
     },
   });

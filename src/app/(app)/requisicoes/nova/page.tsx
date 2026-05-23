@@ -84,6 +84,49 @@ export default async function NovaRequisicaoPage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass} htmlFor="horaInicio">
+                Início *
+              </label>
+              <input
+                id="horaInicio"
+                name="horaInicio"
+                type="time"
+                required
+                defaultValue="18:00"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="horaFim">
+                Fim *
+              </label>
+              <input
+                id="horaFim"
+                name="horaFim"
+                type="time"
+                required
+                defaultValue="23:00"
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass} htmlFor="valorDiaria">
+              Valor da diária (R$) *
+            </label>
+            <input
+              id="valorDiaria"
+              name="valorDiaria"
+              inputMode="decimal"
+              required
+              placeholder="ex.: 120,00"
+              className={inputClass}
+            />
+          </div>
+
           <div>
             <label className={labelClass} htmlFor="funcao">
               Função (opcional)

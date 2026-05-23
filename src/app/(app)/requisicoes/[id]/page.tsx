@@ -55,11 +55,12 @@ export default async function FecharRequisicaoPage({
 
       <Card>
         <p className="text-sm capitalize text-gray-600">
-          {formatDateWithWeekday(requisicao.data)}
+          {formatDateWithWeekday(requisicao.data)} · {requisicao.horaInicio}–{requisicao.horaFim}
         </p>
         <p className="mt-1 text-sm text-gray-600">
           Pedido: <strong>{requisicao.quantidade}</strong> diarista(s)
-          {requisicao.funcao ? <> · {requisicao.funcao}</> : null}
+          {requisicao.funcao ? <> · {requisicao.funcao}</> : null} ·{" "}
+          {formatBRL(requisicao.valorDiaria)} cada
         </p>
         {requisicao.observacoes && (
           <p className="mt-1 text-sm text-gray-500">{requisicao.observacoes}</p>
@@ -114,16 +115,14 @@ export default async function FecharRequisicaoPage({
                             </span>
                           )}
                         </span>
-                        <span className="block text-sm text-gray-500">
-                          {formatBRL(d.valorDiaria)}
-                        </span>
                       </span>
                     </label>
                   </li>
                 ))}
               </ul>
               <p className="mt-1 text-xs text-gray-400">
-                Cada diarista marcado vira um agendamento na escala, com o valor da diária dele.
+                Cada diarista marcado vira um agendamento na escala, no horário e valor (
+                {formatBRL(requisicao.valorDiaria)}) desta requisição.
               </p>
             </div>
 

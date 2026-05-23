@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { formatBRL, formatDateShort, formatDateWithWeekday } from "@/lib/format";
-import { addDias, hojeISO, inicioDaSemana, isISODate, semana } from "@/lib/dates";
+import { addDias, hojeISO, inicioDaSemana, isISODate, semana, turnoFinalizado } from "@/lib/dates";
 import { deleteEscala, marcarPresenca } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -98,7 +98,10 @@ export default async function EscalaPage({
                           {e.diarista.nome}
                         </p>
                         <p className="truncate text-sm text-gray-500">{e.loja.nome}</p>
-                        <p className="text-sm text-gray-600">{formatBRL(e.valor)}</p>
+                        <p className="text-sm text-gray-600">
+                          {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim} · ` : ""}
+                          {formatBRL(e.valor)}
+                        </p>
                       </div>
 
                       <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -154,16 +157,28 @@ export default async function EscalaPage({
                           </div>
                         )}
 
-                        <Link
-                          href={`/escala/${e.id}/avaliar`}
-                          className={`text-xs font-medium ${
-                            e.avaliacao
-                              ? "text-teal-600 hover:underline"
-                              : "text-gray-400 hover:text-teal-700"
-                          }`}
-                        >
-                          {e.avaliacao ? "★ avaliada" : "avaliar"}
-                        </Link>
+                        {e.avaliacao ? (
+                          <Link
+                            href={`/escala/${e.id}/avaliar`}
+                            className="text-xs font-medium text-teal-600 hover:underline"
+                          >
+                            ★ avaliada
+                          </Link>
+                        ) : turnoFinalizado(e.data, e.horaFim) && e.presenca === "PRESENTE" ? (
+                          <Link
+                            href={`/escala/${e.id}/avaliar`}
+                            className="rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"
+                          >
+                            ★ Avaliar
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/escala/${e.id}/avaliar`}
+                            className="text-xs font-medium text-gray-400 hover:text-teal-700"
+                          >
+                            avaliar
+                          </Link>
+                        )}
 
                         <form action={deleteEscala}>
                           <input type="hidden" name="id" value={e.id} />
