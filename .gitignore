@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# dados reais (não versionar) — seed privado fica fora do Git
+prisma/seed.real.ts
+prisma/*.local.ts
+prisma/*.local.json
