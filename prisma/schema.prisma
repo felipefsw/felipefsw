@@ -36,6 +36,13 @@ model Loja {
   diaristasPreferem Diarista[] @relation("LojaPreferida")
 }
 
+// Valor padrão da diária por função (definido pelo RH).
+model ValorFuncao {
+  id     String @id @default(cuid())
+  funcao String @unique
+  valor  Int    @default(0) // centavos
+}
+
 // Gestor: pessoa que administra uma ou mais lojas. Loga com usuário + senha.
 model Gestor {
   id       String   @id @default(cuid())

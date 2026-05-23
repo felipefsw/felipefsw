@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Card, EmptyState, PageHeader, btnDanger } from "@/components/ui";
+import { Card, EmptyState, PageHeader, btnDanger, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { formatBRL } from "@/lib/format";
 import { FUNCOES } from "@/lib/funcoes";
@@ -8,21 +8,45 @@ import { deleteDiarista, toggleDiaristaAtivo } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 20;
+
 export default async function DiaristasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ funcao?: string }>;
+  searchParams: Promise<{ funcao?: string; q?: string; page?: string }>;
 }) {
-  const { funcao } = await searchParams;
-  const filtro = FUNCOES.find((f) => f === funcao);
+  const sp = await searchParams;
+  const filtro = FUNCOES.find((f) => f === sp.funcao);
+  const q = (sp.q ?? "").trim();
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
 
-  const diaristas = await prisma.diarista.findMany({
-    where: filtro ? { funcao: filtro } : undefined,
-    orderBy: [{ ativo: "desc" }, { nome: "asc" }],
-  });
+  const where = {
+    ...(filtro ? { funcao: filtro } : {}),
+    ...(q ? { nome: { contains: q, mode: "insensitive" as const } } : {}),
+  };
 
-  const chipBase =
-    "rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap";
+  const [total, diaristas] = await Promise.all([
+    prisma.diarista.count({ where }),
+    prisma.diarista.findMany({
+      where,
+      orderBy: [{ ativo: "desc" }, { nome: "asc" }],
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
+  const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Preserva filtros nos links.
+  const qs = (extra: Record<string, string | number>) => {
+    const p = new URLSearchParams();
+    if (filtro) p.set("funcao", filtro);
+    if (q) p.set("q", q);
+    for (const [k, v] of Object.entries(extra)) p.set(k, String(v));
+    const s = p.toString();
+    return s ? `?${s}` : "";
+  };
+
+  const chipBase = "rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap";
   const chipOn = "border-teal-700 bg-teal-700 text-white";
   const chipOff = "border-gray-300 bg-white text-gray-700 hover:bg-gray-50";
 
@@ -30,29 +54,53 @@ export default async function DiaristasPage({
     <div>
       <PageHeader
         title="Diaristas"
-        subtitle={`${diaristas.filter((d) => d.ativo).length} ativa(s)`}
+        subtitle={`${total} resultado(s)`}
         action={{ href: "/diaristas/nova", label: "+ Nova" }}
       />
 
+      <form method="get" className="mb-3 flex gap-2">
+        {filtro && <input type="hidden" name="funcao" value={filtro} />}
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="Buscar por nome…"
+          className={inputClass}
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+        >
+          Buscar
+        </button>
+      </form>
+
       <div className="mb-4 flex flex-wrap gap-2">
-        <Link href="/diaristas" className={`${chipBase} ${filtro ? chipOff : chipOn}`}>
+        <Link
+          href={`/diaristas${q ? `?q=${encodeURIComponent(q)}` : ""}`}
+          className={`${chipBase} ${filtro ? chipOff : chipOn}`}
+        >
           Todas
         </Link>
-        {FUNCOES.map((f) => (
-          <Link
-            key={f}
-            href={`/diaristas?funcao=${encodeURIComponent(f)}`}
-            className={`${chipBase} ${filtro === f ? chipOn : chipOff}`}
-          >
-            {f}
-          </Link>
-        ))}
+        {FUNCOES.map((f) => {
+          const p = new URLSearchParams();
+          p.set("funcao", f);
+          if (q) p.set("q", q);
+          return (
+            <Link
+              key={f}
+              href={`/diaristas?${p.toString()}`}
+              className={`${chipBase} ${filtro === f ? chipOn : chipOff}`}
+            >
+              {f}
+            </Link>
+          );
+        })}
       </div>
 
       {diaristas.length === 0 ? (
         <EmptyState>
-          {filtro ? (
-            <>Nenhuma diarista com a função <strong>{filtro}</strong>.</>
+          {q || filtro ? (
+            <>Nenhuma diarista encontrada com esse filtro.</>
           ) : (
             <>
               Nenhuma diarista cadastrada ainda.
@@ -115,6 +163,34 @@ export default async function DiaristasPage({
               </div>
             </Card>
           ))}
+        </div>
+      )}
+
+      {totalPaginas > 1 && (
+        <div className="mt-4 flex items-center justify-between gap-2">
+          {page > 1 ? (
+            <Link
+              href={`/diaristas${qs({ page: page - 1 })}`}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              ← Anterior
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-sm text-gray-500">
+            Página {page} de {totalPaginas}
+          </span>
+          {page < totalPaginas ? (
+            <Link
+              href={`/diaristas${qs({ page: page + 1 })}`}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Próxima →
+            </Link>
+          ) : (
+            <span />
+          )}
         </div>
       )}
     </div>

@@ -11,15 +11,17 @@ import {
 } from "@/components/ui";
 import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
 import { FUNCOES } from "@/lib/funcoes";
+import FuncaoValor from "@/components/FuncaoValor";
 import { createRequisicao } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovaRequisicaoPage() {
-  const lojas = await prisma.loja.findMany({
-    where: { ativo: true },
-    orderBy: { nome: "asc" },
-  });
+  const [lojas, valores] = await Promise.all([
+    prisma.loja.findMany({ where: { ativo: true }, orderBy: { nome: "asc" } }),
+    prisma.valorFuncao.findMany(),
+  ]);
+  const mapaValores = Object.fromEntries(valores.map((v) => [v.funcao, v.valor]));
 
   if (lojas.length === 0) {
     return (
@@ -115,33 +117,7 @@ export default async function NovaRequisicaoPage() {
             </div>
           </div>
 
-          <div>
-            <label className={labelClass} htmlFor="valorDiaria">
-              Valor da diária (R$) *
-            </label>
-            <input
-              id="valorDiaria"
-              name="valorDiaria"
-              inputMode="decimal"
-              required
-              placeholder="ex.: 120,00"
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass} htmlFor="funcao">
-              Função (opcional)
-            </label>
-            <select id="funcao" name="funcao" defaultValue="" className={inputClass}>
-              <option value="">— Qualquer —</option>
-              {FUNCOES.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FuncaoValor funcoes={FUNCOES} valores={mapaValores} />
 
           <div>
             <label className={labelClass} htmlFor="observacoes">

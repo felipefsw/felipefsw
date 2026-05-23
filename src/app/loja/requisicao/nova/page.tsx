@@ -11,6 +11,7 @@ import {
 } from "@/components/ui";
 import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
 import { FUNCOES } from "@/lib/funcoes";
+import FuncaoValor from "@/components/FuncaoValor";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import { criarRequisicaoLoja } from "../../actions";
 
@@ -20,6 +21,9 @@ export default async function NovaRequisicaoLojaPage() {
   const sessao = await getSessao();
   const ctx = contextoLoja(sessao);
   if (!ctx) redirect("/entrar");
+
+  const valores = await prisma.valorFuncao.findMany();
+  const mapaValores = Object.fromEntries(valores.map((v) => [v.funcao, v.valor]));
 
   // Gestor escolhe a loja; loja avulsa já está fixa.
   const lojasDoGestor =
@@ -118,33 +122,7 @@ export default async function NovaRequisicaoLojaPage() {
             </div>
           </div>
 
-          <div>
-            <label className={labelClass} htmlFor="valorDiaria">
-              Valor da diária (R$) *
-            </label>
-            <input
-              id="valorDiaria"
-              name="valorDiaria"
-              inputMode="decimal"
-              required
-              placeholder="ex.: 120,00"
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass} htmlFor="funcao">
-              Função (opcional)
-            </label>
-            <select id="funcao" name="funcao" defaultValue="" className={inputClass}>
-              <option value="">— Qualquer —</option>
-              {FUNCOES.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FuncaoValor funcoes={FUNCOES} valores={mapaValores} />
 
           <div>
             <label className={labelClass} htmlFor="observacoes">

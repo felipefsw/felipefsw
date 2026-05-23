@@ -33,6 +33,17 @@ async function main() {
   }
   const gestor = await prisma.gestor.findUniqueOrThrow({ where: { usuario: "felipe" } });
 
+  console.log("Definindo valores por função...");
+  await prisma.valorFuncao.deleteMany();
+  await prisma.valorFuncao.createMany({
+    data: [
+      { funcao: "Atendente", valor: 10000 },
+      { funcao: "Pizzaiolo", valor: 14000 },
+      { funcao: "Aux. pizzaiolo", valor: 11000 },
+      { funcao: "Motoqueiro", valor: 12000 },
+    ],
+  });
+
   console.log("Criando lojas de exemplo...");
   const centro = await prisma.loja.create({
     data: {
