@@ -66,8 +66,25 @@ model Diarista {
   inscricoes  Inscricao[]
   bloqueios   Bloqueio[]
   convocacoes Convocacao[]
+  bonificacoes Bonificacao[]
   // Lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
   lojasPreferidas Loja[] @relation("LojaPreferida")
+}
+
+// Bonificação paga ao diarista: cashback (5 diárias com média alta) ou top do mês.
+model Bonificacao {
+  id         String    @id @default(cuid())
+  tipo       String // CASHBACK_5 | TOP_MES
+  valor      Int       @default(10000) // centavos (R$ 100,00)
+  referencia String? // ex.: "2026-05" para o top do mês
+  pago       Boolean   @default(false)
+  pagoEm     DateTime?
+  criadoEm   DateTime  @default(now())
+
+  diaristaId String
+  diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+
+  @@index([diaristaId])
 }
 
 model Escala {

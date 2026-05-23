@@ -43,6 +43,7 @@ export default async function DiaristaLinkPage({
         include: { loja: true },
         orderBy: { data: "asc" },
       },
+      bonificacoes: { where: { pago: true }, orderBy: { criadoEm: "desc" } },
     },
   });
 
@@ -90,12 +91,34 @@ export default async function DiaristaLinkPage({
       </header>
 
       <main className="space-y-6 p-5">
-        <Link
-          href={`/d/${token}/preferencias`}
-          className="block rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-800"
-        >
-          ⭐ Minhas lojas de preferência →
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href={`/d/${token}/preferencias`}
+            className="flex-1 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-center text-sm font-medium text-teal-800"
+          >
+            ⭐ Lojas preferidas
+          </Link>
+          <Link
+            href="/ranking"
+            className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700"
+          >
+            🏆 Ranking
+          </Link>
+        </div>
+
+        {diarista.bonificacoes.length > 0 && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+            <p className="font-semibold text-green-800">🎁 Suas bonificações</p>
+            <ul className="mt-1 space-y-0.5 text-sm text-green-800">
+              {diarista.bonificacoes.map((b) => (
+                <li key={b.id}>
+                  {b.tipo === "CASHBACK_5" ? "Cashback de 5 diárias" : "Top do mês"}:{" "}
+                  <strong>{formatBRL(b.valor)}</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {diarista.convocacoes.length > 0 && (
           <section>

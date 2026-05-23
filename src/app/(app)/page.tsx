@@ -105,6 +105,21 @@ export default async function InicioPage() {
         </Link>
       </div>
 
+      <div className="flex gap-3">
+        <Link
+          href="/bonificacoes"
+          className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+        >
+          🎁 Bonificações
+        </Link>
+        <Link
+          href="/ranking"
+          className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+        >
+          🏆 Ranking
+        </Link>
+      </div>
+
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Hoje</h2>
