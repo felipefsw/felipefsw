@@ -24,6 +24,8 @@ model Loja {
   cidade      String?
   bairro      String?
   endereco    String?
+  latitude    Float?
+  longitude   Float?
   ativo       Boolean      @default(true)
   criadoEm    DateTime     @default(now())
   gestorId    String?
@@ -105,6 +107,12 @@ model Escala {
   pagoEm      DateTime?
   observacoes String?
   tokenConfirmacao String? @unique // link público de confirmação (gerado pelo RH)
+  checkinEm   DateTime?
+  checkinLat  Float?
+  checkinLng  Float?
+  checkoutEm  DateTime?
+  checkoutAuto Boolean  @default(false)
+  valorPago   Int? // valor efetivo (proporcional se saiu antes); null até o check-out
   criadoEm    DateTime  @default(now())
 
   diaristaId String

@@ -3,9 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO } from "@/lib/dates";
 import CopyButton from "@/components/CopyButton";
-import { confirmarPresenca, inscreverNaDiaria, responderConvocacao } from "./actions";
+import CheckinButton from "@/components/CheckinButton";
+import { confirmarPresenca, fazerCheckin, inscreverNaDiaria, responderConvocacao } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+function horaDe(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 function enderecoCompleto(l: {
   endereco: string | null;
@@ -17,10 +22,13 @@ function enderecoCompleto(l: {
 
 export default async function DiaristaLinkPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ checkin?: string }>;
 }) {
   const { token } = await params;
+  const { checkin } = await searchParams;
   const hoje = hojeISO();
   const desde = addDias(hoje, -14);
 
@@ -91,6 +99,17 @@ export default async function DiaristaLinkPage({
       </header>
 
       <main className="space-y-6 p-5">
+        {checkin === "ok" && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800">
+            ✓ Check-in realizado!
+          </div>
+        )}
+        {checkin === "longe" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            Você parece estar longe da loja. Faça o check-in quando chegar no local.
+          </div>
+        )}
+
         <div className="flex gap-3">
           <Link
             href={`/d/${token}/preferencias`}
@@ -265,7 +284,20 @@ export default async function DiaristaLinkPage({
                     ) : null}
                   </div>
 
-                  {e.presenca !== "PRESENTE" && e.data <= hoje && (
+                  {e.checkinEm ? (
+                    <div className="mt-2 text-sm text-green-700">
+                      ✓ Check-in às {horaDe(e.checkinEm)}
+                      {e.checkoutEm && (
+                        <span className="text-gray-600">
+                          {" "}
+                          · saída {horaDe(e.checkoutEm)} · recebe{" "}
+                          <strong>{formatBRL(e.valorPago ?? e.valor)}</strong>
+                        </span>
+                      )}
+                    </div>
+                  ) : e.data === hoje ? (
+                    <CheckinButton action={fazerCheckin} token={token} escalaId={e.id} />
+                  ) : e.presenca !== "PRESENTE" && e.data < hoje ? (
                     <form action={confirmarPresenca} className="mt-3">
                       <input type="hidden" name="id" value={e.id} />
                       <input type="hidden" name="token" value={token} />
@@ -276,7 +308,7 @@ export default async function DiaristaLinkPage({
                         Confirmar presença
                       </button>
                     </form>
-                  )}
+                  ) : null}
 
                   {e.presenca === "PRESENTE" && enderecoCompleto(e.loja) && (
                     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">

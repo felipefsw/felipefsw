@@ -3,6 +3,49 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { RAIO_CHECKIN_METROS, distanciaMetros } from "@/lib/geo";
+
+export async function fazerCheckin(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const escalaId = String(formData.get("escalaId") ?? "");
+  const lat = Number.parseFloat(String(formData.get("lat") ?? ""));
+  const lng = Number.parseFloat(String(formData.get("lng") ?? ""));
+  if (!token || !escalaId) return;
+
+  const escala = await prisma.escala.findUnique({
+    where: { id: escalaId },
+    include: { diarista: { select: { token: true } }, loja: { select: { latitude: true, longitude: true } } },
+  });
+  if (!escala || escala.diarista.token !== token) return;
+
+  // Se a loja tem localização, valida a distância.
+  if (
+    escala.loja.latitude != null &&
+    escala.loja.longitude != null &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng)
+  ) {
+    const dist = distanciaMetros(lat, lng, escala.loja.latitude, escala.loja.longitude);
+    if (dist > RAIO_CHECKIN_METROS) {
+      redirect(`/d/${token}?checkin=longe`);
+    }
+  }
+
+  await prisma.escala.update({
+    where: { id: escalaId },
+    data: {
+      checkinEm: new Date(),
+      checkinLat: Number.isFinite(lat) ? lat : null,
+      checkinLng: Number.isFinite(lng) ? lng : null,
+      presenca: "PRESENTE",
+    },
+  });
+
+  revalidatePath(`/d/${token}`);
+  revalidatePath("/escala");
+  revalidatePath("/loja");
+  redirect(`/d/${token}?checkin=ok`);
+}
 
 export async function confirmarPresenca(formData: FormData) {
   const id = String(formData.get("id") ?? "");

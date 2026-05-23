@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, btnPrimary, btnSecondary, inputClass, labelClass } from "@/components/ui";
+import GeoCapture from "@/components/GeoCapture";
 
 type LojaDefaults = {
   id?: string;
@@ -9,6 +10,8 @@ type LojaDefaults = {
   bairro?: string | null;
   endereco?: string | null;
   gestorId?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export default function LojaForm({
@@ -114,6 +117,11 @@ export default function LojaForm({
             className={inputClass}
           />
         </div>
+
+        <GeoCapture
+          defaultLat={loja?.latitude != null ? String(loja.latitude) : ""}
+          defaultLng={loja?.longitude != null ? String(loja.longitude) : ""}
+        />
 
         <div className="flex gap-2 pt-1">
           <button type="submit" className={btnPrimary}>

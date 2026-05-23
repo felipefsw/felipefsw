@@ -11,9 +11,14 @@ import {
   convocarDiarista,
   desbloquearDiaristaLoja,
   desfazerAvaliacaoDiarista,
+  registrarCheckout,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+function horaDe(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 function statusLabel(s: string) {
   if (s === "ABERTA") return { txt: "Aberta", cls: "bg-amber-100 text-amber-700" };
@@ -57,6 +62,10 @@ export default async function LojaHome() {
   const aAvaliar = escalas.filter(
     (e) => e.presenca === "PRESENTE" && turnoFinalizado(e.data, e.horaFim),
   );
+
+  // Diárias de hoje (para acompanhar check-in e registrar saída).
+  const hoje = hojeISO();
+  const hojeEscalas = escalas.filter((e) => e.data === hoje);
 
   // Diaristas distintos que já vieram, com datas e notas dadas por esta loja.
   type Info = {
@@ -102,6 +111,46 @@ export default async function LojaHome() {
           + Solicitar diaristas
         </Link>
       </div>
+
+      {hojeEscalas.length > 0 && (
+        <section>
+          <h2 className="mb-2 font-semibold text-gray-900">Diárias de hoje</h2>
+          <Card>
+            <ul className="divide-y divide-gray-100">
+              {hojeEscalas.map((e) => (
+                <li key={e.id} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-gray-900">{e.diarista.nome}</p>
+                    <p className="text-xs text-gray-500">
+                      {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim}` : ""}
+                      {e.checkinEm ? ` · check-in ${horaDe(e.checkinEm)}` : " · aguardando check-in"}
+                    </p>
+                  </div>
+                  <div className="shrink-0">
+                    {e.checkoutEm ? (
+                      <span className="text-xs text-gray-500">
+                        saída {horaDe(e.checkoutEm)} · {formatBRL(e.valorPago ?? e.valor)}
+                      </span>
+                    ) : e.checkinEm ? (
+                      <form action={registrarCheckout}>
+                        <input type="hidden" name="escalaId" value={e.id} />
+                        <button
+                          type="submit"
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                          Registrar saída
+                        </button>
+                      </form>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-2 font-semibold text-gray-900">Minhas requisições</h2>

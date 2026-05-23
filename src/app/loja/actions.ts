@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { contextoLoja, getSessao, setSessao } from "@/lib/auth";
 import { dentroDaJanelaAgendamento, isHHMM, isISODate } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
+import { valorProporcional } from "@/lib/geo";
 
 // Loja ativa da sessão (loja avulsa ou gestor). Redireciona se não houver.
 async function lojaSessaoId(): Promise<string> {
@@ -195,6 +196,28 @@ export async function decidirRequisicao(formData: FormData) {
   revalidatePath("/loja");
   revalidatePath("/requisicoes");
   redirect("/loja");
+}
+
+export async function registrarCheckout(formData: FormData) {
+  const lojaId = await lojaSessaoId();
+  const escalaId = String(formData.get("escalaId") ?? "");
+  if (!escalaId) return;
+
+  const escala = await prisma.escala.findUnique({
+    where: { id: escalaId },
+    select: { lojaId: true, valor: true, horaInicio: true, horaFim: true, checkoutEm: true },
+  });
+  if (!escala || escala.lojaId !== lojaId || escala.checkoutEm) return;
+
+  const agora = new Date();
+  const valorPago = valorProporcional(escala.valor, escala.horaInicio, escala.horaFim, agora);
+  await prisma.escala.update({
+    where: { id: escalaId },
+    data: { checkoutEm: agora, valorPago },
+  });
+  revalidatePath("/loja");
+  revalidatePath("/");
+  revalidatePath("/pagamentos");
 }
 
 export async function convocarDiarista(formData: FormData) {

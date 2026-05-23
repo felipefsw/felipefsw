@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
+function coord(formData: FormData, campo: string): number | null {
+  const n = Number.parseFloat(String(formData.get(campo) ?? ""));
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function createLoja(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   const cnpj = String(formData.get("cnpj") ?? "").trim();
@@ -21,6 +26,8 @@ export async function createLoja(formData: FormData) {
       bairro: bairro || null,
       endereco: endereco || null,
       gestorId: gestorId || null,
+      latitude: coord(formData, "latitude"),
+      longitude: coord(formData, "longitude"),
     },
   });
   revalidatePath("/lojas");
@@ -46,6 +53,8 @@ export async function updateLoja(formData: FormData) {
       bairro: bairro || null,
       endereco: endereco || null,
       gestorId: gestorId || null,
+      latitude: coord(formData, "latitude"),
+      longitude: coord(formData, "longitude"),
     },
   });
   revalidatePath("/lojas");
