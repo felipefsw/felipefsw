@@ -28,8 +28,23 @@ export async function createRequisicao(formData: FormData) {
     return;
   }
 
+  const convidados = [1, 2, 3]
+    .map((i) => String(formData.get(`convidado${i}`) ?? ""))
+    .filter(Boolean);
+  const convidadosUnicos = [...new Set(convidados)].map((id) => ({ id }));
+
   await prisma.requisicao.create({
-    data: { lojaId, data, horaInicio, horaFim, funcao, quantidade, valorDiaria, observacoes },
+    data: {
+      lojaId,
+      data,
+      horaInicio,
+      horaFim,
+      funcao,
+      quantidade,
+      valorDiaria,
+      observacoes,
+      convidados: { connect: convidadosUnicos },
+    },
   });
 
   revalidatePath("/requisicoes");

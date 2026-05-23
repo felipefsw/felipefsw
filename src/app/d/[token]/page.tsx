@@ -41,6 +41,7 @@ export default async function DiaristaLinkPage({
         orderBy: { data: "asc" },
       },
       inscricoes: { select: { requisicaoId: true } },
+      convidadoEm: { select: { id: true } },
       lojasPreferidas: { select: { id: true } },
       bloqueios: {
         where: { OR: [{ ate: null }, { ate: { gt: new Date() } }] },
@@ -70,6 +71,7 @@ export default async function DiaristaLinkPage({
   const recentes = diarista.escalas.filter((e) => e.data < hoje).reverse();
 
   const inscritoEm = new Set(diarista.inscricoes.map((i) => i.requisicaoId));
+  const convidadoEm = new Set(diarista.convidadoEm.map((r) => r.id));
   const preferidas = new Set(diarista.lojasPreferidas.map((l) => l.id));
   const jaTrabalhou = new Set(diarista.escalas.map((e) => e.lojaId));
   const ehPreferida = (lojaId: string) => preferidas.has(lojaId) || jaTrabalhou.has(lojaId);
@@ -81,7 +83,9 @@ export default async function DiaristaLinkPage({
     orderBy: { data: "asc" },
   });
   const disponiveis = disponiveisRaw.filter((r) => !lojasBloqueadas.has(r.lojaId));
-  disponiveis.sort((a, b) => Number(ehPreferida(b.lojaId)) - Number(ehPreferida(a.lojaId)));
+  const peso = (r: { id: string; lojaId: string }) =>
+    (convidadoEm.has(r.id) ? 2 : 0) + (ehPreferida(r.lojaId) ? 1 : 0);
+  disponiveis.sort((a, b) => peso(b) - peso(a));
 
   return (
     <div className="mx-auto max-w-md">
@@ -196,13 +200,19 @@ export default async function DiaristaLinkPage({
               {disponiveis.map((r) => {
                 const inscrito = inscritoEm.has(r.id);
                 const pref = ehPreferida(r.lojaId);
+                const convidado = convidadoEm.has(r.id);
                 return (
                   <li
                     key={r.id}
                     className={`rounded-xl border bg-white p-4 shadow-sm ${
-                      pref ? "border-teal-300" : "border-gray-200"
+                      convidado ? "border-amber-400" : pref ? "border-teal-300" : "border-gray-200"
                     }`}
                   >
+                    {convidado && (
+                      <p className="mb-1 text-xs font-semibold text-amber-700">
+                        ⭐ Você foi convidado para esta diária
+                      </p>
+                    )}
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-gray-900">{r.loja.nome}</p>
                       {pref && (

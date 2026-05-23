@@ -36,9 +36,11 @@ export default async function DecidirRequisicaoPage({
     where: { id },
     include: {
       inscricoes: { include: { diarista: { select: { id: true, nome: true, funcao: true } } } },
+      convidados: { select: { id: true } },
     },
   });
   if (!requisicao || requisicao.lojaId !== ctx.lojaId) notFound();
+  const convidadosSet = new Set(requisicao.convidados.map((c) => c.id));
 
   if (requisicao.status !== "ABERTA") {
     return (
@@ -108,6 +110,11 @@ export default async function DecidirRequisicaoPage({
                         {c.diarista.funcao && (
                           <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
                             {c.diarista.funcao}
+                          </span>
+                        )}
+                        {convidadosSet.has(c.diarista.id) && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            convidado
                           </span>
                         )}
                       </span>

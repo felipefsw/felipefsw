@@ -58,6 +58,12 @@ export async function criarRequisicaoLoja(formData: FormData) {
     return;
   }
 
+  const convidadosUnicos = [
+    ...new Set(
+      [1, 2, 3].map((i) => String(formData.get(`convidado${i}`) ?? "")).filter(Boolean),
+    ),
+  ].map((id) => ({ id }));
+
   await prisma.requisicao.create({
     data: {
       lojaId,
@@ -68,6 +74,7 @@ export async function criarRequisicaoLoja(formData: FormData) {
       quantidade,
       valorDiaria,
       observacoes,
+      convidados: { connect: convidadosUnicos },
     },
   });
 

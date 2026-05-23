@@ -76,6 +76,7 @@ model Diarista {
   bloqueios   Bloqueio[]
   convocacoes Convocacao[]
   bonificacoes Bonificacao[]
+  convidadoEm Requisicao[] @relation("ConvidadosRequisicao")
   // Lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
   lojasPreferidas Loja[] @relation("LojaPreferida")
 }
@@ -148,6 +149,7 @@ model Requisicao {
   loja    Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   escalas Escala[]
   inscricoes Inscricao[]
+  convidados Diarista[] @relation("ConvidadosRequisicao")
 
   @@index([status])
   @@index([data])

@@ -22,7 +22,14 @@ export default async function NovaRequisicaoLojaPage() {
   const ctx = contextoLoja(sessao);
   if (!ctx) redirect("/entrar");
 
-  const valores = await prisma.valorFuncao.findMany();
+  const [valores, diaristas] = await Promise.all([
+    prisma.valorFuncao.findMany(),
+    prisma.diarista.findMany({
+      where: { ativo: true },
+      orderBy: { nome: "asc" },
+      select: { id: true, nome: true },
+    }),
+  ]);
   const mapaValores = Object.fromEntries(valores.map((v) => [v.funcao, v.valor]));
 
   // Gestor escolhe a loja; loja avulsa já está fixa.
@@ -123,6 +130,25 @@ export default async function NovaRequisicaoLojaPage() {
           </div>
 
           <FuncaoValor funcoes={FUNCOES} valores={mapaValores} />
+
+          <div>
+            <p className={labelClass}>Convidar diaristas (opcional)</p>
+            <p className="mb-2 -mt-0.5 text-xs text-gray-400">
+              A vaga fica aberta a todos; os convidados são avisados e aparecem em destaque.
+            </p>
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <select key={i} name={`convidado${i}`} defaultValue="" className={inputClass}>
+                  <option value="">— ninguém —</option>
+                  {diaristas.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.nome}
+                    </option>
+                  ))}
+                </select>
+              ))}
+            </div>
+          </div>
 
           <div>
             <label className={labelClass} htmlFor="observacoes">
