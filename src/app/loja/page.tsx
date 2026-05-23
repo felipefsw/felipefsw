@@ -125,13 +125,23 @@ export default async function LojaHome() {
                         {r.funcao ? <> · {r.funcao}</> : null} · {formatBRL(r.valorDiaria)}
                       </p>
                       <p className="mt-1 text-xs text-gray-500">
-                        {r._count.escalas} escalado(s) · {r._count.inscricoes} inscrito(s)
+                        {r._count.escalas} escalado(s) · {r._count.inscricoes} candidato(s)
                       </p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>
                       {st.txt}
                     </span>
                   </div>
+                  {r.status === "ABERTA" && (
+                    <Link
+                      href={`/loja/requisicao/${r.id}`}
+                      className="mt-2 inline-block rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+                    >
+                      {r._count.inscricoes > 0
+                        ? `Ver candidatos (${r._count.inscricoes})`
+                        : "Ver / decidir"}
+                    </Link>
+                  )}
                 </Card>
               );
             })}

@@ -137,6 +137,66 @@ export async function desfazerAvaliacaoDiarista(formData: FormData) {
   revalidatePath(`/diaristas/${escala.diaristaId}`);
 }
 
+export async function decidirRequisicao(formData: FormData) {
+  const lojaId = await lojaSessaoId();
+  const id = String(formData.get("id") ?? "");
+  const diaristaIds = formData.getAll("diaristaIds").map(String).filter(Boolean);
+  if (!id || diaristaIds.length === 0) return;
+
+  const requisicao = await prisma.requisicao.findUnique({ where: { id } });
+  if (!requisicao || requisicao.lojaId !== lojaId || requisicao.status !== "ABERTA") return;
+
+  // só aceita quem se inscreveu, sem conflito de agenda e sem bloqueio nesta loja
+  const [inscritos, jaEscalados, bloqueados] = await Promise.all([
+    prisma.inscricao.findMany({
+      where: { requisicaoId: id, diaristaId: { in: diaristaIds } },
+      select: { diaristaId: true },
+    }),
+    prisma.escala.findMany({
+      where: { data: requisicao.data, diaristaId: { in: diaristaIds } },
+      select: { diaristaId: true },
+    }),
+    prisma.bloqueio.findMany({
+      where: {
+        lojaId,
+        diaristaId: { in: diaristaIds },
+        OR: [{ ate: null }, { ate: { gt: new Date() } }],
+      },
+      select: { diaristaId: true },
+    }),
+  ]);
+  const inscritosSet = new Set(inscritos.map((i) => i.diaristaId));
+  const ocupados = new Set(jaEscalados.map((e) => e.diaristaId));
+  const bloq = new Set(bloqueados.map((b) => b.diaristaId));
+  const escolhidos = diaristaIds.filter(
+    (d) => inscritosSet.has(d) && !ocupados.has(d) && !bloq.has(d),
+  );
+  if (escolhidos.length === 0) return;
+
+  await prisma.$transaction([
+    prisma.escala.createMany({
+      data: escolhidos.map((diaristaId) => ({
+        diaristaId,
+        lojaId: requisicao.lojaId,
+        data: requisicao.data,
+        horaInicio: requisicao.horaInicio,
+        horaFim: requisicao.horaFim,
+        valor: requisicao.valorDiaria,
+        requisicaoId: requisicao.id,
+      })),
+    }),
+    prisma.requisicao.update({ where: { id }, data: { status: "ATENDIDA" } }),
+    prisma.inscricao.updateMany({
+      where: { requisicaoId: id, diaristaId: { in: escolhidos } },
+      data: { status: "ACEITA" },
+    }),
+  ]);
+
+  revalidatePath("/loja");
+  revalidatePath("/requisicoes");
+  redirect("/loja");
+}
+
 export async function convocarDiarista(formData: FormData) {
   const lojaId = await lojaSessaoId();
   const diaristaId = String(formData.get("diaristaId") ?? "");
