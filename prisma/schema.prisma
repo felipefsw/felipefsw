@@ -68,6 +68,7 @@ model Diarista {
   observacoes String?
   ativo       Boolean     @default(true)
   token       String      @unique @default(cuid()) // usado no link pessoal /d/[token]
+  telegramChatId String? // vinculado quando a diarista inicia o bot do Telegram
   criadoEm    DateTime    @default(now())
   escalas     Escala[]
   avaliacoes  Avaliacao[]

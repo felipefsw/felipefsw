@@ -2,6 +2,7 @@ import webpush from "web-push";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { formatDate } from "./format";
+import { enviarTelegram } from "./telegram";
 
 const PUB = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const PRIV = process.env.VAPID_PRIVATE_KEY;
@@ -59,15 +60,28 @@ export async function notificarNovaDiaria(
 
   const [loja, alvos] = await Promise.all([
     prisma.loja.findUnique({ where: { id: lojaId }, select: { nome: true } }),
-    prisma.diarista.findMany({ where: { ativo: true, OR: or }, select: { id: true } }),
+    prisma.diarista.findMany({
+      where: { ativo: true, OR: or },
+      select: { id: true, telegramChatId: true },
+    }),
   ]);
+
+  const nomeLoja = loja?.nome ?? "Loja";
+  const quando = formatDate(data);
 
   await enviarPushParaDiaristas(
     alvos.map((a) => a.id),
-    {
-      title: "Nova diária disponível",
-      body: `${loja?.nome ?? "Loja"} • ${formatDate(data)}`,
-      url: "/",
-    },
+    { title: "Nova diária disponível", body: `${nomeLoja} • ${quando}`, url: "/" },
+  );
+
+  await Promise.allSettled(
+    alvos
+      .filter((a) => a.telegramChatId)
+      .map((a) =>
+        enviarTelegram(
+          a.telegramChatId as string,
+          `🍕 <b>Nova diária disponível</b>\n${nomeLoja} • ${quando}\nAbra o app para pegar.`,
+        ),
+      ),
   );
 }

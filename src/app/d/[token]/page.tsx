@@ -117,6 +117,17 @@ export default async function DiaristaLinkPage({
 
         <PushToggle token={token} />
 
+        {process.env.NEXT_PUBLIC_TELEGRAM_BOT && (
+          <a
+            href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT}?start=${token}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-center text-sm font-medium text-sky-800"
+          >
+            ✈️ Ativar avisos no Telegram
+          </a>
+        )}
+
         <div className="flex gap-3">
           <Link
             href={`/d/${token}/preferencias`}
