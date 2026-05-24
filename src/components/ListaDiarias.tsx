@@ -142,7 +142,9 @@ export default function ListaDiarias({ token, itens }: { token: string; itens: D
 
         <div className="mt-1.5 flex items-center gap-1.5">
           {it.inscrito ? (
-            <span className="flex-1 text-xs font-medium text-orange-600">✓ inscrição enviada</span>
+            <span className="flex-1 rounded-lg bg-green-100 py-1.5 text-center text-sm font-semibold text-green-700">
+              ✓ Solicitação já enviada
+            </span>
           ) : (
             <form action={inscreverNaDiaria} className="flex-1">
               <input type="hidden" name="token" value={token} />

@@ -170,7 +170,9 @@ export default function PertoDeMim({ token, itens }: { token: string; itens: Ite
 
                 <div className="mt-3">
                   {it.inscrito ? (
-                    <span className="text-sm font-medium text-orange-600">✓ inscrição enviada</span>
+                    <span className="flex-1 rounded-xl bg-green-100 py-2 text-center text-sm font-semibold text-green-700">
+                      ✓ Solicitação já enviada
+                    </span>
                   ) : (
                     <form action={inscreverNaDiaria}>
                       <input type="hidden" name="token" value={token} />
