@@ -32,13 +32,26 @@ export default async function SouDiaristaPage({
             CPF inválido. Confira os números e tente novamente.
           </p>
         )}
+        {erro === "campos" && (
+          <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            Preencha nome, sobrenome, CPF e data de nascimento.
+          </p>
+        )}
         <form action={cadastrarDiarista} className="space-y-4">
           {vaga ? <input type="hidden" name="vaga" value={vaga} /> : null}
-          <div>
-            <label className={labelClass} htmlFor="nome">
-              Nome e sobrenome *
-            </label>
-            <input id="nome" name="nome" required className={inputClass} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass} htmlFor="nome">
+                Nome *
+              </label>
+              <input id="nome" name="nome" required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="sobrenome">
+                Sobrenome *
+              </label>
+              <input id="sobrenome" name="sobrenome" required className={inputClass} />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -71,12 +84,11 @@ export default async function SouDiaristaPage({
 
           <div>
             <label className={labelClass} htmlFor="telefone">
-              Telefone / WhatsApp *
+              Telefone / WhatsApp (opcional)
             </label>
             <input
               id="telefone"
               name="telefone"
-              required
               placeholder="(00) 90000-0000"
               className={inputClass}
             />
@@ -84,12 +96,10 @@ export default async function SouDiaristaPage({
 
           <div>
             <label className={labelClass} htmlFor="funcao">
-              Função *
+              Função (opcional)
             </label>
-            <select id="funcao" name="funcao" required defaultValue="" className={inputClass}>
-              <option value="" disabled>
-                — Selecione —
-              </option>
+            <select id="funcao" name="funcao" defaultValue="" className={inputClass}>
+              <option value="">— Não sei / preencher depois —</option>
               {FUNCOES.map((f) => (
                 <option key={f} value={f}>
                   {f}
@@ -100,12 +110,11 @@ export default async function SouDiaristaPage({
 
           <div>
             <label className={labelClass} htmlFor="chavePix">
-              Chave Pix *
+              Chave Pix (opcional)
             </label>
             <input
               id="chavePix"
               name="chavePix"
-              required
               placeholder="CPF, e-mail, telefone ou chave aleatória"
               className={inputClass}
             />

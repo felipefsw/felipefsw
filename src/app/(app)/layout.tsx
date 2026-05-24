@@ -20,8 +20,14 @@ export default async function AppLayout({
             <span className="truncate">Gestão · Pizzarias RWP</span>
           </Link>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="rounded-full bg-orange-600 px-2 py-0.5 text-xs font-medium uppercase">
-              {sessao.perfil}
+            <span className="rounded-full bg-orange-600 px-2 py-0.5 text-xs font-medium">
+              {sessao.nome ? (
+                <>
+                  {sessao.nome} · <span className="uppercase">{sessao.perfil}</span>
+                </>
+              ) : (
+                <span className="uppercase">{sessao.perfil}</span>
+              )}
             </span>
             <form action={sair}>
               <button type="submit" className="text-xs font-medium text-orange-100 underline">

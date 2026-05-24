@@ -11,6 +11,7 @@ import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
 import SubmitButton from "@/components/SubmitButton";
 import CopyButton from "@/components/CopyButton";
 import CopyLink from "@/components/CopyLink";
+import CompartilharCadastro from "@/components/CompartilharCadastro";
 import PushToggleLoja from "@/components/PushToggleLoja";
 import FotosLojaUpload from "@/components/FotosLojaUpload";
 import BotaoBloquear from "@/components/BotaoBloquear";
@@ -285,6 +286,8 @@ export default async function LojaHome({
       )}
 
       <PushToggleLoja />
+
+      <CompartilharCadastro />
 
       {ctx.gestorId && gestorLojas.length > 0 && (
         <section>

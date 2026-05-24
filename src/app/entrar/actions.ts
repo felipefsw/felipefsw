@@ -3,12 +3,19 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { limparSessao, setSessao } from "@/lib/auth";
+import { membroEquipe } from "@/lib/equipe";
 
 const soDigitos = (s: string) => s.replace(/\D/g, "");
 
 // SEM SENHA por enquanto: entra só clicando (modo de testes/simulação).
-export async function entrarComoGestao(perfil: "rh" | "ti") {
-  await setSessao({ tipo: "gestao", perfil: perfil === "ti" ? "ti" : "rh" });
+// Recebe o id da pessoa da equipe (RH/TI); aceita "rh"/"ti" como atalho legado.
+export async function entrarComoGestao(membroId: string) {
+  const m = membroEquipe(membroId);
+  if (m) {
+    await setSessao({ tipo: "gestao", perfil: m.perfil, nome: m.nome, papel: m.papel });
+  } else {
+    await setSessao({ tipo: "gestao", perfil: membroId === "ti" ? "ti" : "rh" });
+  }
   redirect("/");
 }
 

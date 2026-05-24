@@ -6,41 +6,42 @@ import { cpfValido } from "@/lib/cpf";
 
 export async function cadastrarDiarista(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
+  const sobrenome = String(formData.get("sobrenome") ?? "").trim();
   const cpf = String(formData.get("cpf") ?? "").trim();
   const dataNascimento = String(formData.get("dataNascimento") ?? "").trim();
   const funcao = String(formData.get("funcao") ?? "").trim();
   const telefone = String(formData.get("telefone") ?? "").trim();
   const chavePix = String(formData.get("chavePix") ?? "").trim();
-
-  // Todos os campos são obrigatórios no auto-cadastro.
-  if (!nome || !cpf || !dataNascimento || !funcao || !telefone || !chavePix) return;
   const vagaParam = String(formData.get("vaga") ?? "").trim();
-  if (!cpfValido(cpf)) {
-    redirect(`/sou-diarista${vagaParam ? `?vaga=${vagaParam}&erro=cpf` : "?erro=cpf"}`);
-  }
+
+  const erroUrl = (e: string) =>
+    `/sou-diarista${vagaParam ? `?vaga=${vagaParam}&erro=${e}` : `?erro=${e}`}`;
+
+  // Obrigatórios: nome, sobrenome, CPF e data de nascimento.
+  if (!nome || !sobrenome || !cpf || !dataNascimento) redirect(erroUrl("campos"));
+  if (!cpfValido(cpf)) redirect(erroUrl("cpf"));
 
   const diarista = await prisma.diarista.create({
     data: {
-      nome,
+      nome: `${nome} ${sobrenome}`,
       cpf,
       dataNascimento,
-      funcao,
-      telefone,
-      chavePix,
+      funcao: funcao || null,
+      telefone: telefone || null,
+      chavePix: chavePix || null,
       observacoes: String(formData.get("observacoes") ?? "").trim() || null,
     },
   });
 
   // Se veio por um convite de vaga, já inscreve o novo candidato nela.
-  const vaga = String(formData.get("vaga") ?? "").trim();
-  if (vaga) {
+  if (vagaParam) {
     const req = await prisma.requisicao.findUnique({
-      where: { id: vaga },
+      where: { id: vagaParam },
       select: { id: true, status: true },
     });
     if (req && req.status === "ABERTA") {
       await prisma.inscricao
-        .create({ data: { requisicaoId: vaga, diaristaId: diarista.id } })
+        .create({ data: { requisicaoId: vagaParam, diaristaId: diarista.id } })
         .catch(() => {});
     }
   }

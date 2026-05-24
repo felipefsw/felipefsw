@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, btnDanger, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import CopyButton from "@/components/CopyButton";
+import CompartilharCadastro from "@/components/CompartilharCadastro";
 import Avatar from "@/components/Avatar";
 import { FUNCOES } from "@/lib/funcoes";
 import { mediaDaAvaliacao } from "@/lib/bonificacoes";
@@ -77,6 +78,10 @@ export default async function DiaristasPage({
         subtitle={`${total} resultado(s)`}
         action={{ href: "/diaristas/nova", label: "+ Nova" }}
       />
+
+      <div className="mb-4">
+        <CompartilharCadastro />
+      </div>
 
       <form method="get" className="mb-3 flex gap-2">
         {filtro && <input type="hidden" name="funcao" value={filtro} />}

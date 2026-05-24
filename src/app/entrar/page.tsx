@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, btnPrimary, inputClass } from "@/components/ui";
 import MarcaBadge from "@/components/MarcaBadge";
+import { EQUIPE } from "@/lib/equipe";
 import { entrarComoGestao, entrarComoGestor, entrarComoLoja, entrarDiarista } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -166,22 +167,27 @@ export default async function EntrarPage({
       {sel === "gestao" && (
         <Card>
           <h2 className="font-semibold text-gray-900">RH / TI (gestão)</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">Escolha o perfil para entrar.</p>
-          <div className="flex gap-2">
-            <form action={entrarComoGestao.bind(null, "rh")} className="flex-1">
-              <button type="submit" className={`${btnPrimary} w-full`}>
-                Entrar como RH
-              </button>
-            </form>
-            <form action={entrarComoGestao.bind(null, "ti")} className="flex-1">
-              <button
-                type="submit"
-                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Entrar como TI
-              </button>
-            </form>
-          </div>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
+          {(["rh", "ti"] as const).map((p) => (
+            <div key={p} className="mb-3 last:mb-0">
+              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-400">
+                {p === "rh" ? "RH" : "TI"}
+              </p>
+              <div className="space-y-1">
+                {EQUIPE.filter((m) => m.perfil === p).map((m) => (
+                  <form key={m.id} action={entrarComoGestao.bind(null, m.id)}>
+                    <button
+                      type="submit"
+                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left hover:border-orange-300"
+                    >
+                      <span className="font-medium text-gray-900">🛠️ {m.nome}</span>
+                      <span className="text-xs text-gray-400">{m.papel}</span>
+                    </button>
+                  </form>
+                ))}
+              </div>
+            </div>
+          ))}
         </Card>
       )}
     </div>

@@ -3,7 +3,7 @@ import crypto from "crypto";
 
 // Sessão simples por cookie assinado (HMAC). App interno; sem contas/senhas por usuário.
 export type Sessao =
-  | { tipo: "gestao"; perfil: "rh" | "ti" }
+  | { tipo: "gestao"; perfil: "rh" | "ti"; nome?: string; papel?: string }
   | { tipo: "loja"; lojaId: string }
   | { tipo: "gestor"; gestorId: string; lojaId: string };
 
