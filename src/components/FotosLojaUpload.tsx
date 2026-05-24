@@ -48,27 +48,36 @@ export default function FotosLojaUpload({ fotos }: { fotos: string[] }) {
   const [removendo, startRemover] = useTransition();
 
   async function aoSelecionar(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
+    if (files.length === 0) return;
     setErro(null);
     setEnviando(true);
+
+    const restantes = Math.max(0, 5 - fotos.length);
+    const aEnviar = files.slice(0, restantes);
     try {
-      let envio: File = file;
-      try {
-        envio = await comprimir(file);
-      } catch {
-        /* usa original */
+      for (const file of aEnviar) {
+        let envio: File = file;
+        try {
+          envio = await comprimir(file);
+        } catch {
+          /* usa original */
+        }
+        const fd = new FormData();
+        fd.set("foto", envio);
+        const r = await adicionarFotoLoja(fd);
+        if (!r?.ok) {
+          setErro(r?.erro ?? "Não foi possível enviar uma das fotos.");
+          break;
+        }
       }
-      const fd = new FormData();
-      fd.set("foto", envio);
-      const r = await adicionarFotoLoja(fd);
-      if (r?.ok) router.refresh();
-      else setErro(r?.erro ?? "Não foi possível enviar a foto.");
+      if (files.length > restantes) setErro("Máximo de 5 fotos — algumas não foram enviadas.");
     } catch {
-      setErro("Não foi possível enviar a foto.");
+      setErro("Não foi possível enviar as fotos.");
     } finally {
       setEnviando(false);
+      router.refresh();
     }
   }
 
@@ -111,10 +120,13 @@ export default function FotosLojaUpload({ fotos }: { fotos: string[] }) {
         ref={inputRef}
         type="file"
         accept="image/*"
+        multiple
         onChange={aoSelecionar}
         className="hidden"
       />
-      <p className="mt-1 text-xs text-gray-400">Até 5 fotos do ambiente. Toque no ✕ para remover.</p>
+      <p className="mt-1 text-xs text-gray-400">
+        Até 5 fotos do ambiente — pode escolher várias de uma vez. Toque no ✕ para remover.
+      </p>
       {erro && <p className="mt-1 text-xs font-medium text-red-600">{erro}</p>}
     </div>
   );

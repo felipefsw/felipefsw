@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { agoraHHMM, hojeISO } from "@/lib/dates";
+import { fimDoTurno, turnoFinalizado } from "@/lib/dates";
 import { notificarPagamentoDaEscala } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
@@ -16,26 +16,16 @@ export async function GET(request: Request) {
     }
   }
 
-  const hoje = hojeISO();
-  const agora = agoraHHMM();
-
   const pendentes = await prisma.escala.findMany({
     where: { checkinEm: { not: null }, checkoutEm: null },
-    select: { id: true, data: true, horaFim: true, valor: true },
+    select: { id: true, data: true, horaInicio: true, horaFim: true, valor: true },
   });
 
   let fechadas = 0;
   for (const e of pendentes) {
-    const encerrou =
-      e.data < hoje || (e.data === hoje && e.horaFim != null && agora >= e.horaFim);
-    if (!encerrou) continue;
+    if (!turnoFinalizado(e.data, e.horaInicio, e.horaFim)) continue;
 
-    let saida = new Date();
-    if (e.horaFim) {
-      const [a, m, d] = e.data.split("-").map(Number);
-      const [h, mm] = e.horaFim.split(":").map(Number);
-      saida = new Date(a, m - 1, d, h, mm);
-    }
+    const saida = e.horaFim ? fimDoTurno(e.data, e.horaInicio, e.horaFim) : new Date();
 
     await prisma.escala.update({
       where: { id: e.id },

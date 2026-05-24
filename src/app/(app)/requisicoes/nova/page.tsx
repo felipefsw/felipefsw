@@ -11,6 +11,7 @@ import {
 } from "@/components/ui";
 import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
 import { FUNCOES } from "@/lib/funcoes";
+import { opcoesHoraFim } from "@/lib/horariosOpcoes";
 import FuncaoValor from "@/components/FuncaoValor";
 import { createRequisicao } from "../actions";
 
@@ -109,14 +110,13 @@ export default async function NovaRequisicaoPage() {
               <label className={labelClass} htmlFor="horaFim">
                 Fim *
               </label>
-              <input
-                id="horaFim"
-                name="horaFim"
-                type="time"
-                required
-                defaultValue="23:00"
-                className={inputClass}
-              />
+              <select id="horaFim" name="horaFim" required defaultValue="23:00" className={inputClass}>
+                {opcoesHoraFim().map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

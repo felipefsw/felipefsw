@@ -36,9 +36,11 @@ export function valorProporcional(
 ): number {
   if (!horaInicio || !horaFim) return valor;
   const ini = minutos(horaInicio);
-  const fim = minutos(horaFim);
-  if (fim <= ini) return valor;
-  const saidaMin = saida.getHours() * 60 + saida.getMinutes();
+  let fim = minutos(horaFim);
+  if (fim <= ini) fim += 24 * 60; // diária que passa da meia-noite
+  let saidaMin = saida.getHours() * 60 + saida.getMinutes();
+  // Se o turno cruza a meia-noite e a saída foi de madrugada, soma 24h.
+  if (fim > 24 * 60 && saidaMin < ini) saidaMin += 24 * 60;
   if (saidaMin >= fim) return valor;
   if (saidaMin <= ini) return 0;
   const proporcao = (saidaMin - ini) / (fim - ini);

@@ -11,11 +11,11 @@ import SubmitButton from "@/components/SubmitButton";
 import CopyButton from "@/components/CopyButton";
 import PushToggleLoja from "@/components/PushToggleLoja";
 import FotosLojaUpload from "@/components/FotosLojaUpload";
+import BotaoBloquear from "@/components/BotaoBloquear";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   alternarLimiteSemana,
   aprovarCandidato,
-  bloquearDiaristaLoja,
   convocarDiarista,
   criarRequisicaoLoja,
   desbloquearDiaristaLoja,
@@ -52,7 +52,7 @@ export default async function LojaHome({
   const lojaId = ctx.lojaId;
 
   const agora = new Date();
-  const [requisicoes, escalas, bloqueios, loja] = await Promise.all([
+  const [requisicoes, escalas, bloqueios, loja, convocacoesPend] = await Promise.all([
     prisma.requisicao.findMany({
       where: { lojaId },
       include: {
@@ -89,7 +89,15 @@ export default async function LojaHome({
       where: { id: lojaId },
       select: { permiteMais2Semana: true, fotos: true, vantagens: true },
     }),
+    prisma.convocacao.findMany({
+      where: { lojaId, status: "PENDENTE" },
+      select: { diaristaId: true, data: true },
+    }),
   ]);
+
+  // Convocações pendentes (para mostrar "✓ convocado").
+  const convocadoData = new Set(convocacoesPend.map((c) => `${c.diaristaId}|${c.data}`));
+  const convocadoDiarista = new Set(convocacoesPend.map((c) => c.diaristaId));
 
   // Gestor: visão das vagas abertas em TODAS as suas lojas.
   const gestorLojas = ctx.gestorId
@@ -124,7 +132,7 @@ export default async function LojaHome({
 
   // Diárias já realizadas (presente e turno encerrado) — para avaliar.
   const aAvaliar = escalas.filter(
-    (e) => e.presenca === "PRESENTE" && turnoFinalizado(e.data, e.horaFim),
+    (e) => e.presenca === "PRESENTE" && turnoFinalizado(e.data, e.horaInicio, e.horaFim),
   );
   // A loja precisa avaliar antes de abrir novas vagas / convocar.
   const pendentes = aAvaliar.filter((e) => !e.avaliacao).length;
@@ -500,16 +508,22 @@ export default async function LojaHome({
                                   </span>
                                 )}
                               </span>
-                              <form action={convocarDiarista}>
-                                <input type="hidden" name="diaristaId" value={d.id} />
-                                <input type="hidden" name="data" value={r.data} />
-                                <SubmitButton
-                                  pendingLabel="…"
-                                  className="shrink-0 rounded-lg border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100"
-                                >
-                                  Convocar {d.nome.split(" ")[0]}
-                                </SubmitButton>
-                              </form>
+                              {convocadoData.has(`${d.id}|${r.data}`) ? (
+                                <span className="shrink-0 rounded-lg bg-green-100 px-2.5 py-1.5 text-xs font-semibold text-green-700">
+                                  ✓ convocado
+                                </span>
+                              ) : (
+                                <form action={convocarDiarista}>
+                                  <input type="hidden" name="diaristaId" value={d.id} />
+                                  <input type="hidden" name="data" value={r.data} />
+                                  <SubmitButton
+                                    pendingLabel="…"
+                                    className="shrink-0 rounded-lg border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100"
+                                  >
+                                    Convocar {d.nome.split(" ")[0]}
+                                  </SubmitButton>
+                                </form>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -633,51 +647,37 @@ export default async function LojaHome({
                       )}
                     </div>
                   ) : (
-                    <form
-                      action={bloquearDiaristaLoja}
-                      className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2"
-                    >
-                      <input type="hidden" name="diaristaId" value={d.id} />
-                      <select
-                        name="dias"
-                        defaultValue="7"
-                        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm"
-                      >
-                        <option value="7">7 dias</option>
-                        <option value="14">14 dias</option>
-                        <option value="21">21 dias</option>
-                      </select>
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-red-200 bg-white px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50"
-                      >
-                        Bloquear
-                      </button>
-                    </form>
+                    <div className="mt-2 flex justify-end border-t border-gray-100 pt-2">
+                      <BotaoBloquear diaristaId={d.id} />
+                    </div>
                   )}
 
                   {pendentes === 0 ? (
-                    <form
-                      action={convocarDiarista}
-                      className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2"
-                    >
-                      <input type="hidden" name="diaristaId" value={d.id} />
-                      <input
-                        type="date"
-                        name="data"
-                        required
-                        min={hojeISO()}
-                        max={maxAgendamentoISO()}
-                        defaultValue={hojeISO()}
-                        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm"
-                      />
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-orange-700 px-3 py-1 text-sm font-medium text-white hover:bg-orange-800"
-                      >
-                        Convocar
-                      </button>
-                    </form>
+                    <div className="mt-2 border-t border-gray-100 pt-2">
+                      {convocadoDiarista.has(d.id) && (
+                        <p className="mb-1 text-xs font-semibold text-green-700">
+                          ✓ convocado (aguardando resposta)
+                        </p>
+                      )}
+                      <form action={convocarDiarista} className="flex items-center gap-2">
+                        <input type="hidden" name="diaristaId" value={d.id} />
+                        <input
+                          type="date"
+                          name="data"
+                          required
+                          min={hojeISO()}
+                          max={maxAgendamentoISO()}
+                          defaultValue={hojeISO()}
+                          className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm"
+                        />
+                        <SubmitButton
+                          pendingLabel="Convocando…"
+                          className="rounded-lg bg-orange-700 px-3 py-1 text-sm font-medium text-white hover:bg-orange-800"
+                        >
+                          Convocar
+                        </SubmitButton>
+                      </form>
+                    </div>
                   ) : null}
                 </Card>
               );

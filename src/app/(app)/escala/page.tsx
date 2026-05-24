@@ -168,7 +168,7 @@ export default async function EscalaPage({
                           >
                             ★ avaliada
                           </Link>
-                        ) : turnoFinalizado(e.data, e.horaFim) && e.presenca === "PRESENTE" ? (
+                        ) : turnoFinalizado(e.data, e.horaInicio, e.horaFim) && e.presenca === "PRESENTE" ? (
                           <Link
                             href={`/escala/${e.id}/avaliar`}
                             className="rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"

@@ -77,14 +77,29 @@ export function isHHMM(s: string): boolean {
 }
 
 /**
- * Diz se o turno de uma escala já terminou, comparando com a data/hora de hoje.
- * Se não houver horário de fim, considera terminado quando a data já passou.
+ * Data/hora em que o turno termina. Se o fim for menor que o início,
+ * considera que a diária passa da meia-noite (termina no dia seguinte).
  */
-export function turnoFinalizado(data: string, horaFim: string | null): boolean {
-  const hoje = hojeISO();
-  if (data < hoje) return true;
-  if (data > hoje) return false;
-  // mesmo dia
-  if (!horaFim) return false;
-  return agoraHHMM() >= horaFim;
+export function fimDoTurno(data: string, horaInicio: string | null, horaFim: string | null): Date {
+  const [a, m, d] = data.split("-").map(Number);
+  const [hf, mf] = (horaFim ?? "23:59").split(":").map(Number);
+  const dt = new Date(a, m - 1, d, hf, mf);
+  if (horaInicio && horaFim && horaFim < horaInicio) {
+    dt.setDate(dt.getDate() + 1); // passou da meia-noite
+  }
+  return dt;
 }
+
+/**
+ * Diz se o turno de uma escala já terminou (considerando diárias que passam
+ * da meia-noite). Sem horário de fim, considera terminado quando a data já passou.
+ */
+export function turnoFinalizado(
+  data: string,
+  horaInicio: string | null,
+  horaFim: string | null,
+): boolean {
+  if (!horaFim) return data < hojeISO();
+  return new Date() >= fimDoTurno(data, horaInicio, horaFim);
+}
+

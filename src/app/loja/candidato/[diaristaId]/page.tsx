@@ -40,7 +40,13 @@ export default async function CandidatoPage({
   });
   if (!diarista) notFound();
 
-  const medalhas = await medalhasDoDiarista(diaristaId);
+  const [medalhas, convocacoesPend] = await Promise.all([
+    medalhasDoDiarista(diaristaId),
+    prisma.convocacao.findMany({
+      where: { lojaId: ctx.lojaId, diaristaId, status: "PENDENTE" },
+      select: { data: true },
+    }),
+  ]);
   const presentes = diarista.escalas.filter((e) => e.presenca === "PRESENTE");
   const totalDiarias = presentes.length;
   const nota =
@@ -100,6 +106,13 @@ export default async function CandidatoPage({
             />
           )}
         </div>
+
+        {convocacoesPend.length > 0 && (
+          <p className="mt-3 border-t border-gray-100 pt-3 text-xs font-semibold text-green-700">
+            ✓ convocado para {convocacoesPend.map((c) => formatDate(c.data)).join(", ")} (aguardando
+            resposta)
+          </p>
+        )}
 
         <form action={convocarDiarista} className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
           <input type="hidden" name="diaristaId" value={diarista.id} />

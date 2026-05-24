@@ -22,9 +22,9 @@ async function lojaSessaoId(): Promise<string> {
 async function temPendenteAvaliacao(lojaId: string): Promise<boolean> {
   const escalas = await prisma.escala.findMany({
     where: { lojaId, presenca: "PRESENTE" },
-    select: { data: true, horaFim: true, avaliacao: { select: { id: true } } },
+    select: { data: true, horaInicio: true, horaFim: true, avaliacao: { select: { id: true } } },
   });
-  return escalas.some((e) => !e.avaliacao && turnoFinalizado(e.data, e.horaFim));
+  return escalas.some((e) => !e.avaliacao && turnoFinalizado(e.data, e.horaInicio, e.horaFim));
 }
 
 export async function criarRequisicaoLoja(formData: FormData) {
@@ -298,9 +298,20 @@ export async function convocarDiarista(formData: FormData) {
   if (!diaristaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
   if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
-  await prisma.convocacao.create({
-    data: { lojaId, diaristaId, data },
-  });
+  // Garante que o diarista existe e evita convocação duplicada (idempotente).
+  const [diarista, jaConvocado] = await Promise.all([
+    prisma.diarista.findUnique({ where: { id: diaristaId }, select: { id: true } }),
+    prisma.convocacao.findFirst({
+      where: { lojaId, diaristaId, data, status: "PENDENTE" },
+      select: { id: true },
+    }),
+  ]);
+  if (!diarista || jaConvocado) {
+    revalidatePath("/loja");
+    return;
+  }
+
+  await prisma.convocacao.create({ data: { lojaId, diaristaId, data } });
   revalidatePath("/loja");
 }
 
