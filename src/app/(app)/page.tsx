@@ -9,24 +9,51 @@ export const dynamic = "force-dynamic";
 export default async function InicioPage() {
   const hoje = hojeISO();
 
-  const [escalasHoje, pendentes, aPagar, diaristasAtivas, lojasAtivas, requisicoesAbertas] =
-    await Promise.all([
-      prisma.escala.findMany({
-        where: { data: hoje },
-        include: { diarista: true, loja: true },
-        orderBy: { criadoEm: "asc" },
-      }),
-      prisma.escala.count({ where: { data: { lte: hoje }, presenca: "PENDENTE" } }),
-      prisma.escala.findMany({
-        where: { presenca: "PRESENTE", pago: false },
-        select: { valor: true },
-      }),
-      prisma.diarista.count({ where: { ativo: true } }),
-      prisma.loja.count({ where: { ativo: true } }),
-      prisma.requisicao.count({ where: { status: "ABERTA" } }),
-    ]);
+  const [
+    escalasHoje,
+    pendentes,
+    aPagar,
+    diaristasAtivas,
+    lojasAtivas,
+    requisicoesAbertas,
+    vagasAbertasHoje,
+    faltasHoje,
+  ] = await Promise.all([
+    prisma.escala.findMany({
+      where: { data: hoje },
+      include: { diarista: true, loja: true },
+      orderBy: { criadoEm: "asc" },
+    }),
+    prisma.escala.count({ where: { data: { lte: hoje }, presenca: "PENDENTE" } }),
+    prisma.escala.findMany({
+      where: { presenca: "PRESENTE", pago: false },
+      select: { valor: true },
+    }),
+    prisma.diarista.count({ where: { ativo: true } }),
+    prisma.loja.count({ where: { ativo: true } }),
+    prisma.requisicao.count({ where: { status: "ABERTA" } }),
+    prisma.requisicao.count({ where: { status: "ABERTA", data: hoje } }),
+    prisma.escala.count({ where: { data: hoje, presenca: "FALTOU" } }),
+  ]);
 
   const totalAPagar = aPagar.reduce((s, e) => s + e.valor, 0);
+
+  // Semáforo do dia
+  const semaforo =
+    vagasAbertasHoje > 0
+      ? {
+          cls: "border-red-300 bg-red-50 text-red-800",
+          txt: `🔴 ${vagasAbertasHoje} vaga(s) em aberto para hoje — precisa preencher`,
+        }
+      : faltasHoje > 0
+        ? {
+            cls: "border-amber-300 bg-amber-50 text-amber-800",
+            txt: `🟡 ${faltasHoje} falta(s) registrada(s) hoje`,
+          }
+        : {
+            cls: "border-green-300 bg-green-50 text-green-800",
+            txt: "🟢 Tudo certo para hoje",
+          };
 
   return (
     <div className="space-y-5">
@@ -34,6 +61,12 @@ export default async function InicioPage() {
         <h1 className="text-xl font-bold text-gray-900">Início</h1>
         <p className="text-sm text-gray-500">Resumo de hoje</p>
       </div>
+
+      <Link href={vagasAbertasHoje > 0 ? "/requisicoes" : "/escala"}>
+        <div className={`rounded-xl border p-3 text-sm font-semibold ${semaforo.cls}`}>
+          {semaforo.txt}
+        </div>
+      </Link>
 
       <div className="grid grid-cols-2 gap-3">
         <Link href="/escala">

@@ -9,6 +9,7 @@ import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   bloquearDiaristaLoja,
   convocarDiarista,
+  criarRequisicaoLoja,
   desbloquearDiaristaLoja,
   registrarCheckout,
 } from "./actions";
@@ -73,6 +74,11 @@ export default async function LojaHome({
   const hoje = hojeISO();
   const hojeEscalas = escalas.filter((e) => e.data === hoje);
 
+  // Atalho "pedir de novo": usa a requisição mais recente como modelo.
+  const ultima = requisicoes.length
+    ? [...requisicoes].sort((a, b) => b.criadoEm.getTime() - a.criadoEm.getTime())[0]
+    : null;
+
   // Diaristas distintos que já vieram, com datas e notas dadas por esta loja.
   type Info = {
     nome: string;
@@ -127,6 +133,27 @@ export default async function LojaHome({
           Você tem {pendentes} diária(s) para avaliar. Avalie os diaristas (seção abaixo) antes de
           abrir novas vagas ou convocar.
         </div>
+      )}
+
+      {pendentes === 0 && ultima && (
+        <form action={criarRequisicaoLoja}>
+          <input type="hidden" name="data" value={hoje} />
+          <input type="hidden" name="horaInicio" value={ultima.horaInicio} />
+          <input type="hidden" name="horaFim" value={ultima.horaFim} />
+          <input type="hidden" name="funcao" value={ultima.funcao ?? ""} />
+          <input type="hidden" name="quantidade" value={String(ultima.quantidade)} />
+          <input type="hidden" name="valorDiaria" value={String(ultima.valorDiaria / 100)} />
+          <button
+            type="submit"
+            className="w-full rounded-xl border border-orange-200 bg-orange-50 p-3 text-left text-sm font-medium text-orange-900 hover:bg-orange-100"
+          >
+            🔁 Pedir de novo (hoje):{" "}
+            <strong>
+              {ultima.quantidade} {ultima.funcao ?? "diarista(s)"}
+            </strong>{" "}
+            · {ultima.horaInicio}–{ultima.horaFim} · {formatBRL(ultima.valorDiaria)}
+          </button>
+        </form>
       )}
 
       {hojeEscalas.length > 0 && (
