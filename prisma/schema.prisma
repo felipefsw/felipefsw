@@ -27,6 +27,8 @@ model Loja {
   latitude    Float?
   longitude   Float?
   ativo       Boolean      @default(true)
+  // Se true, a loja assume o risco e permite o mesmo diarista fazer mais de 2 diárias na semana.
+  permiteMais2Semana Boolean @default(false)
   criadoEm    DateTime     @default(now())
   gestorId    String?
   gestor      Gestor?      @relation(fields: [gestorId], references: [id], onDelete: SetNull)

@@ -12,6 +12,7 @@ type LojaDefaults = {
   gestorId?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  permiteMais2Semana?: boolean;
 };
 
 export default function LojaForm({
@@ -122,6 +123,19 @@ export default function LojaForm({
           defaultLat={loja?.latitude != null ? String(loja.latitude) : ""}
           defaultLng={loja?.longitude != null ? String(loja.longitude) : ""}
         />
+
+        <label className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <input
+            type="checkbox"
+            name="permiteMais2Semana"
+            defaultChecked={loja?.permiteMais2Semana ?? false}
+            className="mt-0.5 h-5 w-5 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
+          />
+          <span className="text-sm text-gray-700">
+            Permitir o mesmo diarista fazer <strong>mais de 2 diárias por semana</strong> nesta loja
+            (assumindo o risco de vínculo trabalhista).
+          </span>
+        </label>
 
         <div className="flex gap-2 pt-1">
           <button type="submit" className={btnPrimary}>

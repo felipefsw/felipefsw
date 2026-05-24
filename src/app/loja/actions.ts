@@ -8,6 +8,7 @@ import { dentroDaJanelaAgendamento, isHHMM, isISODate, turnoFinalizado } from "@
 import { parseBRLToCents } from "@/lib/format";
 import { valorProporcional } from "@/lib/geo";
 import { notificarNovaDiaria } from "@/lib/push";
+import { podeMaisUmaNaSemana } from "@/lib/limites";
 
 // Loja ativa da sessão (loja avulsa ou gestor). Redireciona se não houver.
 async function lojaSessaoId(): Promise<string> {
@@ -126,45 +127,36 @@ export async function avaliarComEstrelas(escalaId: string, estrelas: number) {
   revalidatePath(`/diaristas/${escala.diaristaId}`);
 }
 
-export async function decidirRequisicao(formData: FormData) {
+// Aprova UM candidato com 1 clique. Cria a escala, marca a inscrição e fecha
+// a requisição quando todas as vagas forem preenchidas.
+export async function aprovarCandidato(requisicaoId: string, diaristaId: string) {
   const lojaId = await lojaSessaoId();
-  const id = String(formData.get("id") ?? "");
-  const diaristaIds = formData.getAll("diaristaIds").map(String).filter(Boolean);
-  if (!id || diaristaIds.length === 0) return;
+  if (!requisicaoId || !diaristaId) return;
 
-  const requisicao = await prisma.requisicao.findUnique({ where: { id } });
+  const requisicao = await prisma.requisicao.findUnique({
+    where: { id: requisicaoId },
+    include: { _count: { select: { escalas: true } } },
+  });
   if (!requisicao || requisicao.lojaId !== lojaId || requisicao.status !== "ABERTA") return;
+  if (requisicao._count.escalas >= requisicao.quantidade) return;
 
-  // só aceita quem se inscreveu, sem conflito de agenda e sem bloqueio nesta loja
-  const [inscritos, jaEscalados, bloqueados] = await Promise.all([
-    prisma.inscricao.findMany({
-      where: { requisicaoId: id, diaristaId: { in: diaristaIds } },
-      select: { diaristaId: true },
+  const [inscrito, jaNoDia, bloqueio] = await Promise.all([
+    prisma.inscricao.findUnique({
+      where: { requisicaoId_diaristaId: { requisicaoId, diaristaId } },
+      select: { id: true },
     }),
-    prisma.escala.findMany({
-      where: { data: requisicao.data, diaristaId: { in: diaristaIds } },
-      select: { diaristaId: true },
-    }),
-    prisma.bloqueio.findMany({
-      where: {
-        lojaId,
-        diaristaId: { in: diaristaIds },
-        OR: [{ ate: null }, { ate: { gt: new Date() } }],
-      },
-      select: { diaristaId: true },
+    prisma.escala.findFirst({ where: { data: requisicao.data, diaristaId }, select: { id: true } }),
+    prisma.bloqueio.findFirst({
+      where: { lojaId, diaristaId, OR: [{ ate: null }, { ate: { gt: new Date() } }] },
+      select: { id: true },
     }),
   ]);
-  const inscritosSet = new Set(inscritos.map((i) => i.diaristaId));
-  const ocupados = new Set(jaEscalados.map((e) => e.diaristaId));
-  const bloq = new Set(bloqueados.map((b) => b.diaristaId));
-  const escolhidos = diaristaIds.filter(
-    (d) => inscritosSet.has(d) && !ocupados.has(d) && !bloq.has(d),
-  );
-  if (escolhidos.length === 0) return;
+  if (!inscrito || jaNoDia || bloqueio) return;
+  if (!(await podeMaisUmaNaSemana(diaristaId, lojaId, requisicao.data))) return;
 
   await prisma.$transaction([
-    prisma.escala.createMany({
-      data: escolhidos.map((diaristaId) => ({
+    prisma.escala.create({
+      data: {
         diaristaId,
         lojaId: requisicao.lojaId,
         data: requisicao.data,
@@ -172,18 +164,35 @@ export async function decidirRequisicao(formData: FormData) {
         horaFim: requisicao.horaFim,
         valor: requisicao.valorDiaria,
         requisicaoId: requisicao.id,
-      })),
+      },
     }),
-    prisma.requisicao.update({ where: { id }, data: { status: "ATENDIDA" } }),
-    prisma.inscricao.updateMany({
-      where: { requisicaoId: id, diaristaId: { in: escolhidos } },
+    prisma.inscricao.update({
+      where: { requisicaoId_diaristaId: { requisicaoId, diaristaId } },
       data: { status: "ACEITA" },
     }),
   ]);
 
+  if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
+    await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });
+  }
+
   revalidatePath("/loja");
   revalidatePath("/requisicoes");
-  redirect("/loja");
+}
+
+// Liga/desliga a permissão de mais de 2 diárias por semana (a loja assume o risco).
+export async function alternarLimiteSemana() {
+  const lojaId = await lojaSessaoId();
+  const loja = await prisma.loja.findUnique({
+    where: { id: lojaId },
+    select: { permiteMais2Semana: true },
+  });
+  if (!loja) return;
+  await prisma.loja.update({
+    where: { id: lojaId },
+    data: { permiteMais2Semana: !loja.permiteMais2Semana },
+  });
+  revalidatePath("/loja");
 }
 
 export async function registrarCheckout(formData: FormData) {

@@ -28,6 +28,7 @@ export async function createLoja(formData: FormData) {
       gestorId: gestorId || null,
       latitude: coord(formData, "latitude"),
       longitude: coord(formData, "longitude"),
+      permiteMais2Semana: formData.get("permiteMais2Semana") != null,
     },
   });
   revalidatePath("/lojas");
@@ -55,6 +56,7 @@ export async function updateLoja(formData: FormData) {
       gestorId: gestorId || null,
       latitude: coord(formData, "latitude"),
       longitude: coord(formData, "longitude"),
+      permiteMais2Semana: formData.get("permiteMais2Semana") != null,
     },
   });
   revalidatePath("/lojas");

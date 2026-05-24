@@ -7,14 +7,22 @@ import { hojeISO, maxAgendamentoISO, turnoFinalizado } from "@/lib/dates";
 import { corDoTurno } from "@/lib/horarios";
 import Avatar from "@/components/Avatar";
 import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
+import SubmitButton from "@/components/SubmitButton";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
+  alternarLimiteSemana,
+  aprovarCandidato,
   bloquearDiaristaLoja,
   convocarDiarista,
   criarRequisicaoLoja,
   desbloquearDiaristaLoja,
   registrarCheckout,
 } from "./actions";
+
+function notaDe(avaliacoes: { estrelas: number }[]): number | null {
+  if (avaliacoes.length < 5) return null;
+  return avaliacoes.reduce((s, a) => s + a.estrelas, 0) / avaliacoes.length;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +47,26 @@ export default async function LojaHome({
   const lojaId = ctx.lojaId;
 
   const agora = new Date();
-  const [requisicoes, escalas, bloqueios] = await Promise.all([
+  const [requisicoes, escalas, bloqueios, loja] = await Promise.all([
     prisma.requisicao.findMany({
       where: { lojaId },
-      include: { _count: { select: { escalas: true, inscricoes: true } } },
+      include: {
+        _count: { select: { escalas: true, inscricoes: true } },
+        inscricoes: {
+          include: {
+            diarista: {
+              select: {
+                id: true,
+                nome: true,
+                funcao: true,
+                fotoUrl: true,
+                avaliacoes: { select: { estrelas: true }, orderBy: { criadoEm: "desc" }, take: 5 },
+                _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
+              },
+            },
+          },
+        },
+      },
       orderBy: [{ data: "asc" }, { criadoEm: "desc" }],
     }),
     prisma.escala.findMany({
@@ -56,6 +80,7 @@ export default async function LojaHome({
     prisma.bloqueio.findMany({
       where: { lojaId, OR: [{ ate: null }, { ate: { gt: agora } }] },
     }),
+    prisma.loja.findUnique({ where: { id: lojaId }, select: { permiteMais2Semana: true } }),
   ]);
 
   const bloqueioPorDiarista = new Map<string, { ate: Date | null; origem: string }>();
@@ -120,6 +145,18 @@ export default async function LojaHome({
       nota: v.qtdNotas ? v.somaNotas / v.qtdNotas : null,
     }))
     .sort((a, b) => b.vezes - a.vezes);
+
+  // Só as diárias que faltam avaliar (para o atalho "Avalie para liberar").
+  const pendentesList = aAvaliar.filter((e) => !e.avaliacao);
+
+  // Ranking dos diaristas desta loja (melhor nota primeiro; sem nota vai pro fim).
+  const topDiaristas = [...diaristas].sort((a, b) => {
+    if (a.nota === null && b.nota === null) return b.vezes - a.vezes;
+    if (a.nota === null) return 1;
+    if (b.nota === null) return -1;
+    if (b.nota !== a.nota) return b.nota - a.nota;
+    return b.vezes - a.vezes;
+  });
 
   return (
     <div className="space-y-5">
@@ -220,15 +257,17 @@ export default async function LojaHome({
           <div className="space-y-3">
             {requisicoes.map((r) => {
               const st = statusLabel(r.status);
+              const turno = corDoTurno(r.horaInicio);
+              const faltam = r.quantidade - r._count.escalas;
               return (
-                <div
-                  key={r.id}
-                  className={`rounded-xl border p-4 shadow-sm ${corDoTurno(r.horaInicio).card}`}
-                >
+                <div key={r.id} className={`rounded-xl border p-4 shadow-sm ${turno.card}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm capitalize text-gray-700">
-                        {formatDateWithWeekday(r.data)} · {r.horaInicio}–{r.horaFim}
+                        {formatDateWithWeekday(r.data)} ·{" "}
+                        <span className={`rounded px-1.5 py-0.5 font-medium ${turno.chip}`}>
+                          {r.horaInicio}–{r.horaFim}
+                        </span>
                       </p>
                       <p className="mt-1 text-sm text-gray-600">
                         <strong>{r.quantidade}</strong> diarista(s)
@@ -242,15 +281,67 @@ export default async function LojaHome({
                       {st.txt}
                     </span>
                   </div>
+
                   {r.status === "ABERTA" && (
-                    <Link
-                      href={`/loja/requisicao/${r.id}`}
-                      className="mt-2 inline-block rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
-                    >
-                      {r._count.inscricoes > 0
-                        ? `Ver candidatos (${r._count.inscricoes})`
-                        : "Ver / decidir"}
-                    </Link>
+                    <div className="mt-3 space-y-2 border-t border-black/5 pt-3">
+                      {r.inscricoes.length === 0 ? (
+                        <p className="text-xs text-gray-500">
+                          Ninguém se candidatou ainda. Você será avisado quando alguém pegar.
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-xs font-medium text-gray-600">
+                            {faltam > 0
+                              ? "Clique no candidato que quer aprovar:"
+                              : "Vagas preenchidas."}
+                          </p>
+                          {r.inscricoes.map((insc) => {
+                            const d = insc.diarista;
+                            const nota = notaDe(d.avaliacoes);
+                            return (
+                              <div
+                                key={insc.id}
+                                className="flex items-center justify-between gap-2 rounded-lg bg-white/70 p-2"
+                              >
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <Avatar
+                                    nome={d.nome}
+                                    fotoUrl={d.fotoUrl}
+                                    className="h-9 w-9"
+                                  />
+                                  <span className="min-w-0">
+                                    <Link
+                                      href={`/loja/candidato/${d.id}`}
+                                      className="block text-[11px] font-medium text-orange-700 underline"
+                                    >
+                                      saber mais
+                                    </Link>
+                                    <span className="block truncate text-sm font-medium text-gray-900">
+                                      {d.nome}
+                                    </span>
+                                    <span className="block text-[11px] text-gray-500">
+                                      {nota !== null ? `★ ${nota.toFixed(1)} · ` : ""}
+                                      {d._count.escalas} diária(s)
+                                      {d.funcao ? ` · ${d.funcao}` : ""}
+                                    </span>
+                                  </span>
+                                </span>
+                                {faltam > 0 && (
+                                  <form action={aprovarCandidato.bind(null, r.id, d.id)}>
+                                    <SubmitButton
+                                      pendingLabel="..."
+                                      className="shrink-0 rounded-lg bg-orange-700 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-800"
+                                    >
+                                      Aprovar
+                                    </SubmitButton>
+                                  </form>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -259,7 +350,36 @@ export default async function LojaHome({
         )}
       </section>
 
-      {aAvaliar.length > 0 && (
+      {topDiaristas.length > 0 && (
+        <section>
+          <h2 className="mb-2 font-semibold text-gray-900">Top diaristas da sua loja</h2>
+          <Card>
+            <ul className="divide-y divide-gray-100">
+              {topDiaristas.slice(0, 10).map((d, i) => (
+                <li key={d.id} className="flex items-center justify-between gap-3 py-2">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="w-6 text-center text-sm font-bold text-gray-400">
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}º`}
+                    </span>
+                    <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-9 w-9" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-gray-900">{d.nome}</span>
+                      <span className="block text-xs text-gray-500">
+                        {d.vezes} diária(s){d.funcao ? ` · ${d.funcao}` : ""}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold text-orange-700">
+                    {d.nota !== null ? `★ ${d.nota.toFixed(1)}` : "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      )}
+
+      {pendentesList.length > 0 && (
         <section id="avaliar-diaristas" className="scroll-mt-4">
           <h2 className="mb-2 font-semibold text-gray-900">Avaliar diaristas</h2>
           <p className="mb-2 text-xs text-gray-500">
@@ -267,7 +387,7 @@ export default async function LojaHome({
           </p>
           <Card>
             <ul className="divide-y divide-gray-100">
-              {aAvaliar.map((e) => (
+              {pendentesList.map((e) => (
                 <li
                   key={e.id}
                   className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2"
@@ -391,6 +511,35 @@ export default async function LojaHome({
             })}
           </div>
         )}
+      </section>
+
+      <section>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <h2 className="font-semibold text-gray-900">Limite de diárias por semana</h2>
+          <p className="mt-1 text-xs text-gray-500">
+            Por padrão, cada diarista pode fazer no máximo <strong>2 diárias por semana</strong> na
+            sua loja, para evitar vínculo trabalhista.
+          </p>
+          <form action={alternarLimiteSemana} className="mt-3 flex items-center justify-between gap-3">
+            <span
+              className={`text-sm font-medium ${loja?.permiteMais2Semana ? "text-red-600" : "text-gray-700"}`}
+            >
+              {loja?.permiteMais2Semana
+                ? "Liberado: mais de 2/semana permitido (você assume o risco)"
+                : "Limite ativo: máximo 2 por semana"}
+            </span>
+            <button
+              type="submit"
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium ${
+                loja?.permiteMais2Semana
+                  ? "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  : "bg-orange-700 text-white hover:bg-orange-800"
+              }`}
+            >
+              {loja?.permiteMais2Semana ? "Reativar limite" : "Liberar +2/semana"}
+            </button>
+          </form>
+        </div>
       </section>
 
       <p className="px-1 text-xs text-gray-400">

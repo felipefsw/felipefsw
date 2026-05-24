@@ -1,21 +1,20 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import {
-  Card,
-  EmptyState,
-  PageHeader,
-  btnPrimary,
-  btnSecondary,
-  labelClass,
-} from "@/components/ui";
+import { Card, EmptyState, PageHeader, btnSecondary } from "@/components/ui";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
+import { corDoTurno } from "@/lib/horarios";
 import { contextoLoja, getSessao } from "@/lib/auth";
-import { medalhasDoDiarista } from "@/lib/medalhas";
 import Avatar from "@/components/Avatar";
-import { decidirRequisicao } from "../../actions";
+import SubmitButton from "@/components/SubmitButton";
+import { aprovarCandidato } from "../../actions";
 
 export const dynamic = "force-dynamic";
+
+function notaDe(avaliacoes: { estrelas: number }[]): number | null {
+  if (avaliacoes.length < 5) return null;
+  return avaliacoes.reduce((s, a) => s + a.estrelas, 0) / avaliacoes.length;
+}
 
 export default async function DecidirRequisicaoPage({
   params,
@@ -29,8 +28,20 @@ export default async function DecidirRequisicaoPage({
   const requisicao = await prisma.requisicao.findUnique({
     where: { id },
     include: {
+      _count: { select: { escalas: true } },
       inscricoes: {
-        include: { diarista: { select: { id: true, nome: true, funcao: true, fotoUrl: true } } },
+        include: {
+          diarista: {
+            select: {
+              id: true,
+              nome: true,
+              funcao: true,
+              fotoUrl: true,
+              avaliacoes: { select: { estrelas: true }, orderBy: { criadoEm: "desc" }, take: 5 },
+              _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
+            },
+          },
+        },
       },
       convidados: { select: { id: true } },
     },
@@ -53,22 +64,19 @@ export default async function DecidirRequisicaoPage({
   }
 
   const candidatos = requisicao.inscricoes;
-  const cabemTodos = candidatos.length <= requisicao.quantidade;
-
-  const medalhasMap = new Map<string, { emoji: string; nome: string }[]>();
-  await Promise.all(
-    candidatos.map(async (c) => {
-      medalhasMap.set(c.diarista.id, await medalhasDoDiarista(c.diarista.id));
-    }),
-  );
+  const turno = corDoTurno(requisicao.horaInicio);
+  const faltam = requisicao.quantidade - requisicao._count.escalas;
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Escolher diaristas" subtitle="Candidatos que pegaram esta diária" />
+      <PageHeader title="Escolher diaristas" subtitle="Toque em Aprovar para confirmar o candidato" />
 
-      <Card>
+      <Card className={turno.card}>
         <p className="text-sm capitalize text-gray-700">
-          {formatDateWithWeekday(requisicao.data)} · {requisicao.horaInicio}–{requisicao.horaFim}
+          {formatDateWithWeekday(requisicao.data)} ·{" "}
+          <span className={`rounded px-1.5 py-0.5 font-medium ${turno.chip}`}>
+            {requisicao.horaInicio}–{requisicao.horaFim}
+          </span>
         </p>
         <p className="mt-1 text-sm text-gray-600">
           {requisicao.quantidade} vaga(s)
@@ -76,7 +84,7 @@ export default async function DecidirRequisicaoPage({
           {formatBRL(requisicao.valorDiaria)}
         </p>
         <p className="mt-1 text-xs text-gray-500">
-          Você pode escolher a qualquer momento, desde a criação até a diária.
+          {faltam > 0 ? `Faltam ${faltam} vaga(s).` : "Vagas preenchidas."}
         </p>
       </Card>
 
@@ -85,66 +93,54 @@ export default async function DecidirRequisicaoPage({
           Ninguém pegou esta diária ainda. Quando os diaristas se candidatarem, eles aparecem aqui.
         </EmptyState>
       ) : (
-        <Card>
-          {cabemTodos ? (
-            <p className="mb-2 text-sm text-green-700">
-              ✓ Cabem todos os {candidatos.length} candidato(s). É só confirmar.
-            </p>
-          ) : (
-            <p className="mb-2 text-sm text-amber-700">
-              {candidatos.length} candidatos para {requisicao.quantidade} vaga(s). Escolha quem vai.
-            </p>
-          )}
-          <form action={decidirRequisicao} className="space-y-4">
-            <input type="hidden" name="id" value={requisicao.id} />
-            <div>
-              <p className={labelClass}>Candidatos</p>
-              <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
-                {candidatos.map((c) => (
-                  <li key={c.id}>
-                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        name="diaristaIds"
-                        value={c.diarista.id}
-                        defaultChecked={cabemTodos}
-                        className="h-5 w-5 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
-                      />
-                      <Avatar nome={c.diarista.nome} fotoUrl={c.diarista.fotoUrl} className="h-8 w-8" />
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-gray-900">{c.diarista.nome}</span>
-                        {c.diarista.funcao && (
-                          <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
-                            {c.diarista.funcao}
-                          </span>
-                        )}
-                        {convidadosSet.has(c.diarista.id) && (
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                            convidado
-                          </span>
-                        )}
-                        {(medalhasMap.get(c.diarista.id) ?? []).map((mm) => (
-                          <span key={mm.nome} title={mm.nome}>
-                            {mm.emoji}
-                          </span>
-                        ))}
+        <div className="space-y-2">
+          {candidatos.map((c) => {
+            const nota = notaDe(c.diarista.avaliacoes);
+            return (
+              <Card key={c.id}>
+                <Link
+                  href={`/loja/candidato/${c.diarista.id}`}
+                  className="text-xs font-medium text-orange-700 underline"
+                >
+                  Saber mais sobre esta pessoa →
+                </Link>
+                <div className="mt-1 flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Avatar nome={c.diarista.nome} fotoUrl={c.diarista.fotoUrl} className="h-10 w-10" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-gray-900">
+                        {c.diarista.nome}
                       </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" className={btnPrimary}>
-                Confirmar escolha
-              </button>
-              <Link href="/loja" className={btnSecondary}>
-                Voltar
-              </Link>
-            </div>
-          </form>
-        </Card>
+                      <span className="block text-xs text-gray-500">
+                        {nota !== null ? `★ ${nota.toFixed(1)} de 5 · ` : ""}
+                        {c.diarista._count.escalas} diária(s)
+                        {c.diarista.funcao ? ` · ${c.diarista.funcao}` : ""}
+                        {convidadosSet.has(c.diarista.id) ? " · convidado" : ""}
+                      </span>
+                    </span>
+                  </span>
+                  {faltam > 0 ? (
+                    <form action={aprovarCandidato.bind(null, requisicao.id, c.diarista.id)}>
+                      <SubmitButton
+                        pendingLabel="Aprovando…"
+                        className="shrink-0 rounded-lg bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-800"
+                      >
+                        Aprovar
+                      </SubmitButton>
+                    </form>
+                  ) : (
+                    <span className="shrink-0 text-xs text-gray-400">vagas cheias</span>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       )}
+
+      <Link href="/loja" className={btnSecondary}>
+        Voltar
+      </Link>
     </div>
   );
 }

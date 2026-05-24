@@ -13,6 +13,7 @@ import Avatar from "@/components/Avatar";
 import FotoUpload from "@/components/FotoUpload";
 import SubmitButton from "@/components/SubmitButton";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
+import MapaDiariasPerto from "@/components/MapaDiariasPerto";
 import {
   confirmarPresenca,
   desistirDaDiaria,
@@ -109,6 +110,21 @@ export default async function DiaristaLinkPage({
   const peso = (r: { id: string; lojaId: string }) =>
     (convidadoEm.has(r.id) ? 2 : 0) + (ehPreferida(r.lojaId) ? 1 : 0);
   disponiveis.sort((a, b) => peso(b) - peso(a));
+
+  // Lojas (únicas, com coordenadas) com diária disponível, para o mapa.
+  const lojasMapa: { id: string; nome: string; lat: number; lng: number }[] = [];
+  const vistosMapa = new Set<string>();
+  for (const r of disponiveis) {
+    if (r.loja.latitude != null && r.loja.longitude != null && !vistosMapa.has(r.lojaId)) {
+      vistosMapa.add(r.lojaId);
+      lojasMapa.push({
+        id: r.lojaId,
+        nome: r.loja.nome,
+        lat: r.loja.latitude,
+        lng: r.loja.longitude,
+      });
+    }
+  }
 
   const medalhas = await medalhasDoDiarista(diarista.id);
 
@@ -209,7 +225,7 @@ export default async function DiaristaLinkPage({
               <p className="text-sm font-semibold text-gray-900">🎁 Bônus de R$ 100 chegando!</p>
               <p className="mt-0.5 text-xs text-gray-500">
                 Faltam {DIARIAS_CASHBACK - diarista._count.avaliacoes} diária(s) bem avaliada(s)
-                (média ≥ 4,5 de 5 ★) para concorrer.
+                (média ≥ 4,5 de 5 ★) para ganhar.
               </p>
               <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
                 <div
@@ -312,6 +328,7 @@ export default async function DiaristaLinkPage({
 
         <section>
           <h2 className="mb-1 font-semibold text-gray-900">Agende sua diária</h2>
+          <MapaDiariasPerto lojas={lojasMapa} />
           <p className="mb-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
             <span>🟦 manhã/tarde</span>
             <span>🟩 tarde</span>
@@ -369,7 +386,10 @@ export default async function DiaristaLinkPage({
                       </>
                     )}
                     <p className="mt-1 text-sm capitalize text-gray-600">
-                      {formatDateWithWeekday(r.data)} · {r.horaInicio}–{r.horaFim}
+                      {formatDateWithWeekday(r.data)} ·{" "}
+                      <span className={`rounded px-1.5 py-0.5 font-medium ${turno.chip}`}>
+                        {r.horaInicio}–{r.horaFim}
+                      </span>
                     </p>
                     <p className="text-sm text-gray-600">
                       {formatBRL(r.valorDiaria)}
@@ -430,7 +450,13 @@ export default async function DiaristaLinkPage({
                         <p className="text-xs text-gray-400">{enderecoCompleto(e.loja)}</p>
                       )}
                       <p className="mt-1 text-sm text-gray-600">
-                        {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim} · ` : ""}
+                        {e.horaInicio && e.horaFim ? (
+                          <span
+                            className={`mr-1 rounded px-1.5 py-0.5 font-medium ${corDoTurno(e.horaInicio).chip}`}
+                          >
+                            {e.horaInicio}–{e.horaFim}
+                          </span>
+                        ) : null}
                         {formatBRL(e.valor)}
                       </p>
                     </div>
@@ -550,7 +576,7 @@ export default async function DiaristaLinkPage({
           </section>
         )}
 
-        <section>
+        <section id="falar-rh" className="scroll-mt-4">
           <h2 className="mb-1 font-semibold text-gray-900">Falar com o RH</h2>
           <p className="mb-2 text-xs text-gray-400">
             Avise atraso, imprevisto ou tire dúvidas. Isso não muda sua nota nem sua presença.
@@ -598,6 +624,14 @@ export default async function DiaristaLinkPage({
           Em caso de dúvida, fale com o responsável.
         </p>
       </main>
+
+      <a
+        href="#falar-rh"
+        aria-label="Falar com o RH"
+        className="fixed bottom-4 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg ring-4 ring-orange-600/20 hover:bg-orange-700"
+      >
+        💬
+      </a>
     </div>
   );
 }

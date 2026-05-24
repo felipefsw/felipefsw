@@ -6,7 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { RAIO_CHECKIN_METROS, distanciaMetros } from "@/lib/geo";
 import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
 import { notificarNovaDiaria } from "@/lib/push";
-import { uploadImagem } from "@/lib/storage";
+import { uploadImagemResultado } from "@/lib/storage";
+import { podeMaisUmaNaSemana } from "@/lib/limites";
 
 export async function fazerCheckin(formData: FormData) {
   const token = String(formData.get("token") ?? "");
@@ -109,19 +110,23 @@ export async function desistirDaDiaria(formData: FormData) {
   redirect(`/d/${token}?desistir=ok`);
 }
 
-export async function uploadFotoDiarista(formData: FormData): Promise<{ ok: boolean }> {
+export async function uploadFotoDiarista(
+  formData: FormData,
+): Promise<{ ok: boolean; erro?: string }> {
   const token = String(formData.get("token") ?? "");
   const foto = formData.get("foto");
-  if (!token || !(foto instanceof File) || foto.size === 0) return { ok: false };
+  if (!token || !(foto instanceof File) || foto.size === 0) {
+    return { ok: false, erro: "Arquivo de foto inválido." };
+  }
 
   const diarista = await prisma.diarista.findUnique({ where: { token }, select: { id: true } });
-  if (!diarista) return { ok: false };
+  if (!diarista) return { ok: false, erro: "Diarista não encontrada." };
 
   const ext = (foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const url = await uploadImagem(foto, `diaristas/${diarista.id}-${Date.now()}.${ext}`);
-  if (!url) return { ok: false };
+  const r = await uploadImagemResultado(foto, `diaristas/${diarista.id}-${Date.now()}.${ext}`);
+  if ("erro" in r) return { ok: false, erro: r.erro };
 
-  await prisma.diarista.update({ where: { id: diarista.id }, data: { fotoUrl: url } });
+  await prisma.diarista.update({ where: { id: diarista.id }, data: { fotoUrl: r.url } });
   revalidatePath(`/d/${token}`);
   return { ok: true };
 }
@@ -171,6 +176,10 @@ export async function responderConvocacao(formData: FormData) {
   if (!convocacao || convocacao.diarista.token !== token || convocacao.status !== "PENDENTE") return;
 
   if (resposta === "ACEITA") {
+    // Respeita o limite de 2 diárias por semana na mesma loja (salvo liberação).
+    if (!(await podeMaisUmaNaSemana(convocacao.diaristaId, convocacao.lojaId, convocacao.data))) {
+      return;
+    }
     await prisma.$transaction([
       prisma.convocacao.update({ where: { id: convocacaoId }, data: { status: "ACEITA" } }),
       prisma.escala.create({
@@ -235,6 +244,9 @@ export async function inscreverNaDiaria(formData: FormData) {
     },
   });
   if (bloqueio) return;
+
+  // No máximo 2 diárias por semana na mesma loja (salvo liberação da loja/RH).
+  if (!(await podeMaisUmaNaSemana(diarista.id, requisicao.lojaId, requisicao.data))) return;
 
   await prisma.inscricao.upsert({
     where: { requisicaoId_diaristaId: { requisicaoId, diaristaId: diarista.id } },

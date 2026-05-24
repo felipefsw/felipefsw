@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseBRLToCents } from "@/lib/format";
 import { dentroDaJanelaAgendamento, hojeISO, inicioDaSemana, isISODate } from "@/lib/dates";
+import { podeMaisUmaNaSemana } from "@/lib/limites";
 
 export async function createEscala(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
@@ -14,6 +15,11 @@ export async function createEscala(formData: FormData) {
   const valorTexto = String(formData.get("valor") ?? "").trim();
 
   if (!diaristaId || !lojaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
+
+  // No máximo 2 diárias por semana na mesma loja (salvo liberação da loja/RH).
+  if (!(await podeMaisUmaNaSemana(diaristaId, lojaId, data))) {
+    redirect(`/escala?inicio=${inicioDaSemana(data)}&erro=limite`);
+  }
 
   let valor = parseBRLToCents(valorTexto);
   if (!valor) {
