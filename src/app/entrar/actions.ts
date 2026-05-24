@@ -3,28 +3,21 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { entrarDiaristaSessao, limparSessao, setSessao } from "@/lib/auth";
-import { conferirSenha, gerarHashSenha, senhaForte } from "@/lib/senha";
+import { conferirSenha } from "@/lib/senha";
 
 const soDigitos = (s: string) => s.replace(/\D/g, "");
 
-// Precisa definir senha quando ainda não há hash (null ou texto legado "123456").
-const precisaDefinirSenha = (senha: string | null | undefined) => !senha || !senha.includes(":");
+// Tem senha definida (hash com ":")? Senão, é primeiro acesso (só pelo link).
+const semSenha = (senha: string | null | undefined) => !senha || !senha.includes(":");
 
-// RH/TI: clica no nome e, no primeiro acesso, cria a senha; depois confere.
+// RH/TI: clica no nome e digita a senha. 1º acesso/reset é só pelo link secreto.
 export async function entrarComoGestao(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const senha = String(formData.get("senha") ?? "");
-  const confirmar = String(formData.get("confirmarSenha") ?? "");
   const m = await prisma.membro.findUnique({ where: { id } });
   if (!m || !m.ativo) redirect("/entrar?perfil=gestao");
-
-  if (precisaDefinirSenha(m.senha)) {
-    if (!senhaForte(senha) || senha !== confirmar)
-      redirect(`/entrar?perfil=gestao&id=${id}&erro=senha`);
-    await prisma.membro.update({ where: { id }, data: { senha: gerarHashSenha(senha) } });
-  } else if (!conferirSenha(senha, m.senha)) {
-    redirect(`/entrar?perfil=gestao&id=${id}&erro=login`);
-  }
+  if (semSenha(m.senha)) redirect(`/entrar?perfil=gestao&id=${id}&erro=semsenha`);
+  if (!conferirSenha(senha, m.senha)) redirect(`/entrar?perfil=gestao&id=${id}&erro=login`);
 
   await setSessao({
     tipo: "gestao",
@@ -35,44 +28,30 @@ export async function entrarComoGestao(formData: FormData) {
   redirect("/");
 }
 
-// Loja (lojista): clica na loja e, no primeiro acesso, cria a senha; depois confere.
+// Loja (lojista): clica na loja e digita a senha. 1º acesso/reset é só pelo link.
 export async function entrarComoLoja(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const senha = String(formData.get("senha") ?? "");
-  const confirmar = String(formData.get("confirmarSenha") ?? "");
   const loja = await prisma.loja.findUnique({ where: { id }, select: { id: true, senha: true } });
   if (!loja) redirect("/entrar?perfil=lojista");
-
-  if (precisaDefinirSenha(loja.senha)) {
-    if (!senhaForte(senha) || senha !== confirmar)
-      redirect(`/entrar?perfil=lojista&id=${id}&erro=senha`);
-    await prisma.loja.update({ where: { id }, data: { senha: gerarHashSenha(senha) } });
-  } else if (!conferirSenha(senha, loja.senha)) {
-    redirect(`/entrar?perfil=lojista&id=${id}&erro=login`);
-  }
+  if (semSenha(loja.senha)) redirect(`/entrar?perfil=lojista&id=${id}&erro=semsenha`);
+  if (!conferirSenha(senha, loja.senha)) redirect(`/entrar?perfil=lojista&id=${id}&erro=login`);
 
   await setSessao({ tipo: "loja", lojaId: loja.id });
   redirect("/loja");
 }
 
-// Gestor: clica no nome e, no primeiro acesso, cria a senha; depois confere.
+// Gestor: clica no nome e digita a senha. 1º acesso/reset é só pelo link secreto.
 export async function entrarComoGestor(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const senha = String(formData.get("senha") ?? "");
-  const confirmar = String(formData.get("confirmarSenha") ?? "");
   const gestor = await prisma.gestor.findUnique({
     where: { id },
     include: { lojas: { where: { ativo: true }, select: { id: true }, orderBy: { nome: "asc" } } },
   });
   if (!gestor || !gestor.ativo) redirect("/entrar?perfil=gestor");
-
-  if (precisaDefinirSenha(gestor.senha)) {
-    if (!senhaForte(senha) || senha !== confirmar)
-      redirect(`/entrar?perfil=gestor&id=${id}&erro=senha`);
-    await prisma.gestor.update({ where: { id }, data: { senha: gerarHashSenha(senha) } });
-  } else if (!conferirSenha(senha, gestor.senha)) {
-    redirect(`/entrar?perfil=gestor&id=${id}&erro=login`);
-  }
+  if (semSenha(gestor.senha)) redirect(`/entrar?perfil=gestor&id=${id}&erro=semsenha`);
+  if (!conferirSenha(senha, gestor.senha)) redirect(`/entrar?perfil=gestor&id=${id}&erro=login`);
 
   await setSessao({ tipo: "gestor", gestorId: gestor.id, lojaId: gestor.lojas[0]?.id ?? "" });
   redirect("/loja");
@@ -93,12 +72,10 @@ export async function entrarDiarista(formData: FormData) {
     // não cadastrado ainda → leva ao cadastro
     redirect("/sou-diarista");
   }
-  // Primeiro acesso (sem senha definida): vai ao link pessoal para criar a senha.
+  // Primeiro acesso é pelo link pessoal (enviado no WhatsApp), não pelo CPF.
   if (!d.senha) {
-    await entrarDiaristaSessao(d.id);
-    redirect(`/d/${d.token}`);
+    redirect("/entrar?perfil=diarista&erro=semsenha");
   }
-  // Já tem senha: confere.
   if (!conferirSenha(senha, d.senha)) {
     redirect("/entrar?perfil=diarista&erro=senha");
   }

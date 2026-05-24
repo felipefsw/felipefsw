@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, inputClass, labelClass, btnPrimary } from "@/components/ui";
-import { createMembro, resetarSenhaMembro, toggleMembroAtivo } from "./actions";
+import LinkAcesso from "@/components/LinkAcesso";
+import { createMembro, gerarLinkSenhaMembro, toggleMembroAtivo } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -116,19 +117,18 @@ export default async function EquipePage({
                       {m.ativo ? "Desativar" : "Reativar"}
                     </button>
                   </form>
-                  {m.senha && (
-                    <form action={resetarSenhaMembro}>
-                      <input type="hidden" name="id" value={m.id} />
-                      <button
-                        type="submit"
-                        className="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
-                      >
-                        Resetar senha
-                      </button>
-                    </form>
-                  )}
+                  <form action={gerarLinkSenhaMembro}>
+                    <input type="hidden" name="id" value={m.id} />
+                    <button
+                      type="submit"
+                      className="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                    >
+                      {m.senha ? "Resetar senha" : "Gerar novo link"}
+                    </button>
+                  </form>
                 </div>
               </div>
+              {m.tokenSenha && <LinkAcesso token={m.tokenSenha} nome={m.nome} />}
             </Card>
           ))}
         </div>

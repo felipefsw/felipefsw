@@ -20,7 +20,8 @@ model Loja {
   id          String       @id @default(cuid())
   nome        String
   cnpj        String?
-  senha       String       @default("123456") // senha do lojista (login por CNPJ + senha)
+  senha       String       @default("123456") // hash da senha (login por nome + senha)
+  tokenSenha  String?      @unique // link secreto p/ definir/resetar a senha (1º acesso)
   cidade      String?
   bairro      String?
   endereco    String?
@@ -64,25 +65,27 @@ model ValorFuncao {
 
 // Gestor: pessoa que administra uma ou mais lojas. Loga com usuário + senha.
 model Gestor {
-  id       String   @id @default(cuid())
-  nome     String
-  usuario  String   @unique
-  senha    String   @default("123456")
-  ativo    Boolean  @default(true)
-  criadoEm DateTime @default(now())
-  lojas    Loja[]   @relation("GestorLojas")
+  id         String   @id @default(cuid())
+  nome       String
+  usuario    String   @unique
+  senha      String   @default("123456")
+  tokenSenha String?  @unique // link secreto p/ definir/resetar a senha
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now())
+  lojas      Loja[]   @relation("GestorLojas")
 }
 
 // Pessoa da equipe interna (RH ou TI). Loga clicando no nome + senha.
 model Membro {
-  id       String   @id @default(cuid())
-  nome     String
-  usuario  String   @unique
-  perfil   String // "rh" | "ti"
-  papel    String?
-  senha    String? // hash; null/sem ":" = primeiro acesso (define a senha)
-  ativo    Boolean  @default(true)
-  criadoEm DateTime @default(now())
+  id         String   @id @default(cuid())
+  nome       String
+  usuario    String   @unique
+  perfil     String // "rh" | "ti"
+  papel      String?
+  senha      String? // hash; null = primeiro acesso (define a senha pelo link)
+  tokenSenha String?  @unique // link secreto p/ definir/resetar a senha
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now())
 }
 
 model Diarista {

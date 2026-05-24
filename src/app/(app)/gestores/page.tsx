@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, inputClass, labelClass, btnPrimary } from "@/components/ui";
-import { atribuirLojasAoGestor, createGestor, toggleGestorAtivo } from "./actions";
+import LinkAcesso from "@/components/LinkAcesso";
+import {
+  atribuirLojasAoGestor,
+  createGestor,
+  gerarLinkSenhaGestor,
+  toggleGestorAtivo,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -42,19 +48,14 @@ export default async function GestoresPage({
             </label>
             <input id="nome" name="nome" required className={inputClass} />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className={labelClass} htmlFor="usuario">
-                Usuário (login) *
-              </label>
-              <input id="usuario" name="usuario" required placeholder="ex.: gestor1" className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="senha">
-                Senha
-              </label>
-              <input id="senha" name="senha" placeholder="padrão 123456" className={inputClass} />
-            </div>
+          <div>
+            <label className={labelClass} htmlFor="usuario">
+              Usuário (login) *
+            </label>
+            <input id="usuario" name="usuario" required placeholder="ex.: gestor1" className={inputClass} />
+            <p className="mt-1 text-xs text-gray-400">
+              A senha é criada pelo gestor no 1º acesso, pelo link que você envia no WhatsApp.
+            </p>
           </div>
 
           <div>
@@ -107,16 +108,29 @@ export default async function GestoresPage({
                     usuário: <strong>{g.usuario}</strong> · {g._count.lojas} loja(s)
                   </p>
                 </div>
-                <form action={toggleGestorAtivo}>
-                  <input type="hidden" name="id" value={g.id} />
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    {g.ativo ? "Desativar" : "Reativar"}
-                  </button>
-                </form>
+                <div className="flex shrink-0 flex-col gap-1.5">
+                  <form action={toggleGestorAtivo}>
+                    <input type="hidden" name="id" value={g.id} />
+                    <button
+                      type="submit"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      {g.ativo ? "Desativar" : "Reativar"}
+                    </button>
+                  </form>
+                  <form action={gerarLinkSenhaGestor}>
+                    <input type="hidden" name="id" value={g.id} />
+                    <button
+                      type="submit"
+                      className="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                    >
+                      {g.tokenSenha ? "Gerar novo link" : "Resetar senha"}
+                    </button>
+                  </form>
+                </div>
               </div>
+
+              {g.tokenSenha && <LinkAcesso token={g.tokenSenha} nome={g.nome} />}
 
               <details className="mt-3 border-t border-gray-100 pt-3">
                 <summary className="cursor-pointer text-sm font-medium text-orange-700">

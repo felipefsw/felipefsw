@@ -24,18 +24,16 @@ function Cabecalho() {
   );
 }
 
-// Etapa de senha (clica no nome → cria a senha no 1º acesso, ou digita para entrar).
+// Etapa de senha: só login. O 1º acesso/reset é pelo link secreto (WhatsApp).
 function CartaoSenha({
   action,
   alvo,
   voltarHref,
-  subtitulo,
   erro,
 }: {
   action: (formData: FormData) => void;
   alvo: { id: string; nome: string; senha: string | null };
   voltarHref: string;
-  subtitulo?: string;
   erro?: string;
 }) {
   const primeiro = precisaDefinir(alvo.senha);
@@ -45,37 +43,30 @@ function CartaoSenha({
         ← escolher outro nome
       </Link>
       <h2 className="font-semibold text-gray-900">{alvo.nome}</h2>
-      <p className="mb-3 mt-1 text-sm text-gray-500">
-        {primeiro ? "Primeiro acesso: crie a sua senha." : subtitulo ?? "Digite sua senha."}
-      </p>
-      {erro === "senha" && (
-        <p className="mb-2 text-sm text-red-600">A senha precisa de 6+ caracteres e as duas têm que ser iguais.</p>
+      {primeiro ? (
+        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          Primeiro acesso ainda não liberado. Peça ao RH o seu <strong>link de acesso</strong> (enviado
+          no WhatsApp) para criar a sua senha.
+        </p>
+      ) : (
+        <>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Digite sua senha.</p>
+          {erro === "login" && <p className="mb-2 text-sm text-red-600">Senha incorreta.</p>}
+          <form action={action} className="space-y-3">
+            <input type="hidden" name="id" value={alvo.id} />
+            <input
+              name="senha"
+              type="password"
+              required
+              placeholder="Sua senha"
+              className={inputClass}
+            />
+            <button type="submit" className={`${btnPrimary} w-full`}>
+              Entrar
+            </button>
+          </form>
+        </>
       )}
-      {erro === "login" && <p className="mb-2 text-sm text-red-600">Senha incorreta.</p>}
-      <form action={action} className="space-y-3">
-        <input type="hidden" name="id" value={alvo.id} />
-        <input
-          name="senha"
-          type="password"
-          required
-          minLength={6}
-          placeholder={primeiro ? "Crie uma senha (mín. 6)" : "Sua senha"}
-          className={inputClass}
-        />
-        {primeiro && (
-          <input
-            name="confirmarSenha"
-            type="password"
-            required
-            minLength={6}
-            placeholder="Repita a senha"
-            className={inputClass}
-          />
-        )}
-        <button type="submit" className={`${btnPrimary} w-full`}>
-          {primeiro ? "Criar senha e entrar" : "Entrar"}
-        </button>
-      </form>
     </Card>
   );
 }
@@ -168,6 +159,11 @@ export default async function EntrarPage({
           <p className="mb-3 mt-1 text-sm text-gray-500">Informe seu CPF e sua senha.</p>
           {erro === "diarista" && <p className="mb-2 text-sm text-red-600">Informe um CPF válido.</p>}
           {erro === "senha" && <p className="mb-2 text-sm text-red-600">CPF ou senha incorretos.</p>}
+          {erro === "semsenha" && (
+            <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
+              Primeiro acesso é pelo <strong>link pessoal</strong> que o RH te envia no WhatsApp.
+            </p>
+          )}
           <form action={entrarDiarista} className="space-y-3">
             <input name="cpf" inputMode="numeric" required placeholder="Seu CPF" className={inputClass} />
             <input name="senha" type="password" placeholder="Sua senha" className={inputClass} />

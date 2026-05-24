@@ -20,3 +20,8 @@ export function conferirSenha(senha: string, armazenado: string | null | undefin
 export function senhaForte(senha: string): boolean {
   return typeof senha === "string" && senha.trim().length >= 6;
 }
+
+// Token aleatório para o link secreto de definir/resetar senha.
+export function gerarTokenSenha(): string {
+  return crypto.randomBytes(24).toString("hex");
+}

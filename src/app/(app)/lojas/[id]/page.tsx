@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { Card, PageHeader } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import { ASPECTOS_LOJA } from "@/lib/aspectosLoja";
+import LinkAcesso from "@/components/LinkAcesso";
 import LojaForm from "../LojaForm";
-import { updateLoja } from "../actions";
+import { gerarLinkSenhaLoja, updateLoja } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,24 @@ export default async function EditarLojaPage({
     <div className="space-y-4">
       <PageHeader title="Editar loja" subtitle={loja.nome} />
       <LojaForm action={updateLoja} loja={loja} gestores={gestores} submitLabel="Salvar alterações" erro={erro} />
+
+      <Card>
+        <h2 className="font-semibold text-gray-900">Acesso da loja (senha)</h2>
+        <p className="mt-1 text-xs text-gray-500">
+          A loja cria a senha no 1º acesso pelo link abaixo. Envie no WhatsApp do responsável.
+          {loja.tokenSenha ? "" : " A senha já está definida."}
+        </p>
+        <form action={gerarLinkSenhaLoja} className="mt-2">
+          <input type="hidden" name="id" value={loja.id} />
+          <button
+            type="submit"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
+          >
+            {loja.tokenSenha ? "Gerar novo link" : "Resetar senha (gerar link)"}
+          </button>
+        </form>
+        {loja.tokenSenha && <LinkAcesso token={loja.tokenSenha} nome={loja.nome} />}
+      </Card>
 
       <Card>
         <div className="flex items-center justify-between">

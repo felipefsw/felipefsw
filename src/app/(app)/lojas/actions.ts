@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { cnpjValido } from "@/lib/cnpj";
+import { gerarTokenSenha } from "@/lib/senha";
 
 function coord(formData: FormData, campo: string): number | null {
   const n = Number.parseFloat(String(formData.get(campo) ?? ""));
@@ -34,10 +35,22 @@ export async function createLoja(formData: FormData) {
       latitude: coord(formData, "latitude"),
       longitude: coord(formData, "longitude"),
       permiteMais2Semana: formData.get("permiteMais2Semana") != null,
+      tokenSenha: gerarTokenSenha(),
     },
   });
   revalidatePath("/lojas");
   redirect("/lojas");
+}
+
+// Gera novo link de acesso da loja (1º acesso/reset).
+export async function gerarLinkSenhaLoja(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.loja.update({
+    where: { id },
+    data: { senha: "123456", tokenSenha: gerarTokenSenha() },
+  });
+  revalidatePath(`/lojas/${id}`);
 }
 
 export async function updateLoja(formData: FormData) {
