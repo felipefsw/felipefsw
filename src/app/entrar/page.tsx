@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { Card, btnPrimary, inputClass, labelClass } from "@/components/ui";
-import { entrarDiarista, loginGestao, loginGestor, loginLoja } from "./actions";
+import { prisma } from "@/lib/prisma";
+import { Card, btnPrimary, inputClass } from "@/components/ui";
+import MarcaBadge from "@/components/MarcaBadge";
+import { entrarComoGestao, entrarComoGestor, entrarComoLoja, entrarDiarista } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -39,13 +41,16 @@ export default async function EntrarPage({
   if (!sel) {
     const opcoes: { perfil: Perfil; titulo: string; desc: string; emoji: string }[] = [
       { perfil: "diarista", titulo: "Sou diarista", desc: "Quero pegar diárias", emoji: "🧑‍🍳" },
-      { perfil: "lojista", titulo: "Sou lojista", desc: "Solicitar diaristas (CNPJ)", emoji: "🏪" },
+      { perfil: "lojista", titulo: "Sou lojista", desc: "Solicitar diaristas", emoji: "🏪" },
       { perfil: "gestor", titulo: "Sou gestor", desc: "Administro lojas", emoji: "🧑‍💼" },
       { perfil: "gestao", titulo: "RH / TI", desc: "Gestão completa", emoji: "🛠️" },
     ];
     return (
       <div className="mx-auto max-w-md px-5 py-8">
         <Cabecalho />
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-800">
+          Modo de testes: entra só clicando, sem senha.
+        </p>
         <div className="space-y-3">
           {opcoes.map((o) => (
             <Link
@@ -66,6 +71,23 @@ export default async function EntrarPage({
     );
   }
 
+  const lojas =
+    sel === "lojista"
+      ? await prisma.loja.findMany({
+          where: { ativo: true },
+          orderBy: { nome: "asc" },
+          select: { id: true, nome: true, bairro: true, cidade: true },
+        })
+      : [];
+  const gestores =
+    sel === "gestor"
+      ? await prisma.gestor.findMany({
+          where: { ativo: true },
+          orderBy: { nome: "asc" },
+          select: { id: true, nome: true },
+        })
+      : [];
+
   return (
     <div className="mx-auto max-w-md px-5 py-8">
       <Cabecalho />
@@ -74,9 +96,7 @@ export default async function EntrarPage({
       {sel === "diarista" && (
         <Card>
           <h2 className="font-semibold text-gray-900">Sou diarista</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">
-            Quero me inscrever para diárias. Informe seu CPF.
-          </p>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Informe seu CPF para entrar.</p>
           {erro === "diarista" && <p className="mb-2 text-sm text-red-600">Informe um CPF válido.</p>}
           <form action={entrarDiarista} className="space-y-3">
             <input name="cpf" inputMode="numeric" required placeholder="Seu CPF" className={inputClass} />
@@ -95,88 +115,75 @@ export default async function EntrarPage({
 
       {sel === "lojista" && (
         <Card>
-          <h2 className="font-semibold text-gray-900">Sou lojista</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">Solicitar diaristas para minha loja.</p>
-          {erro === "loja" && <p className="mb-2 text-sm text-red-600">CNPJ ou senha incorretos.</p>}
-          <form action={loginLoja} className="space-y-3">
-            <div>
-              <label className={labelClass} htmlFor="cnpj">
-                CNPJ da loja
-              </label>
-              <input id="cnpj" name="cnpj" inputMode="numeric" required className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="senha-loja">
-                Senha
-              </label>
-              <input id="senha-loja" name="senha" type="password" required className={inputClass} />
-            </div>
-            <button type="submit" className={`${btnPrimary} w-full`}>
-              Entrar
-            </button>
-          </form>
+          <h2 className="font-semibold text-gray-900">Entrar como loja</h2>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Toque na sua loja para entrar.</p>
+          <div className="max-h-[60vh] space-y-1 overflow-y-auto">
+            {lojas.map((l) => (
+              <form key={l.id} action={entrarComoLoja.bind(null, l.id)}>
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left hover:border-orange-300"
+                >
+                  <MarcaBadge nome={l.nome} className="h-6 w-6 shrink-0 rounded" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-gray-900">{l.nome}</span>
+                    {(l.bairro || l.cidade) && (
+                      <span className="block truncate text-xs text-gray-500">
+                        {[l.bairro, l.cidade].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </form>
+            ))}
+          </div>
         </Card>
       )}
 
       {sel === "gestor" && (
         <Card>
-          <h2 className="font-semibold text-gray-900">Sou gestor</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">Administro uma ou mais lojas.</p>
-          {erro === "gestor" && (
-            <p className="mb-2 text-sm text-red-600">Usuário ou senha incorretos.</p>
+          <h2 className="font-semibold text-gray-900">Entrar como gestor</h2>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
+          {gestores.length === 0 ? (
+            <p className="text-sm text-gray-500">Nenhum gestor cadastrado ainda.</p>
+          ) : (
+            <div className="space-y-1">
+              {gestores.map((g) => (
+                <form key={g.id} action={entrarComoGestor.bind(null, g.id)}>
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left font-medium text-gray-900 hover:border-orange-300"
+                  >
+                    🧑‍💼 {g.nome}
+                  </button>
+                </form>
+              ))}
+            </div>
           )}
-          <form action={loginGestor} className="space-y-3">
-            <div>
-              <label className={labelClass} htmlFor="usuario">
-                Usuário
-              </label>
-              <input id="usuario" name="usuario" required className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="senha-gestor">
-                Senha
-              </label>
-              <input id="senha-gestor" name="senha" type="password" required className={inputClass} />
-            </div>
-            <button type="submit" className={`${btnPrimary} w-full`}>
-              Entrar
-            </button>
-          </form>
         </Card>
       )}
 
       {sel === "gestao" && (
         <Card>
           <h2 className="font-semibold text-gray-900">RH / TI (gestão)</h2>
-          {erro === "gestao" && <p className="mb-2 mt-1 text-sm text-red-600">Senha incorreta.</p>}
-          <form action={loginGestao} className="mt-2 space-y-3">
-            <div>
-              <label className={labelClass} htmlFor="perfil-gestao">
-                Perfil
-              </label>
-              <select id="perfil-gestao" name="perfil" className={inputClass} defaultValue="rh">
-                <option value="rh">RH</option>
-                <option value="ti">TI</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="senha-gestao">
-                Senha
-              </label>
-              <input id="senha-gestao" name="senha" type="password" required className={inputClass} />
-            </div>
-            <button type="submit" className={`${btnPrimary} w-full`}>
-              Entrar
-            </button>
-          </form>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Escolha o perfil para entrar.</p>
+          <div className="flex gap-2">
+            <form action={entrarComoGestao.bind(null, "rh")} className="flex-1">
+              <button type="submit" className={`${btnPrimary} w-full`}>
+                Entrar como RH
+              </button>
+            </form>
+            <form action={entrarComoGestao.bind(null, "ti")} className="flex-1">
+              <button
+                type="submit"
+                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Entrar como TI
+              </button>
+            </form>
+          </div>
         </Card>
       )}
-
-      <p className="mt-4 text-center text-sm">
-        <Link href="/recuperar-senha" className="text-gray-500 underline">
-          Recuperar senha
-        </Link>
-      </p>
     </div>
   );
 }

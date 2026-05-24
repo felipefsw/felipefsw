@@ -2,53 +2,31 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { limparSessao, senhaGestao, setSessao } from "@/lib/auth";
+import { limparSessao, setSessao } from "@/lib/auth";
 
 const soDigitos = (s: string) => s.replace(/\D/g, "");
 
-export async function loginGestao(formData: FormData) {
-  const perfil = String(formData.get("perfil") ?? "") === "ti" ? "ti" : "rh";
-  const senha = String(formData.get("senha") ?? "");
-
-  if (senha !== senhaGestao(perfil)) {
-    redirect("/entrar?erro=gestao");
-  }
-  await setSessao({ tipo: "gestao", perfil });
+// SEM SENHA por enquanto: entra só clicando (modo de testes/simulação).
+export async function entrarComoGestao(perfil: "rh" | "ti") {
+  await setSessao({ tipo: "gestao", perfil: perfil === "ti" ? "ti" : "rh" });
   redirect("/");
 }
 
-export async function loginLoja(formData: FormData) {
-  const cnpj = soDigitos(String(formData.get("cnpj") ?? ""));
-  const senha = String(formData.get("senha") ?? "");
-  if (!cnpj) redirect("/entrar?erro=loja");
-
-  const lojas = await prisma.loja.findMany({
-    where: { ativo: true, cnpj: { not: null } },
-    select: { id: true, cnpj: true, senha: true },
-  });
-  const loja = lojas.find((l) => soDigitos(l.cnpj ?? "") === cnpj);
-
-  if (!loja || loja.senha !== senha) {
-    redirect("/entrar?erro=loja");
-  }
+export async function entrarComoLoja(lojaId: string) {
+  if (!lojaId) redirect("/entrar?perfil=lojista");
+  const loja = await prisma.loja.findUnique({ where: { id: lojaId }, select: { id: true } });
+  if (!loja) redirect("/entrar?perfil=lojista");
   await setSessao({ tipo: "loja", lojaId: loja.id });
   redirect("/loja");
 }
 
-export async function loginGestor(formData: FormData) {
-  const usuario = String(formData.get("usuario") ?? "").trim().toLowerCase();
-  const senha = String(formData.get("senha") ?? "");
-  if (!usuario) redirect("/entrar?erro=gestor");
-
+export async function entrarComoGestor(gestorId: string) {
+  if (!gestorId) redirect("/entrar?perfil=gestor");
   const gestor = await prisma.gestor.findUnique({
-    where: { usuario },
+    where: { id: gestorId },
     include: { lojas: { where: { ativo: true }, select: { id: true }, orderBy: { nome: "asc" } } },
   });
-
-  // Login não exige loja associada; se não tiver, a área avisa para o RH associar.
-  if (!gestor || !gestor.ativo || gestor.senha !== senha) {
-    redirect("/entrar?erro=gestor");
-  }
+  if (!gestor) redirect("/entrar?perfil=gestor");
   await setSessao({ tipo: "gestor", gestorId: gestor.id, lojaId: gestor.lojas[0]?.id ?? "" });
   redirect("/loja");
 }
