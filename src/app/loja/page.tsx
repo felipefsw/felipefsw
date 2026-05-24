@@ -10,6 +10,7 @@ import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
 import SubmitButton from "@/components/SubmitButton";
 import CopyButton from "@/components/CopyButton";
 import PushToggleLoja from "@/components/PushToggleLoja";
+import FotosLojaUpload from "@/components/FotosLojaUpload";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   alternarLimiteSemana,
@@ -20,6 +21,7 @@ import {
   desbloquearDiaristaLoja,
   marcarPagoDiaria,
   registrarCheckout,
+  salvarVantagensLoja,
 } from "./actions";
 
 function notaDe(avaliacoes: { estrelas: number }[]): number | null {
@@ -83,7 +85,10 @@ export default async function LojaHome({
     prisma.bloqueio.findMany({
       where: { lojaId, OR: [{ ate: null }, { ate: { gt: agora } }] },
     }),
-    prisma.loja.findUnique({ where: { id: lojaId }, select: { permiteMais2Semana: true } }),
+    prisma.loja.findUnique({
+      where: { id: lojaId },
+      select: { permiteMais2Semana: true, fotos: true, vantagens: true },
+    }),
   ]);
 
   // Gestor: visão das vagas abertas em TODAS as suas lojas.
@@ -679,6 +684,38 @@ export default async function LojaHome({
             })}
           </div>
         )}
+      </section>
+
+      <section>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <h2 className="font-semibold text-gray-900">Fotos e vantagens da loja</h2>
+          <p className="mt-1 text-xs text-gray-500">
+            Mostre seu ambiente e por que vale a pena fazer diária aqui. Os diaristas veem as fotos
+            num carrossel ao escolher a vaga.
+          </p>
+          <div className="mt-3">
+            <FotosLojaUpload fotos={loja?.fotos ?? []} />
+          </div>
+          <form action={salvarVantagensLoja} className="mt-3">
+            <label className="text-sm font-medium text-gray-700" htmlFor="vantagens">
+              Vantagens de fazer diária aqui
+            </label>
+            <textarea
+              id="vantagens"
+              name="vantagens"
+              rows={3}
+              defaultValue={loja?.vantagens ?? ""}
+              placeholder="Ex.: ambiente tranquilo, equipe parceira, pagamento no mesmo dia…"
+              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
+            />
+            <button
+              type="submit"
+              className="mt-2 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
+            >
+              Salvar vantagens
+            </button>
+          </form>
+        </div>
       </section>
 
       <section>

@@ -9,6 +9,7 @@ import { parseBRLToCents } from "@/lib/format";
 import { valorProporcional } from "@/lib/geo";
 import { notificarNovaDiaria, notificarPagamentoDaEscala } from "@/lib/push";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
+import { uploadImagemResultado } from "@/lib/storage";
 
 // Loja ativa da sessão (loja avulsa ou gestor). Redireciona se não houver.
 async function lojaSessaoId(): Promise<string> {
@@ -233,6 +234,46 @@ export async function registrarCheckout(formData: FormData) {
   revalidatePath("/loja");
   revalidatePath("/");
   revalidatePath("/pagamentos");
+}
+
+// Adiciona uma foto do ambiente da loja (máx. 5).
+export async function adicionarFotoLoja(
+  formData: FormData,
+): Promise<{ ok: boolean; erro?: string }> {
+  const lojaId = await lojaSessaoId();
+  const foto = formData.get("foto");
+  if (!(foto instanceof File) || foto.size === 0) return { ok: false, erro: "Arquivo inválido." };
+
+  const loja = await prisma.loja.findUnique({ where: { id: lojaId }, select: { fotos: true } });
+  if (!loja) return { ok: false, erro: "Loja não encontrada." };
+  if (loja.fotos.length >= 5) return { ok: false, erro: "Máximo de 5 fotos." };
+
+  const ext = (foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const r = await uploadImagemResultado(foto, `lojas/${lojaId}-${Date.now()}.${ext}`);
+  if ("erro" in r) return { ok: false, erro: r.erro };
+
+  await prisma.loja.update({ where: { id: lojaId }, data: { fotos: { push: r.url } } });
+  revalidatePath("/loja");
+  return { ok: true };
+}
+
+export async function removerFotoLoja(url: string) {
+  const lojaId = await lojaSessaoId();
+  if (!url) return;
+  const loja = await prisma.loja.findUnique({ where: { id: lojaId }, select: { fotos: true } });
+  if (!loja) return;
+  await prisma.loja.update({
+    where: { id: lojaId },
+    data: { fotos: loja.fotos.filter((f) => f !== url) },
+  });
+  revalidatePath("/loja");
+}
+
+export async function salvarVantagensLoja(formData: FormData) {
+  const lojaId = await lojaSessaoId();
+  const vantagens = String(formData.get("vantagens") ?? "").trim() || null;
+  await prisma.loja.update({ where: { id: lojaId }, data: { vantagens } });
+  revalidatePath("/loja");
 }
 
 // Salva a inscrição de push da loja/gestor (para lembrete de pagamento).

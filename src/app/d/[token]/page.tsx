@@ -15,6 +15,7 @@ import FotoUpload from "@/components/FotoUpload";
 import SubmitButton from "@/components/SubmitButton";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import MapaDiariasPerto from "@/components/MapaDiariasPerto";
+import CarrosselFotos from "@/components/CarrosselFotos";
 import {
   confirmarPresenca,
   desistirDaDiaria,
@@ -148,6 +149,24 @@ export default async function DiaristaLinkPage({
         </div>
         <p className="mt-1 text-sm text-orange-100">Sua agenda de trabalho</p>
       </header>
+
+      <nav className="sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-gray-200 bg-white px-4 py-2 text-sm">
+        <a href="#vagas" className="whitespace-nowrap rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-800">
+          📋 Vagas
+        </a>
+        <a href="#proximas" className="whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
+          📅 Próximas
+        </a>
+        <Link
+          href={`/d/${token}/guia`}
+          className="whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700"
+        >
+          📖 Guia
+        </Link>
+        <a href="#falar-rh" className="whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
+          💬 RH
+        </a>
+      </nav>
 
       <main className="space-y-6 p-5">
         {checkin === "ok" && (
@@ -331,7 +350,7 @@ export default async function DiaristaLinkPage({
           </section>
         )}
 
-        <section>
+        <section id="vagas" className="scroll-mt-14">
           <h2 className="mb-1 font-semibold text-gray-900">Agende sua diária</h2>
           <MapaDiariasPerto lojas={lojasMapa} />
           <p className="mb-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
@@ -393,6 +412,16 @@ export default async function DiaristaLinkPage({
                         </div>
                       </>
                     )}
+                    {r.loja.fotos.length > 0 && (
+                      <div className="mt-2">
+                        <CarrosselFotos fotos={r.loja.fotos} />
+                      </div>
+                    )}
+                    {r.loja.vantagens && (
+                      <p className="mt-1.5 rounded-lg bg-orange-50 px-3 py-2 text-xs text-orange-900">
+                        ⭐ {r.loja.vantagens}
+                      </p>
+                    )}
                     <p className="mt-1 text-sm capitalize text-gray-600">
                       {formatDateWithWeekday(r.data)} ·{" "}
                       <span className={`rounded px-1.5 py-0.5 font-medium ${turno.chip}`}>
@@ -427,7 +456,7 @@ export default async function DiaristaLinkPage({
           )}
         </section>
 
-        <section>
+        <section id="proximas" className="scroll-mt-14">
           <h2 className="mb-2 font-semibold text-gray-900">Próximos dias</h2>
           {proximas.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-500">

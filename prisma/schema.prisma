@@ -29,6 +29,8 @@ model Loja {
   ativo       Boolean      @default(true)
   // Se true, a loja assume o risco e permite o mesmo diarista fazer mais de 2 diárias na semana.
   permiteMais2Semana Boolean @default(false)
+  fotos       String[]     @default([]) // até 5 fotos do ambiente (URLs)
+  vantagens   String? // texto com as vantagens de fazer diária nesta loja
   criadoEm    DateTime     @default(now())
   gestorId    String?
   gestor      Gestor?      @relation(fields: [gestorId], references: [id], onDelete: SetNull)
