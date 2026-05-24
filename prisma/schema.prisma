@@ -73,6 +73,18 @@ model Gestor {
   lojas    Loja[]   @relation("GestorLojas")
 }
 
+// Pessoa da equipe interna (RH ou TI). Loga clicando no nome + senha.
+model Membro {
+  id       String   @id @default(cuid())
+  nome     String
+  usuario  String   @unique
+  perfil   String // "rh" | "ti"
+  papel    String?
+  senha    String? // hash; null/sem ":" = primeiro acesso (define a senha)
+  ativo    Boolean  @default(true)
+  criadoEm DateTime @default(now())
+}
+
 model Diarista {
   id          String      @id @default(cuid())
   nome        String

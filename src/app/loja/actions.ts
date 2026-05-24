@@ -67,12 +67,8 @@ export async function criarRequisicaoLoja(formData: FormData) {
 
   if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
-  // Evita requisição 100% idêntica em aberto (duplicada por engano).
-  const duplicada = await prisma.requisicao.findFirst({
-    where: { lojaId, data, horaInicio, horaFim, funcao, status: "ABERTA" },
-    select: { id: true },
-  });
-  if (duplicada) redirect("/loja?erro=duplicada");
+  // Permitido criar mais de uma vaga igual (mesma função/horário) - pode haver
+  // urgência ou replanejamento. Não bloqueamos duplicadas.
 
   const convidadoIds = [
     ...new Set(

@@ -3,20 +3,35 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { entrarDiaristaSessao, limparSessao, setSessao } from "@/lib/auth";
-import { membroEquipe } from "@/lib/equipe";
-import { conferirSenha } from "@/lib/senha";
+import { conferirSenha, gerarHashSenha, senhaForte } from "@/lib/senha";
 
 const soDigitos = (s: string) => s.replace(/\D/g, "");
 
-// SEM SENHA por enquanto: entra só clicando (modo de testes/simulação).
-// Recebe o id da pessoa da equipe (RH/TI); aceita "rh"/"ti" como atalho legado.
-export async function entrarComoGestao(membroId: string) {
-  const m = membroEquipe(membroId);
-  if (m) {
-    await setSessao({ tipo: "gestao", perfil: m.perfil, nome: m.nome, papel: m.papel });
-  } else {
-    await setSessao({ tipo: "gestao", perfil: membroId === "ti" ? "ti" : "rh" });
+// Precisa definir senha quando ainda não há hash (null ou texto legado "123456").
+const precisaDefinirSenha = (senha: string | null | undefined) => !senha || !senha.includes(":");
+
+// RH/TI: clica no nome e, no primeiro acesso, cria a senha; depois confere.
+export async function entrarComoGestao(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const senha = String(formData.get("senha") ?? "");
+  const confirmar = String(formData.get("confirmarSenha") ?? "");
+  const m = await prisma.membro.findUnique({ where: { id } });
+  if (!m || !m.ativo) redirect("/entrar?perfil=gestao");
+
+  if (precisaDefinirSenha(m.senha)) {
+    if (!senhaForte(senha) || senha !== confirmar)
+      redirect(`/entrar?perfil=gestao&id=${id}&erro=senha`);
+    await prisma.membro.update({ where: { id }, data: { senha: gerarHashSenha(senha) } });
+  } else if (!conferirSenha(senha, m.senha)) {
+    redirect(`/entrar?perfil=gestao&id=${id}&erro=login`);
   }
+
+  await setSessao({
+    tipo: "gestao",
+    perfil: m.perfil === "ti" ? "ti" : "rh",
+    nome: m.nome,
+    papel: m.papel ?? undefined,
+  });
   redirect("/");
 }
 
@@ -28,13 +43,25 @@ export async function entrarComoLoja(lojaId: string) {
   redirect("/loja");
 }
 
-export async function entrarComoGestor(gestorId: string) {
-  if (!gestorId) redirect("/entrar?perfil=gestor");
+// Gestor: clica no nome e, no primeiro acesso, cria a senha; depois confere.
+export async function entrarComoGestor(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const senha = String(formData.get("senha") ?? "");
+  const confirmar = String(formData.get("confirmarSenha") ?? "");
   const gestor = await prisma.gestor.findUnique({
-    where: { id: gestorId },
+    where: { id },
     include: { lojas: { where: { ativo: true }, select: { id: true }, orderBy: { nome: "asc" } } },
   });
-  if (!gestor) redirect("/entrar?perfil=gestor");
+  if (!gestor || !gestor.ativo) redirect("/entrar?perfil=gestor");
+
+  if (precisaDefinirSenha(gestor.senha)) {
+    if (!senhaForte(senha) || senha !== confirmar)
+      redirect(`/entrar?perfil=gestor&id=${id}&erro=senha`);
+    await prisma.gestor.update({ where: { id }, data: { senha: gerarHashSenha(senha) } });
+  } else if (!conferirSenha(senha, gestor.senha)) {
+    redirect(`/entrar?perfil=gestor&id=${id}&erro=login`);
+  }
+
   await setSessao({ tipo: "gestor", gestorId: gestor.id, lojaId: gestor.lojas[0]?.id ?? "" });
   redirect("/loja");
 }

@@ -62,9 +62,16 @@ export default function TrilhaAprendizado({
         setRect(null);
         return;
       }
-      if (rolar) el.scrollIntoView({ block: "center", inline: "nearest" });
       const r = el.getBoundingClientRect();
-      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      // Só rola a tela se o alvo estiver fora de vista (evita pulo abrupto em
+      // elementos fixos como o menu).
+      const vh = window.innerHeight;
+      const foraDaTela = r.bottom < 80 || r.top > vh - 80;
+      if (rolar && foraDaTela) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+      const r2 = el.getBoundingClientRect();
+      setRect({ top: r2.top, left: r2.left, width: r2.width, height: r2.height });
     };
     let raf = requestAnimationFrame(() => {
       medir(true);
@@ -108,8 +115,21 @@ export default function TrilhaAprendizado({
     const left = Math.min(Math.max(8, rect.left), vw - larg - 8);
     const acima = rect.top > vh / 2;
     estiloBalao = acima
-      ? { top: rect.top - 12, left, width: larg, transform: "translateY(-100%)" }
-      : { top: rect.top + rect.height + 12, left, width: larg };
+      ? {
+          top: rect.top - 12,
+          left,
+          width: larg,
+          maxHeight: "80vh",
+          overflowY: "auto",
+          transform: "translateY(-100%)",
+        }
+      : {
+          top: rect.top + rect.height + 12,
+          left,
+          width: larg,
+          maxHeight: "80vh",
+          overflowY: "auto",
+        };
   }
 
   const conteudo = (

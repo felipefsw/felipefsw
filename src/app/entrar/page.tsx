@@ -2,13 +2,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, btnPrimary, inputClass } from "@/components/ui";
 import MarcaBadge from "@/components/MarcaBadge";
-import { EQUIPE } from "@/lib/equipe";
 import { entrarComoGestao, entrarComoGestor, entrarComoLoja, entrarDiarista } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 const PERFIS = ["diarista", "lojista", "gestor", "gestao"] as const;
 type Perfil = (typeof PERFIS)[number];
+
+const precisaDefinir = (senha: string | null | undefined) => !senha || !senha.includes(":");
 
 function Cabecalho() {
   return (
@@ -23,20 +24,68 @@ function Cabecalho() {
   );
 }
 
-function Voltar() {
+// Etapa de senha (clica no nome → cria a senha no 1º acesso, ou digita para entrar).
+function CartaoSenha({
+  action,
+  alvo,
+  voltarHref,
+  subtitulo,
+  erro,
+}: {
+  action: (formData: FormData) => void;
+  alvo: { id: string; nome: string; senha: string | null };
+  voltarHref: string;
+  subtitulo?: string;
+  erro?: string;
+}) {
+  const primeiro = precisaDefinir(alvo.senha);
   return (
-    <Link href="/entrar" className="mb-3 inline-block text-sm font-medium text-orange-700">
-      ← Voltar
-    </Link>
+    <Card>
+      <Link href={voltarHref} className="mb-3 inline-block text-sm font-medium text-orange-700">
+        ← escolher outro nome
+      </Link>
+      <h2 className="font-semibold text-gray-900">{alvo.nome}</h2>
+      <p className="mb-3 mt-1 text-sm text-gray-500">
+        {primeiro ? "Primeiro acesso: crie a sua senha." : subtitulo ?? "Digite sua senha."}
+      </p>
+      {erro === "senha" && (
+        <p className="mb-2 text-sm text-red-600">A senha precisa de 6+ caracteres e as duas têm que ser iguais.</p>
+      )}
+      {erro === "login" && <p className="mb-2 text-sm text-red-600">Senha incorreta.</p>}
+      <form action={action} className="space-y-3">
+        <input type="hidden" name="id" value={alvo.id} />
+        <input
+          name="senha"
+          type="password"
+          required
+          minLength={6}
+          placeholder={primeiro ? "Crie uma senha (mín. 6)" : "Sua senha"}
+          className={inputClass}
+        />
+        {primeiro && (
+          <input
+            name="confirmarSenha"
+            type="password"
+            required
+            minLength={6}
+            placeholder="Repita a senha"
+            className={inputClass}
+          />
+        )}
+        <button type="submit" className={`${btnPrimary} w-full`}>
+          {primeiro ? "Criar senha e entrar" : "Entrar"}
+        </button>
+      </form>
+    </Card>
   );
 }
 
 export default async function EntrarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string; perfil?: string }>;
+  searchParams: Promise<{ erro?: string; perfil?: string; id?: string }>;
 }) {
-  const { erro, perfil } = await searchParams;
+  const { erro, perfil, id } = await searchParams;
   const sel = (PERFIS as readonly string[]).includes(perfil ?? "") ? (perfil as Perfil) : null;
 
   if (!sel) {
@@ -49,9 +98,6 @@ export default async function EntrarPage({
     return (
       <div className="mx-auto max-w-md px-5 py-8">
         <Cabecalho />
-        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-800">
-          Modo de testes: entra só clicando, sem senha.
-        </p>
         <div className="space-y-3">
           {opcoes.map((o) => (
             <Link
@@ -81,35 +127,46 @@ export default async function EntrarPage({
         })
       : [];
   const gestores =
-    sel === "gestor"
+    sel === "gestor" && !id
       ? await prisma.gestor.findMany({
           where: { ativo: true },
           orderBy: { nome: "asc" },
           select: { id: true, nome: true },
         })
       : [];
+  const membros =
+    sel === "gestao" && !id
+      ? await prisma.membro.findMany({
+          where: { ativo: true },
+          orderBy: { nome: "asc" },
+          select: { id: true, nome: true, perfil: true, papel: true },
+        })
+      : [];
+  const gestorSel =
+    sel === "gestor" && id
+      ? await prisma.gestor.findUnique({ where: { id }, select: { id: true, nome: true, senha: true } })
+      : null;
+  const membroSel =
+    sel === "gestao" && id
+      ? await prisma.membro.findUnique({ where: { id }, select: { id: true, nome: true, senha: true } })
+      : null;
 
   return (
     <div className="mx-auto max-w-md px-5 py-8">
       <Cabecalho />
-      <Voltar />
+      <Link href="/entrar" className="mb-3 inline-block text-sm font-medium text-orange-700">
+        ← Voltar
+      </Link>
 
       {sel === "diarista" && (
         <Card>
           <h2 className="font-semibold text-gray-900">Sou diarista</h2>
           <p className="mb-3 mt-1 text-sm text-gray-500">Informe seu CPF e sua senha.</p>
           {erro === "diarista" && <p className="mb-2 text-sm text-red-600">Informe um CPF válido.</p>}
-          {erro === "senha" && (
-            <p className="mb-2 text-sm text-red-600">CPF ou senha incorretos.</p>
-          )}
+          {erro === "senha" && <p className="mb-2 text-sm text-red-600">CPF ou senha incorretos.</p>}
           <form action={entrarDiarista} className="space-y-3">
             <input name="cpf" inputMode="numeric" required placeholder="Seu CPF" className={inputClass} />
-            <input
-              name="senha"
-              type="password"
-              placeholder="Sua senha"
-              className={inputClass}
-            />
+            <input name="senha" type="password" placeholder="Sua senha" className={inputClass} />
             <button type="submit" className={`${btnPrimary} w-full`}>
               Entrar
             </button>
@@ -150,55 +207,73 @@ export default async function EntrarPage({
         </Card>
       )}
 
-      {sel === "gestor" && (
-        <Card>
-          <h2 className="font-semibold text-gray-900">Entrar como gestor</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
-          {gestores.length === 0 ? (
-            <p className="text-sm text-gray-500">Nenhum gestor cadastrado ainda.</p>
-          ) : (
-            <div className="space-y-1">
-              {gestores.map((g) => (
-                <form key={g.id} action={entrarComoGestor.bind(null, g.id)}>
-                  <button
-                    type="submit"
+      {sel === "gestor" &&
+        (gestorSel ? (
+          <CartaoSenha
+            action={entrarComoGestor}
+            alvo={gestorSel}
+            voltarHref="/entrar?perfil=gestor"
+            erro={erro}
+          />
+        ) : (
+          <Card>
+            <h2 className="font-semibold text-gray-900">Entrar como gestor</h2>
+            <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
+            {gestores.length === 0 ? (
+              <p className="text-sm text-gray-500">Nenhum gestor cadastrado ainda.</p>
+            ) : (
+              <div className="space-y-1">
+                {gestores.map((g) => (
+                  <Link
+                    key={g.id}
+                    href={`/entrar?perfil=gestor&id=${g.id}`}
                     className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left font-medium text-gray-900 hover:border-orange-300"
                   >
                     🧑‍💼 {g.nome}
-                  </button>
-                </form>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {sel === "gestao" && (
-        <Card>
-          <h2 className="font-semibold text-gray-900">RH / TI (gestão)</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
-          {(["rh", "ti"] as const).map((p) => (
-            <div key={p} className="mb-3 last:mb-0">
-              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-400">
-                {p === "rh" ? "RH" : "TI"}
-              </p>
-              <div className="space-y-1">
-                {EQUIPE.filter((m) => m.perfil === p).map((m) => (
-                  <form key={m.id} action={entrarComoGestao.bind(null, m.id)}>
-                    <button
-                      type="submit"
-                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left hover:border-orange-300"
-                    >
-                      <span className="font-medium text-gray-900">🛠️ {m.nome}</span>
-                      {m.papel && <span className="text-xs text-gray-400">{m.papel}</span>}
-                    </button>
-                  </form>
+                  </Link>
                 ))}
               </div>
-            </div>
-          ))}
-        </Card>
-      )}
+            )}
+          </Card>
+        ))}
+
+      {sel === "gestao" &&
+        (membroSel ? (
+          <CartaoSenha
+            action={entrarComoGestao}
+            alvo={membroSel}
+            voltarHref="/entrar?perfil=gestao"
+            erro={erro}
+          />
+        ) : (
+          <Card>
+            <h2 className="font-semibold text-gray-900">RH / TI (gestão)</h2>
+            <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
+            {(["rh", "ti"] as const).map((p) => {
+              const lista = membros.filter((m) => m.perfil === p);
+              if (lista.length === 0) return null;
+              return (
+                <div key={p} className="mb-3 last:mb-0">
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-400">
+                    {p === "rh" ? "RH" : "TI"}
+                  </p>
+                  <div className="space-y-1">
+                    {lista.map((m) => (
+                      <Link
+                        key={m.id}
+                        href={`/entrar?perfil=gestao&id=${m.id}`}
+                        className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left hover:border-orange-300"
+                      >
+                        <span className="font-medium text-gray-900">🛠️ {m.nome}</span>
+                        {m.papel && <span className="text-xs text-gray-400">{m.papel}</span>}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        ))}
     </div>
   );
 }

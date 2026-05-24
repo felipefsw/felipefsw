@@ -280,13 +280,6 @@ export default async function LojaHome({
         </a>
       )}
 
-      {erro === "duplicada" && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-800">
-          Já existe uma vaga igual em aberto (mesma data, horário e função). Aproveite a existente ou
-          mude algum dado.
-        </div>
-      )}
-
       <PushToggleLoja />
 
       <TrilhaAprendizado
