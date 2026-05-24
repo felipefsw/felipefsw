@@ -36,20 +36,24 @@ export default async function DiaristasPage({
       take: PAGE_SIZE,
       include: {
         avaliacoes: { orderBy: { criadoEm: "desc" }, take: 5 },
+        escalas: { where: { presenca: "PRESENTE" }, select: { loja: { select: { nome: true } } } },
         _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
       },
     }),
   ]);
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // Nota (média das 5 últimas avaliações) só aparece após 5 avaliações.
+  // Nota (média das 5 últimas), nº de diárias e a loja onde mais trabalha.
   const resumo = (d: (typeof diaristas)[number]) => {
     const diarias = d._count.escalas;
     const nota =
       d.avaliacoes.length >= 5
         ? d.avaliacoes.reduce((s, a) => s + mediaDaAvaliacao(a), 0) / d.avaliacoes.length
         : null;
-    return { diarias, nota };
+    const cont = new Map<string, number>();
+    for (const e of d.escalas) cont.set(e.loja.nome, (cont.get(e.loja.nome) ?? 0) + 1);
+    const topLoja = [...cont.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    return { diarias, nota, topLoja };
   };
 
   // Preserva filtros nos links.
@@ -148,14 +152,20 @@ export default async function DiaristasPage({
                   </div>
                   {d.telefone && <p className="text-sm text-gray-500">{d.telefone}</p>}
                   {(() => {
-                    const { diarias, nota } = resumo(d);
+                    const { diarias, nota, topLoja } = resumo(d);
                     return (
-                      <p className="mt-0.5 text-sm text-gray-600">
-                        {nota !== null && (
-                          <span className="font-medium text-orange-700">★ {nota.toFixed(1)} · </span>
+                      <>
+                        <p className="mt-0.5 text-sm text-gray-600">
+                          {nota !== null && (
+                            <span className="font-medium text-orange-700">★ {nota.toFixed(1)} · </span>
+                          )}
+                          {diarias} diária(s)
+                          {d.funcao ? ` · ${d.funcao}` : ""}
+                        </p>
+                        {topLoja && (
+                          <p className="text-xs text-gray-400">Mais trabalha em: {topLoja}</p>
                         )}
-                        {diarias} diária(s) na rede
-                      </p>
+                      </>
                     );
                   })()}
                   </div>

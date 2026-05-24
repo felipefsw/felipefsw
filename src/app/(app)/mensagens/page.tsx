@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { formatDate } from "@/lib/format";
+import { responderMensagem } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +32,8 @@ export default async function MensagensPage() {
       ) : (
         <div className="space-y-2">
           {lista.map((d) => (
-            <Link key={d.id} href={`/mensagens/${d.id}`}>
-              <Card className="hover:bg-gray-50">
+            <Card key={d.id}>
+              <Link href={`/mensagens/${d.id}`} className="block hover:opacity-80">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 font-medium text-gray-900">
@@ -49,8 +50,23 @@ export default async function MensagensPage() {
                     {formatDate(d.quando.toISOString().slice(0, 10))}
                   </span>
                 </div>
-              </Card>
-            </Link>
+              </Link>
+              <form action={responderMensagem} className="mt-2 flex items-center gap-2">
+                <input type="hidden" name="diaristaId" value={d.id} />
+                <input
+                  name="texto"
+                  required
+                  placeholder="Resposta rápida…"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
+                />
+                <button
+                  type="submit"
+                  className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
+                >
+                  Enviar
+                </button>
+              </form>
+            </Card>
           ))}
         </div>
       )}

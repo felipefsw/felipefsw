@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 import { mesAtual, rankingDoMes } from "@/lib/bonificacoes";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +20,33 @@ export default async function RankingPage({
 }) {
   const { token } = await searchParams;
   const mes = mesAtual();
-  const ranking = await rankingDoMes(mes);
+  const [ranking, diaristas] = await Promise.all([
+    rankingDoMes(mes),
+    prisma.diarista.findMany({
+      where: { ativo: true },
+      select: {
+        id: true,
+        nome: true,
+        avaliacoes: { select: { estrelas: true } },
+        _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
+      },
+    }),
+  ]);
   const [ano, m] = mes.split("-");
   const voltarHref = token ? `/d/${token}` : "/entrar";
+
+  // Top 5 balanceando NOTA (qualidade) e QUANTIDADE de diárias.
+  const top5 = diaristas
+    .map((d) => {
+      const n = d.avaliacoes.length;
+      const media = n ? d.avaliacoes.reduce((s, a) => s + a.estrelas, 0) / n : 0;
+      const diarias = d._count.escalas;
+      const score = (media / 5) * 0.5 + (Math.min(diarias, 30) / 30) * 0.5;
+      return { id: d.id, nome: d.nome, media, diarias, n, score };
+    })
+    .filter((d) => d.diarias >= 1)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
 
   return (
     <div className="mx-auto max-w-md">
@@ -40,6 +65,36 @@ export default async function RankingPage({
       </header>
 
       <main className="p-5">
+        <h2 className="mb-2 font-semibold text-gray-900">🏆 Top 5 (nota + quantidade)</h2>
+        {top5.length === 0 ? (
+          <div className="mb-5 rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center text-sm text-gray-500">
+            Ainda sem diárias suficientes.
+          </div>
+        ) : (
+          <ol className="mb-6 space-y-2">
+            {top5.map((d, i) => (
+              <li
+                key={d.id}
+                className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+                  i < 3 ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-white"
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <span className="w-8 text-center text-lg">{medalha(i)}</span>
+                  <span className="font-medium text-gray-900">{d.nome}</span>
+                </span>
+                <span className="text-right">
+                  <span className="block font-semibold text-orange-700">
+                    {d.n > 0 ? `★ ${d.media.toFixed(1)}` : "sem nota"}
+                  </span>
+                  <span className="block text-xs text-gray-400">{d.diarias} diárias</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+
+        <h2 className="mb-2 font-semibold text-gray-900">Ranking do mês</h2>
         <p className="mb-4 text-sm text-gray-500">
           Melhores médias do mês (mínimo de 3 diárias avaliadas). Os primeiros colocados
           recebem <strong>R$ 100,00</strong>.

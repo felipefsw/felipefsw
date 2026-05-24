@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { EmptyState, PageHeader, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import MarcaBadge from "@/components/MarcaBadge";
+import SubmitButton from "@/components/SubmitButton";
 import { grupoDaLoja } from "@/lib/marcas";
 import { deleteLoja, toggleLojaAtivo } from "./actions";
+import { clickMagico } from "../requisicoes/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +36,10 @@ export default async function LojasPage({
     prisma.loja.findMany({
       where,
       orderBy: [{ ativo: "desc" }, { nome: "asc" }],
-      include: { _count: { select: { escalas: true } } },
+      include: {
+        _count: { select: { escalas: true } },
+        requisicoes: { where: { status: "ABERTA" }, select: { funcao: true, quantidade: true } },
+      },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -66,10 +71,18 @@ export default async function LojasPage({
         action={{ href: "/lojas/nova", label: "+ Nova" }}
       />
 
-      <div className="mb-3">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <Link href="/gestores" className="text-sm font-medium text-orange-700 hover:underline">
           Gerenciar gestores →
         </Link>
+        <form action={clickMagico}>
+          <SubmitButton
+            pendingLabel="Convocando…"
+            className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-700"
+          >
+            ✨ Click mágico
+          </SubmitButton>
+        </form>
       </div>
 
       <form method="get" className="mb-4 flex gap-2">
@@ -101,7 +114,12 @@ export default async function LojasPage({
                 {g.label} ({g.itens.length})
               </h2>
               <div className="grid grid-cols-2 gap-2">
-                {g.itens.map((loja) => (
+                {g.itens.map((loja) => {
+                  const vagas = loja.requisicoes.reduce((s, r) => s + r.quantidade, 0);
+                  const porFuncao = new Map<string, number>();
+                  for (const r of loja.requisicoes)
+                    porFuncao.set(r.funcao ?? "Qualquer", (porFuncao.get(r.funcao ?? "Qualquer") ?? 0) + r.quantidade);
+                  return (
                   <div key={loja.id} className="rounded-xl border border-gray-200 bg-white p-3">
                     <Link href={`/lojas/${loja.id}`} className="block">
                       <div className="flex items-center gap-2">
@@ -114,6 +132,14 @@ export default async function LojasPage({
                         <p className="mt-0.5 truncate text-xs text-gray-500">
                           {[loja.bairro, loja.cidade].filter(Boolean).join(" · ")}
                         </p>
+                      )}
+                      {vagas > 0 ? (
+                        <p className="mt-1 text-[11px] font-semibold text-amber-700">
+                          {vagas} vaga(s):{" "}
+                          {[...porFuncao.entries()].map(([f, n]) => `${f} (${n})`).join(", ")}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-gray-400">sem vagas abertas</p>
                       )}
                       <p className="mt-0.5 text-[11px] text-gray-400">
                         {loja._count.escalas} agend.
@@ -141,7 +167,8 @@ export default async function LojasPage({
                       </form>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           ))}
@@ -175,6 +202,13 @@ export default async function LojasPage({
           )}
         </div>
       )}
+
+      <Link
+        href="/lojas/nova"
+        className="mt-5 block rounded-xl bg-orange-700 px-4 py-3 text-center font-semibold text-white hover:bg-orange-800"
+      >
+        + Cadastrar nova loja
+      </Link>
     </div>
   );
 }
