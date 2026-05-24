@@ -58,6 +58,7 @@ export default async function LojaHome({
       where: { lojaId },
       include: {
         _count: { select: { escalas: true, inscricoes: true } },
+        escalas: { include: { diarista: { select: { id: true, nome: true, fotoUrl: true } } } },
         inscricoes: {
           include: {
             diarista: {
@@ -420,6 +421,29 @@ export default async function LojaHome({
                           </span>
                         ))}
                       </div>
+                      {r.escalas.length > 0 && (
+                        <div className="mt-1.5">
+                          <p className="text-[11px] font-medium text-gray-500">Escalados:</p>
+                          <ul className="mt-0.5 space-y-0.5">
+                            {r.escalas.map((es) => (
+                              <li key={es.id} className="flex items-center gap-1.5">
+                                <Avatar
+                                  nome={es.diarista.nome}
+                                  fotoUrl={es.diarista.fotoUrl}
+                                  className="h-5 w-5"
+                                />
+                                <span className="text-xs text-gray-700">{es.diarista.nome}</span>
+                                <Link
+                                  href={`/loja/candidato/${es.diarista.id}`}
+                                  className="text-[10px] font-medium text-orange-700 underline"
+                                >
+                                  saber mais
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>
                       {st.txt}

@@ -3,9 +3,99 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { dentroDaJanelaAgendamento, inicioDaSemana, isHHMM, isISODate } from "@/lib/dates";
+import {
+  dentroDaJanelaAgendamento,
+  hojeISO,
+  inicioDaSemana,
+  isHHMM,
+  isISODate,
+} from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
 import { notificarNovaDiaria } from "@/lib/push";
+
+// "Click mágico": convoca automaticamente os diaristas que mais trabalham em
+// cada loja para preencher as vagas abertas, sem repetir ninguém em duas lojas.
+// Desempate: preferência do diarista (geolocalização fica para o futuro).
+export async function clickMagico() {
+  const hoje = hojeISO();
+
+  const [requisicoes, diaristas] = await Promise.all([
+    prisma.requisicao.findMany({
+      where: { status: "ABERTA", data: { gte: hoje } },
+      include: { _count: { select: { escalas: true } } },
+      orderBy: { data: "asc" },
+    }),
+    prisma.diarista.findMany({
+      where: { ativo: true },
+      select: {
+        id: true,
+        funcao: true,
+        escalas: { select: { lojaId: true, data: true } },
+        lojasPreferidas: { select: { id: true } },
+        bloqueios: {
+          where: { OR: [{ ate: null }, { ate: { gt: new Date() } }] },
+          select: { lojaId: true },
+        },
+        convocacoes: { where: { status: "PENDENTE" }, select: { data: true } },
+      },
+    }),
+  ]);
+
+  const info = diaristas.map((d) => {
+    const freq = new Map<string, number>();
+    const datas = new Set<string>();
+    for (const e of d.escalas) {
+      freq.set(e.lojaId, (freq.get(e.lojaId) ?? 0) + 1);
+      datas.add(e.data);
+    }
+    return {
+      id: d.id,
+      funcao: d.funcao,
+      freq,
+      datas,
+      bloq: new Set(d.bloqueios.map((b) => b.lojaId)),
+      pref: new Set(d.lojasPreferidas.map((l) => l.id)),
+      conv: new Set(d.convocacoes.map((c) => c.data)),
+    };
+  });
+
+  const usados = new Set<string>();
+  const novas: { lojaId: string; diaristaId: string; data: string }[] = [];
+
+  for (const r of requisicoes) {
+    const faltam = r.quantidade - r._count.escalas;
+    if (faltam <= 0) continue;
+
+    const candidatos = info
+      .filter(
+        (d) =>
+          !usados.has(d.id) &&
+          (!r.funcao || d.funcao === r.funcao) &&
+          !d.bloq.has(r.lojaId) &&
+          !d.datas.has(r.data) &&
+          !d.conv.has(r.data),
+      )
+      .sort((a, b) => {
+        const fa = a.freq.get(r.lojaId) ?? 0;
+        const fb = b.freq.get(r.lojaId) ?? 0;
+        if (fb !== fa) return fb - fa;
+        return (b.pref.has(r.lojaId) ? 1 : 0) - (a.pref.has(r.lojaId) ? 1 : 0);
+      });
+
+    for (const d of candidatos.slice(0, faltam)) {
+      usados.add(d.id);
+      novas.push({ lojaId: r.lojaId, diaristaId: d.id, data: r.data });
+    }
+  }
+
+  if (novas.length > 0) {
+    await prisma.convocacao.createMany({ data: novas });
+  }
+
+  revalidatePath("/requisicoes");
+  revalidatePath("/loja");
+  redirect(`/requisicoes?magico=${novas.length}`);
+}
 
 export async function createRequisicao(formData: FormData) {
   const lojaId = String(formData.get("lojaId") ?? "");

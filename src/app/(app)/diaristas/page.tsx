@@ -4,7 +4,6 @@ import { Card, EmptyState, PageHeader, btnDanger, inputClass } from "@/component
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import CopyButton from "@/components/CopyButton";
 import Avatar from "@/components/Avatar";
-import { formatBRL } from "@/lib/format";
 import { FUNCOES } from "@/lib/funcoes";
 import { mediaDaAvaliacao } from "@/lib/bonificacoes";
 import { deleteDiarista, toggleDiaristaAtivo } from "./actions";
@@ -159,9 +158,6 @@ export default async function DiaristasPage({
                       </p>
                     );
                   })()}
-                  <p className="mt-1 text-sm text-gray-600">
-                    Diária: <strong>{formatBRL(d.valorDiaria)}</strong>
-                  </p>
                   </div>
                 </div>
                 <Link

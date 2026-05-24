@@ -6,13 +6,10 @@ type DiaristaDefaults = {
   id?: string;
   nome?: string;
   cpf?: string | null;
-  dataNascimento?: string | null;
   fotoUrl?: string | null;
   funcao?: string | null;
   telefone?: string | null;
   chavePix?: string | null;
-  valorDiaria?: number; // centavos
-  observacoes?: string | null;
   lojasPreferidas?: { id: string }[];
 };
 
@@ -27,11 +24,6 @@ export default function DiaristaForm({
   lojas: { id: string; nome: string }[];
   submitLabel: string;
 }) {
-  const valorStr =
-    diarista?.valorDiaria != null && diarista.valorDiaria > 0
-      ? (diarista.valorDiaria / 100).toFixed(2).replace(".", ",")
-      : "";
-
   const preferidas = diarista?.lojasPreferidas?.map((l) => l.id) ?? [];
 
   return (
@@ -56,26 +48,28 @@ export default function DiaristaForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass} htmlFor="cpf">
-              CPF
+              CPF *
             </label>
             <input
               id="cpf"
               name="cpf"
               inputMode="numeric"
+              required
               defaultValue={diarista?.cpf ?? ""}
               placeholder="000.000.000-00"
               className={inputClass}
             />
           </div>
           <div>
-            <label className={labelClass} htmlFor="dataNascimento">
-              Data de nascimento
+            <label className={labelClass} htmlFor="telefone">
+              WhatsApp *
             </label>
             <input
-              id="dataNascimento"
-              name="dataNascimento"
-              type="date"
-              defaultValue={diarista?.dataNascimento ?? ""}
+              id="telefone"
+              name="telefone"
+              required
+              defaultValue={diarista?.telefone ?? ""}
+              placeholder="(85) 90000-0000"
               className={inputClass}
             />
           </div>
@@ -83,15 +77,18 @@ export default function DiaristaForm({
 
         <div>
           <label className={labelClass} htmlFor="funcao">
-            Função
+            Função *
           </label>
           <select
             id="funcao"
             name="funcao"
+            required
             defaultValue={diarista?.funcao ?? ""}
             className={inputClass}
           >
-            <option value="">— Selecione —</option>
+            <option value="" disabled>
+              — Selecione —
+            </option>
             {FUNCOES.map((f) => (
               <option key={f} value={f}>
                 {f}
@@ -100,56 +97,14 @@ export default function DiaristaForm({
           </select>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelClass} htmlFor="telefone">
-              Telefone / WhatsApp
-            </label>
-            <input
-              id="telefone"
-              name="telefone"
-              defaultValue={diarista?.telefone ?? ""}
-              placeholder="(11) 90000-0000"
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass} htmlFor="valorDiaria">
-              Valor da diária (R$) *
-            </label>
-            <input
-              id="valorDiaria"
-              name="valorDiaria"
-              inputMode="decimal"
-              required
-              defaultValue={valorStr}
-              placeholder="120,00"
-              className={inputClass}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className={labelClass} htmlFor="fotoUrl">
-            Foto (link da imagem)
-          </label>
-          <input
-            id="fotoUrl"
-            name="fotoUrl"
-            defaultValue={diarista?.fotoUrl ?? ""}
-            placeholder="https://… (deixe vazio para usar avatar)"
-            className={inputClass}
-          />
-        </div>
-
         <div>
           <label className={labelClass} htmlFor="chavePix">
-            Chave Pix
+            Chave Pix *
           </label>
           <input
             id="chavePix"
             name="chavePix"
+            required
             defaultValue={diarista?.chavePix ?? ""}
             placeholder="CPF, e-mail, telefone ou chave aleatória"
             className={inputClass}
@@ -157,10 +112,20 @@ export default function DiaristaForm({
         </div>
 
         <div>
-          <p className={labelClass}>Lojas preferidas (até 5)</p>
-          <p className="mb-2 -mt-0.5 text-xs text-gray-400">
-            Só um norte de onde a pessoa prefere trabalhar — não impede de ir a outras.
-          </p>
+          <label className={labelClass} htmlFor="fotoUrl">
+            Foto (link da imagem) — opcional
+          </label>
+          <input
+            id="fotoUrl"
+            name="fotoUrl"
+            defaultValue={diarista?.fotoUrl ?? ""}
+            placeholder="https://… (a diarista também envia pelo app)"
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <p className={labelClass}>Lojas preferidas (até 5) — opcional</p>
           <div className="space-y-2">
             {[0, 1, 2, 3, 4].map((i) => (
               <select
@@ -178,20 +143,6 @@ export default function DiaristaForm({
               </select>
             ))}
           </div>
-        </div>
-
-        <div>
-          <label className={labelClass} htmlFor="observacoes">
-            Observações
-          </label>
-          <textarea
-            id="observacoes"
-            name="observacoes"
-            rows={3}
-            defaultValue={diarista?.observacoes ?? ""}
-            placeholder="Anotações, preferências, etc."
-            className={inputClass}
-          />
         </div>
 
         <div className="flex gap-2 pt-1">

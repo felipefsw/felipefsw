@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { parseBRLToCents } from "@/lib/format";
 
 // Lê as lojas preferidas do formulário, remove vazias e duplicadas (máx. 5).
 function lojasPreferidasIds(formData: FormData): { id: string }[] {
@@ -21,13 +20,10 @@ export async function createDiarista(formData: FormData) {
     data: {
       nome,
       cpf: String(formData.get("cpf") ?? "").trim() || null,
-      dataNascimento: String(formData.get("dataNascimento") ?? "").trim() || null,
       fotoUrl: String(formData.get("fotoUrl") ?? "").trim() || null,
       funcao: String(formData.get("funcao") ?? "").trim() || null,
       telefone: String(formData.get("telefone") ?? "").trim() || null,
       chavePix: String(formData.get("chavePix") ?? "").trim() || null,
-      valorDiaria: parseBRLToCents(String(formData.get("valorDiaria") ?? "")),
-      observacoes: String(formData.get("observacoes") ?? "").trim() || null,
       lojasPreferidas: { connect: lojasPreferidasIds(formData) },
     },
   });
@@ -45,13 +41,10 @@ export async function updateDiarista(formData: FormData) {
     data: {
       nome,
       cpf: String(formData.get("cpf") ?? "").trim() || null,
-      dataNascimento: String(formData.get("dataNascimento") ?? "").trim() || null,
       fotoUrl: String(formData.get("fotoUrl") ?? "").trim() || null,
       funcao: String(formData.get("funcao") ?? "").trim() || null,
       telefone: String(formData.get("telefone") ?? "").trim() || null,
       chavePix: String(formData.get("chavePix") ?? "").trim() || null,
-      valorDiaria: parseBRLToCents(String(formData.get("valorDiaria") ?? "")),
-      observacoes: String(formData.get("observacoes") ?? "").trim() || null,
       lojasPreferidas: { set: lojasPreferidasIds(formData) },
     },
   });

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Card, EmptyState, PageHeader, btnDanger, inputClass } from "@/components/ui";
+import { EmptyState, PageHeader, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import MarcaBadge from "@/components/MarcaBadge";
+import { grupoDaLoja } from "@/lib/marcas";
 import { deleteLoja, toggleLojaAtivo } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,17 @@ export default async function LojasPage({
     return `/lojas?${p.toString()}`;
   };
 
+  // Agrupa por marca (quadrantes).
+  type LojaItem = (typeof lojas)[number];
+  const grupos = new Map<string, { label: string; ordem: number; itens: LojaItem[] }>();
+  for (const l of lojas) {
+    const g = grupoDaLoja(l.nome);
+    const cur = grupos.get(g.key) ?? { label: g.label, ordem: g.ordem, itens: [] };
+    cur.itens.push(l);
+    grupos.set(g.key, cur);
+  }
+  const gruposOrdenados = [...grupos.values()].sort((a, b) => a.ordem - b.ordem);
+
   return (
     <div>
       <PageHeader
@@ -82,64 +94,56 @@ export default async function LojasPage({
           Toque em <strong>+ Nova</strong> para cadastrar a primeira.
         </EmptyState>
       ) : (
-        <div className="space-y-3">
-          {lojas.map((loja) => (
-            <Card key={loja.id}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <MarcaBadge nome={loja.nome} className="h-6 w-6 shrink-0 rounded" />
-                    <span className="font-semibold text-gray-900">{loja.nome}</span>
-                    {!loja.ativo && (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                        inativa
-                      </span>
-                    )}
+        <div className="space-y-5">
+          {gruposOrdenados.map((g) => (
+            <section key={g.label}>
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
+                {g.label} ({g.itens.length})
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {g.itens.map((loja) => (
+                  <div key={loja.id} className="rounded-xl border border-gray-200 bg-white p-3">
+                    <Link href={`/lojas/${loja.id}`} className="block">
+                      <div className="flex items-center gap-2">
+                        <MarcaBadge nome={loja.nome} className="h-6 w-6 shrink-0 rounded" />
+                        <span className="truncate text-sm font-semibold text-gray-900">
+                          {loja.nome}
+                        </span>
+                      </div>
+                      {(loja.bairro || loja.cidade) && (
+                        <p className="mt-0.5 truncate text-xs text-gray-500">
+                          {[loja.bairro, loja.cidade].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                      <p className="mt-0.5 text-[11px] text-gray-400">
+                        {loja._count.escalas} agend.
+                        {!loja.ativo && " · inativa"}
+                      </p>
+                    </Link>
+                    <div className="mt-2 flex flex-wrap gap-1.5 border-t border-gray-100 pt-2">
+                      <form action={toggleLojaAtivo}>
+                        <input type="hidden" name="id" value={loja.id} />
+                        <button
+                          type="submit"
+                          className="rounded border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
+                        >
+                          {loja.ativo ? "Desativar" : "Reativar"}
+                        </button>
+                      </form>
+                      <form action={deleteLoja}>
+                        <input type="hidden" name="id" value={loja.id} />
+                        <ConfirmSubmit
+                          className="rounded border border-red-200 bg-white px-2 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50"
+                          message={`Excluir "${loja.nome}"? Os agendamentos dessa loja também serão apagados.`}
+                        >
+                          Excluir
+                        </ConfirmSubmit>
+                      </form>
+                    </div>
                   </div>
-                  {(loja.bairro || loja.cidade) && (
-                    <p className="text-sm text-gray-500">
-                      {[loja.bairro, loja.cidade].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                  {loja.cnpj && (
-                    <p className="text-sm text-gray-500">CNPJ: {loja.cnpj}</p>
-                  )}
-                  {loja.endereco && (
-                    <p className="text-sm text-gray-500">{loja.endereco}</p>
-                  )}
-                  <p className="mt-1 text-xs text-gray-400">
-                    {loja._count.escalas} agendamento(s)
-                  </p>
-                </div>
-                <Link
-                  href={`/lojas/${loja.id}`}
-                  className="text-sm font-medium text-orange-700 hover:underline"
-                >
-                  Editar
-                </Link>
+                ))}
               </div>
-
-              <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-                <form action={toggleLojaAtivo}>
-                  <input type="hidden" name="id" value={loja.id} />
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    {loja.ativo ? "Desativar" : "Reativar"}
-                  </button>
-                </form>
-                <form action={deleteLoja}>
-                  <input type="hidden" name="id" value={loja.id} />
-                  <ConfirmSubmit
-                    className={btnDanger}
-                    message={`Excluir "${loja.nome}"? Os agendamentos dessa loja também serão apagados.`}
-                  >
-                    Excluir
-                  </ConfirmSubmit>
-                </form>
-              </div>
-            </Card>
+            </section>
           ))}
         </div>
       )}

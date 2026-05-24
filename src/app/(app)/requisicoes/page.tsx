@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, btnDanger } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
-import { cancelarRequisicao, deleteRequisicao, reabrirRequisicao } from "./actions";
+import SubmitButton from "@/components/SubmitButton";
+import { cancelarRequisicao, clickMagico, deleteRequisicao, reabrirRequisicao } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,9 @@ function statusBadge(status: string) {
 export default async function RequisicoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; magico?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, magico } = await searchParams;
   const filtro = STATUS.find((s) => s.key === status)?.key ?? "ABERTA";
 
   const requisicoes = await prisma.requisicao.findMany({
@@ -46,6 +47,21 @@ export default async function RequisicoesPage({
         subtitle="Pedidos de diaristas das lojas"
         action={{ href: "/requisicoes/nova", label: "+ Nova" }}
       />
+
+      <form action={clickMagico} className="mb-3">
+        <SubmitButton
+          pendingLabel="Convocando…"
+          className="w-full rounded-xl bg-orange-600 px-4 py-3 text-center text-base font-bold text-white shadow-sm hover:bg-orange-700"
+        >
+          ✨ Click mágico — convocar os melhores para cada vaga
+        </SubmitButton>
+      </form>
+
+      {magico != null && (
+        <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800">
+          ✨ {Number(magico)} convocação(ões) enviada(s)! Os diaristas vão responder pelo app.
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-2">
         {STATUS.map((s) => (
