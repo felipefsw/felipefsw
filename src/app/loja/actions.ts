@@ -180,6 +180,23 @@ export async function aprovarCandidato(requisicaoId: string, diaristaId: string)
   revalidatePath("/requisicoes");
 }
 
+// Marca/desmarca uma diária como paga (só loja/gestor têm acesso a esta área).
+export async function marcarPagoDiaria(escalaId: string, pago: boolean) {
+  const lojaId = await lojaSessaoId();
+  if (!escalaId) return;
+  const escala = await prisma.escala.findUnique({
+    where: { id: escalaId },
+    select: { lojaId: true },
+  });
+  if (!escala || escala.lojaId !== lojaId) return;
+  await prisma.escala.update({
+    where: { id: escalaId },
+    data: { pago, pagoEm: pago ? new Date() : null },
+  });
+  revalidatePath("/loja");
+  revalidatePath("/pagamentos");
+}
+
 // Liga/desliga a permissão de mais de 2 diárias por semana (a loja assume o risco).
 export async function alternarLimiteSemana() {
   const lojaId = await lojaSessaoId();

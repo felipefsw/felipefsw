@@ -4,6 +4,7 @@ import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import { corDoTurno } from "@/lib/horarios";
+import { bairroCidade, ruaDaLoja } from "@/lib/loja";
 import { DIARIAS_CASHBACK, DIARIAS_CASHBACK_20 } from "@/lib/bonificacoes";
 import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
@@ -272,7 +273,11 @@ export default async function DiaristaLinkPage({
                     ? "Cashback de 5 diárias"
                     : b.tipo === "CASHBACK_20"
                       ? "Cashback de 20 diárias"
-                      : "Top do mês"}
+                      : b.tipo === "MILESTONE_30"
+                        ? "Bônus de 30 diárias"
+                        : b.tipo === "MILESTONE_50"
+                          ? "Bônus de 50 diárias"
+                          : "Top do mês"}
                   : <strong>{formatBRL(b.valor)}</strong>
                 </li>
               ))}
@@ -357,25 +362,28 @@ export default async function DiaristaLinkPage({
                         ⭐ Você foi convidado para esta diária
                       </p>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <MarcaBadge nome={r.loja.nome} className="h-7 w-7 shrink-0 rounded" />
                       <p className="font-medium text-gray-900">{r.loja.nome}</p>
+                      {bairroCidade(r.loja) && (
+                        <span className="text-xs text-gray-500">· {bairroCidade(r.loja)}</span>
+                      )}
                       {pref && (
                         <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
                           você já fez diária aqui
                         </span>
                       )}
                     </div>
-                    {enderecoCompleto(r.loja) && (
+                    {(
                       <>
-                        <p className="text-sm text-gray-500">{enderecoCompleto(r.loja)}</p>
+                        <p className="text-sm text-gray-500">{ruaDaLoja(r.loja)}</p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-2">
                           <CopyButton
-                            text={enderecoCompleto(r.loja)}
+                            text={enderecoCompleto(r.loja) || ruaDaLoja(r.loja)}
                             className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
                           />
                           <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(enderecoCompleto(r.loja))}`}
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(enderecoCompleto(r.loja) || ruaDaLoja(r.loja))}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"

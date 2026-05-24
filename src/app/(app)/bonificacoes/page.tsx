@@ -5,13 +5,17 @@ import { formatBRL } from "@/lib/format";
 import {
   DIARIAS_CASHBACK,
   DIARIAS_CASHBACK_20,
+  DIARIAS_MILESTONE_30,
+  DIARIAS_MILESTONE_50,
   MEDIA_MINIMA_CASHBACK,
   MEDIA_MINIMA_CASHBACK_20,
+  VALOR_BONUS_30,
+  VALOR_BONUS_50,
   mediaDaAvaliacao,
   mesAtual,
   rankingDoMes,
 } from "@/lib/bonificacoes";
-import { pagarCashback, pagarCashback20, pagarTopMes } from "./actions";
+import { pagarCashback, pagarCashback20, pagarMilestone, pagarTopMes } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +27,10 @@ export default async function BonificacoesPage() {
       include: {
         avaliacoes: { orderBy: { criadoEm: "asc" }, take: DIARIAS_CASHBACK_20 },
         bonificacoes: {
-          where: { tipo: { in: ["CASHBACK_5", "CASHBACK_20"] } },
+          where: { tipo: { in: ["CASHBACK_5", "CASHBACK_20", "MILESTONE_30", "MILESTONE_50"] } },
           select: { tipo: true },
         },
+        _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
       },
     }),
     rankingDoMes(mes),
@@ -57,6 +62,23 @@ export default async function BonificacoesPage() {
         mediaDe(d.avaliacoes.slice(0, DIARIAS_CASHBACK_20)) >= MEDIA_MINIMA_CASHBACK_20,
     )
     .map((d) => ({ id: d.id, nome: d.nome }));
+
+  // Marcos por nº de diárias realizadas (independe da nota).
+  const elegiveisMarco30 = diaristas
+    .filter(
+      (d) =>
+        !d.bonificacoes.some((b) => b.tipo === "MILESTONE_30") &&
+        d._count.escalas >= DIARIAS_MILESTONE_30,
+    )
+    .map((d) => ({ id: d.id, nome: d.nome, diarias: d._count.escalas }));
+
+  const elegiveisMarco50 = diaristas
+    .filter(
+      (d) =>
+        !d.bonificacoes.some((b) => b.tipo === "MILESTONE_50") &&
+        d._count.escalas >= DIARIAS_MILESTONE_50,
+    )
+    .map((d) => ({ id: d.id, nome: d.nome, diarias: d._count.escalas }));
 
   const topPagosSet = new Set(topPagos.map((b) => b.diaristaId));
 
@@ -117,6 +139,68 @@ export default async function BonificacoesPage() {
                       className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
                     >
                       Pagar {formatBRL(10000)}
+                    </button>
+                  </form>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-2 font-semibold text-gray-900">
+          Marco — {DIARIAS_MILESTONE_30} diárias realizadas ({formatBRL(VALOR_BONUS_30)})
+        </h2>
+        {elegiveisMarco30.length === 0 ? (
+          <EmptyState>Ninguém atingiu 30 diárias ainda.</EmptyState>
+        ) : (
+          <div className="space-y-2">
+            {elegiveisMarco30.map((d) => (
+              <Card key={d.id}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-gray-900">
+                    {d.nome} <span className="text-xs text-gray-500">· {d.diarias} diárias</span>
+                  </span>
+                  <form action={pagarMilestone}>
+                    <input type="hidden" name="diaristaId" value={d.id} />
+                    <input type="hidden" name="marco" value="30" />
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
+                    >
+                      Pagar {formatBRL(VALOR_BONUS_30)}
+                    </button>
+                  </form>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-2 font-semibold text-gray-900">
+          Marco — {DIARIAS_MILESTONE_50} diárias realizadas ({formatBRL(VALOR_BONUS_50)})
+        </h2>
+        {elegiveisMarco50.length === 0 ? (
+          <EmptyState>Ninguém atingiu 50 diárias ainda.</EmptyState>
+        ) : (
+          <div className="space-y-2">
+            {elegiveisMarco50.map((d) => (
+              <Card key={d.id}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-gray-900">
+                    {d.nome} <span className="text-xs text-gray-500">· {d.diarias} diárias</span>
+                  </span>
+                  <form action={pagarMilestone}>
+                    <input type="hidden" name="diaristaId" value={d.id} />
+                    <input type="hidden" name="marco" value="50" />
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
+                    >
+                      Pagar {formatBRL(VALOR_BONUS_50)}
                     </button>
                   </form>
                 </div>

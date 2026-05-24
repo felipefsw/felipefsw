@@ -53,14 +53,18 @@ export default function FotoUpload({
   fotoUrl: string | null;
 }) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const camRef = useRef<HTMLInputElement>(null);
+  const galRef = useRef<HTMLInputElement>(null);
   const [enviando, setEnviando] = useState(false);
-  const [msg, setMsg] = useState<"ok" | "erro" | null>(null);
+  const [ok, setOk] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   async function aoSelecionar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    setMsg(null);
+    setOk(false);
+    setErro(null);
     setEnviando(true);
     try {
       let envio: File = file;
@@ -74,16 +78,15 @@ export default function FotoUpload({
       fd.set("foto", envio);
       const r = await uploadFotoDiarista(fd);
       if (r?.ok) {
-        setMsg("ok");
+        setOk(true);
         router.refresh();
       } else {
-        setMsg("erro");
+        setErro(r?.erro ?? "Não foi possível enviar a foto.");
       }
     } catch {
-      setMsg("erro");
+      setErro("Não foi possível enviar a foto. Tente de novo.");
     } finally {
       setEnviando(false);
-      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
@@ -93,33 +96,41 @@ export default function FotoUpload({
         <Avatar nome={nome} fotoUrl={fotoUrl} className="h-12 w-12" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-gray-900">Sua foto</p>
-          <p className="text-xs text-gray-500">
-            Ajuda o RH e as lojas a te reconhecerem. Toque para escolher ou tirar uma foto.
-          </p>
+          <p className="text-xs text-gray-500">Ajuda o RH e as lojas a te reconhecerem.</p>
         </div>
+      </div>
+
+      <div className="mt-3 flex gap-2">
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => camRef.current?.click()}
           disabled={enviando}
-          className="shrink-0 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
+          className="flex-1 rounded-lg bg-orange-600 px-3 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
         >
-          {enviando ? "Enviando…" : fotoUrl ? "Trocar" : "Enviar"}
+          {enviando ? "Enviando…" : "📷 Tirar foto"}
+        </button>
+        <button
+          type="button"
+          onClick={() => galRef.current?.click()}
+          disabled={enviando}
+          className="flex-1 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-sm font-medium text-orange-800 hover:bg-orange-100 disabled:opacity-60"
+        >
+          🖼️ Galeria
         </button>
       </div>
+
       <input
-        ref={inputRef}
+        ref={camRef}
         type="file"
         accept="image/*"
         capture="user"
         onChange={aoSelecionar}
         className="hidden"
       />
-      {msg === "ok" && <p className="mt-2 text-xs font-medium text-green-700">✓ Foto atualizada!</p>}
-      {msg === "erro" && (
-        <p className="mt-2 text-xs font-medium text-red-600">
-          Não foi possível enviar a foto. Tente de novo.
-        </p>
-      )}
+      <input ref={galRef} type="file" accept="image/*" onChange={aoSelecionar} className="hidden" />
+
+      {ok && <p className="mt-2 text-xs font-medium text-green-700">✓ Foto atualizada!</p>}
+      {erro && <p className="mt-2 text-xs font-medium text-red-600">{erro}</p>}
     </div>
   );
 }

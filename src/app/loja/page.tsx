@@ -8,6 +8,7 @@ import { corDoTurno } from "@/lib/horarios";
 import Avatar from "@/components/Avatar";
 import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
 import SubmitButton from "@/components/SubmitButton";
+import CopyButton from "@/components/CopyButton";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   alternarLimiteSemana,
@@ -16,6 +17,7 @@ import {
   convocarDiarista,
   criarRequisicaoLoja,
   desbloquearDiaristaLoja,
+  marcarPagoDiaria,
   registrarCheckout,
 } from "./actions";
 
@@ -72,7 +74,7 @@ export default async function LojaHome({
     prisma.escala.findMany({
       where: { lojaId },
       include: {
-        diarista: { select: { id: true, nome: true, funcao: true, fotoUrl: true } },
+        diarista: { select: { id: true, nome: true, funcao: true, fotoUrl: true, chavePix: true } },
         avaliacao: true,
       },
       orderBy: { data: "desc" },
@@ -100,6 +102,11 @@ export default async function LojaHome({
   // Diárias de hoje (para acompanhar check-in e registrar saída).
   const hoje = hojeISO();
   const hojeEscalas = escalas.filter((e) => e.data === hoje);
+  // Texto com todos os Pix de hoje, para copiar e colar no WhatsApp.
+  const pixHoje = hojeEscalas
+    .filter((e) => e.diarista.chavePix)
+    .map((e) => `${e.diarista.nome}: ${e.diarista.chavePix}`)
+    .join("\n");
 
   // Atalho "pedir de novo": usa a requisição mais recente como modelo.
   const ultima = requisicoes.length
@@ -209,35 +216,82 @@ export default async function LojaHome({
 
       {hojeEscalas.length > 0 && (
         <section>
-          <h2 className="mb-2 font-semibold text-gray-900">Diárias de hoje</h2>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="font-semibold text-gray-900">Diárias de hoje</h2>
+            {pixHoje && (
+              <CopyButton
+                text={pixHoje}
+                label="Copiar todos os Pix"
+                className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+              />
+            )}
+          </div>
           <Card>
             <ul className="divide-y divide-gray-100">
               {hojeEscalas.map((e) => (
-                <li key={e.id} className="flex items-center justify-between gap-3 py-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-gray-900">{e.diarista.nome}</p>
-                    <p className="text-xs text-gray-500">
-                      {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim}` : ""}
-                      {e.checkinEm ? ` · check-in ${horaDe(e.checkinEm)}` : " · aguardando check-in"}
-                    </p>
+                <li key={e.id} className="py-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-gray-900">{e.diarista.nome}</p>
+                      <p className="text-xs text-gray-500">
+                        {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim}` : ""}
+                        {e.checkinEm
+                          ? ` · check-in ${horaDe(e.checkinEm)}`
+                          : " · aguardando check-in"}
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      {e.checkoutEm ? (
+                        <span className="text-xs text-gray-500">
+                          saída {horaDe(e.checkoutEm)} · {formatBRL(e.valorPago ?? e.valor)}
+                        </span>
+                      ) : e.checkinEm ? (
+                        <form action={registrarCheckout}>
+                          <input type="hidden" name="escalaId" value={e.id} />
+                          <button
+                            type="submit"
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                          >
+                            Registrar saída
+                          </button>
+                        </form>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="shrink-0">
-                    {e.checkoutEm ? (
-                      <span className="text-xs text-gray-500">
-                        saída {horaDe(e.checkoutEm)} · {formatBRL(e.valorPago ?? e.valor)}
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {e.diarista.chavePix ? (
+                      <span className="flex items-center gap-1 text-xs text-gray-600">
+                        <span className="max-w-[11rem] truncate">Pix: {e.diarista.chavePix}</span>
+                        <CopyButton
+                          text={e.diarista.chavePix}
+                          label="copiar"
+                          className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-700"
+                        />
                       </span>
-                    ) : e.checkinEm ? (
-                      <form action={registrarCheckout}>
-                        <input type="hidden" name="escalaId" value={e.id} />
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    ) : (
+                      <span className="text-xs text-gray-400">sem Pix cadastrado</span>
+                    )}
+                    {e.pago ? (
+                      <form action={marcarPagoDiaria.bind(null, e.id, false)}>
+                        <SubmitButton
+                          pendingLabel="…"
+                          className="rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700"
                         >
-                          Registrar saída
-                        </button>
+                          ✓ Pago (desfazer)
+                        </SubmitButton>
                       </form>
                     ) : (
-                      <span className="text-xs text-gray-400">—</span>
+                      <form action={marcarPagoDiaria.bind(null, e.id, true)}>
+                        <SubmitButton
+                          pendingLabel="…"
+                          className="rounded-lg bg-orange-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-orange-800"
+                        >
+                          Marcar pago
+                        </SubmitButton>
+                      </form>
                     )}
                   </div>
                 </li>

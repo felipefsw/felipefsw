@@ -3,9 +3,14 @@ import { prisma } from "./prisma";
 export const VALOR_BONUS = 10000; // R$ 100,00 em centavos
 export const MEDIA_MINIMA_CASHBACK = 4.5; // de 1 a 5 estrelas
 export const DIARIAS_CASHBACK = 5;
-// Segundo bônus: 20 diárias bem avaliadas (média >= 4,25) → mais R$ 100,00.
+// Segundo bônus: 20 diárias bem avaliadas (média >= 4,5) → mais R$ 100,00.
 export const DIARIAS_CASHBACK_20 = 20;
-export const MEDIA_MINIMA_CASHBACK_20 = 4.25;
+export const MEDIA_MINIMA_CASHBACK_20 = 4.5;
+// Bônus por marco de diárias realizadas (independe da nota).
+export const VALOR_BONUS_30 = 20000; // R$ 200,00
+export const DIARIAS_MILESTONE_30 = 30;
+export const VALOR_BONUS_50 = 30000; // R$ 300,00
+export const DIARIAS_MILESTONE_50 = 50;
 export const MIN_DIARIAS_TOP = 3; // mínimo de diárias avaliadas no mês para entrar no ranking
 
 // A nota de cada diária é a quantidade de estrelas (1 a 5).

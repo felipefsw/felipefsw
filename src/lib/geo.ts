@@ -1,6 +1,6 @@
 // Distância entre dois pontos (metros) e cálculo de valor proporcional da diária.
 
-export const RAIO_CHECKIN_METROS = 500;
+export const RAIO_CHECKIN_METROS = 100;
 
 export function distanciaMetros(
   lat1: number,
