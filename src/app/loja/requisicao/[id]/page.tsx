@@ -15,14 +15,6 @@ import { decidirRequisicao } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
-function prazoDecisao(data: string, horaInicio: string): string {
-  const [a, m, d] = data.split("-").map(Number);
-  const [h, min] = horaInicio.split(":").map(Number);
-  const dt = new Date(a, m - 1, d, h, min);
-  dt.setHours(dt.getHours() - 4);
-  return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")} ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
-}
-
 export default async function DecidirRequisicaoPage({
   params,
 }: {
@@ -72,7 +64,9 @@ export default async function DecidirRequisicaoPage({
           {requisicao.funcao ? <> · {requisicao.funcao}</> : null} ·{" "}
           {formatBRL(requisicao.valorDiaria)}
         </p>
-        <p className="mt-1 text-xs text-amber-700">⏰ Decida até {prazoDecisao(requisicao.data, requisicao.horaInicio)}</p>
+        <p className="mt-1 text-xs text-gray-500">
+          Você pode escolher a qualquer momento, desde a criação até a diária.
+        </p>
       </Card>
 
       {candidatos.length === 0 ? (

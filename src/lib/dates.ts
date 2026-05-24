@@ -54,6 +54,17 @@ export function dentroDaJanelaAgendamento(data: string): boolean {
   return data >= hoje && data <= maxAgendamentoISO();
 }
 
+/**
+ * Diz se o diarista ainda pode desistir: precisa faltar mais de 4h para o início.
+ */
+export function podeDesistir(data: string, horaInicio: string | null): boolean {
+  const [a, m, d] = data.split("-").map(Number);
+  const [h, mi] = (horaInicio ?? "00:00").split(":").map(Number);
+  const inicio = new Date(a, m - 1, d, h, mi);
+  const limite = new Date(inicio.getTime() - 4 * 60 * 60 * 1000);
+  return new Date() < limite;
+}
+
 /** Hora atual no formato "HH:MM" (horário local do servidor). */
 export function agoraHHMM(): string {
   const d = new Date();

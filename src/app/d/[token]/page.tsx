@@ -1,11 +1,18 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
-import { addDias, hojeISO } from "@/lib/dates";
+import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
 import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
 import PushToggle from "@/components/PushToggle";
-import { confirmarPresenca, fazerCheckin, inscreverNaDiaria, responderConvocacao } from "./actions";
+import ConfirmSubmit from "@/components/ConfirmSubmit";
+import {
+  confirmarPresenca,
+  desistirDaDiaria,
+  fazerCheckin,
+  inscreverNaDiaria,
+  responderConvocacao,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +33,10 @@ export default async function DiaristaLinkPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ checkin?: string }>;
+  searchParams: Promise<{ checkin?: string; desistir?: string }>;
 }) {
   const { token } = await params;
-  const { checkin } = await searchParams;
+  const { checkin, desistir } = await searchParams;
   const hoje = hojeISO();
   const desde = addDias(hoje, -14);
 
@@ -112,6 +119,16 @@ export default async function DiaristaLinkPage({
         {checkin === "longe" && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
             Você parece estar longe da loja. Faça o check-in quando chegar no local.
+          </div>
+        )}
+        {desistir === "ok" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+            Você desistiu da diária e a vaga foi reaberta.
+          </div>
+        )}
+        {desistir === "tarde" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            Já passou do prazo (até 4h antes) para desistir desta diária.
           </div>
         )}
 
@@ -333,6 +350,19 @@ export default async function DiaristaLinkPage({
                       </button>
                     </form>
                   ) : null}
+
+                  {!e.checkinEm && podeDesistir(e.data, e.horaInicio) && (
+                    <form action={desistirDaDiaria} className="mt-2">
+                      <input type="hidden" name="token" value={token} />
+                      <input type="hidden" name="escalaId" value={e.id} />
+                      <ConfirmSubmit
+                        className="text-xs text-red-600 underline"
+                        message="Desistir desta diária? A vaga será reaberta para outros. Só dá pra desistir até 4h antes."
+                      >
+                        Desistir desta diária
+                      </ConfirmSubmit>
+                    </form>
+                  )}
 
                   {e.presenca === "PRESENTE" && enderecoCompleto(e.loja) && (
                     <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">

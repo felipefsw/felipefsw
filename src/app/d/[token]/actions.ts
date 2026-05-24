@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { RAIO_CHECKIN_METROS, distanciaMetros } from "@/lib/geo";
+import { podeDesistir } from "@/lib/dates";
+import { notificarNovaDiaria } from "@/lib/push";
 
 export async function fazerCheckin(formData: FormData) {
   const token = String(formData.get("token") ?? "");
@@ -61,6 +63,49 @@ export async function salvarPushSubscription(
     update: { p256dh, auth, diaristaId: diarista.id },
     create: { endpoint, p256dh, auth, diaristaId: diarista.id },
   });
+}
+
+export async function desistirDaDiaria(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const escalaId = String(formData.get("escalaId") ?? "");
+  if (!token || !escalaId) return;
+
+  const escala = await prisma.escala.findUnique({
+    where: { id: escalaId },
+    include: {
+      diarista: { select: { token: true } },
+      requisicao: { select: { funcao: true } },
+    },
+  });
+  if (!escala || escala.diarista.token !== token) return;
+
+  if (!podeDesistir(escala.data, escala.horaInicio)) {
+    redirect(`/d/${token}?desistir=tarde`);
+  }
+
+  const { lojaId, data, horaInicio, horaFim, valor } = escala;
+  await prisma.$transaction([
+    prisma.escala.delete({ where: { id: escalaId } }),
+    prisma.requisicao.create({
+      data: {
+        lojaId,
+        data,
+        horaInicio: horaInicio ?? "18:00",
+        horaFim: horaFim ?? "23:00",
+        funcao: escala.requisicao?.funcao ?? null,
+        quantidade: 1,
+        valorDiaria: valor,
+        observacoes: "Vaga reaberta por desistência",
+      },
+    }),
+  ]);
+
+  await notificarNovaDiaria(lojaId, data, []);
+
+  revalidatePath(`/d/${token}`);
+  revalidatePath("/escala");
+  revalidatePath("/loja");
+  redirect(`/d/${token}?desistir=ok`);
 }
 
 export async function confirmarPresenca(formData: FormData) {
