@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { cnpjValido } from "@/lib/cnpj";
 
 function coord(formData: FormData, campo: string): number | null {
   const n = Number.parseFloat(String(formData.get(campo) ?? ""));
@@ -20,6 +21,7 @@ export async function createLoja(formData: FormData) {
   const bairro = String(formData.get("bairro") ?? "").trim();
   const endereco = String(formData.get("endereco") ?? "").trim();
   if (!nome) return;
+  if (cnpj && !cnpjValido(cnpj)) redirect("/lojas/nova?erro=cnpj");
 
   await prisma.loja.create({
     data: {
@@ -46,6 +48,7 @@ export async function updateLoja(formData: FormData) {
   const bairro = String(formData.get("bairro") ?? "").trim();
   const endereco = String(formData.get("endereco") ?? "").trim();
   if (!id || !nome) return;
+  if (cnpj && !cnpjValido(cnpj)) redirect(`/lojas/${id}?erro=cnpj`);
 
   await prisma.loja.update({
     where: { id },

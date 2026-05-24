@@ -20,17 +20,25 @@ export default function LojaForm({
   loja,
   gestores,
   submitLabel,
+  erro,
 }: {
   action: (formData: FormData) => void;
   loja?: LojaDefaults;
   gestores: { id: string; nome: string }[];
   submitLabel: string;
+  erro?: string;
 }) {
   const gestoresDaLoja = new Set(loja?.gestores?.map((g) => g.id) ?? []);
   return (
     <Card>
       <form action={action} className="space-y-4">
         {loja?.id ? <input type="hidden" name="id" value={loja.id} /> : null}
+
+        {erro === "cnpj" && (
+          <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            CNPJ inválido. Confira os números e tente novamente.
+          </p>
+        )}
 
         <div>
           <label className={labelClass} htmlFor="nome">

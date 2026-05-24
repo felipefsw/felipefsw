@@ -10,10 +10,13 @@ export const dynamic = "force-dynamic";
 
 export default async function EditarLojaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ erro?: string }>;
 }) {
   const { id } = await params;
+  const { erro } = await searchParams;
   const [loja, avaliacoes, gestores] = await Promise.all([
     prisma.loja.findUnique({ where: { id }, include: { gestores: { select: { id: true } } } }),
     prisma.avaliacaoLoja.findMany({
@@ -41,7 +44,7 @@ export default async function EditarLojaPage({
   return (
     <div className="space-y-4">
       <PageHeader title="Editar loja" subtitle={loja.nome} />
-      <LojaForm action={updateLoja} loja={loja} gestores={gestores} submitLabel="Salvar alterações" />
+      <LojaForm action={updateLoja} loja={loja} gestores={gestores} submitLabel="Salvar alterações" erro={erro} />
 
       <Card>
         <div className="flex items-center justify-between">
