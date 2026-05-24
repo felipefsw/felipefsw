@@ -224,7 +224,17 @@ export default async function DiaristaLinkPage({
         )}
         {checkin === "longe" && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
-            Você parece estar longe da loja. Faça o check-in quando chegar no local.
+            Você parece estar longe da loja (mais de 100 m). Faça o check-in quando chegar no local.
+          </div>
+        )}
+        {checkin === "semloc" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            Precisamos da sua localização para o check-in. Permita o acesso e tente de novo.
+          </div>
+        )}
+        {checkin === "lojasemloc" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            Esta loja ainda não tem localização cadastrada. Avise o RH para liberar o check-in.
           </div>
         )}
         {desistir === "ok" && (

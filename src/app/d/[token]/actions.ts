@@ -31,25 +31,26 @@ export async function fazerCheckin(formData: FormData) {
   });
   if (!escala || escala.diarista.token !== token) return;
 
-  // Se a loja tem localização, valida a distância.
-  if (
-    escala.loja.latitude != null &&
-    escala.loja.longitude != null &&
-    Number.isFinite(lat) &&
-    Number.isFinite(lng)
-  ) {
-    const dist = distanciaMetros(lat, lng, escala.loja.latitude, escala.loja.longitude);
-    if (dist > RAIO_CHECKIN_METROS) {
-      redirect(`/d/${token}?checkin=longe`);
-    }
+  // Check-in só com a localização do diarista (precisa permitir o GPS).
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    redirect(`/d/${token}?checkin=semloc`);
+  }
+  // A loja precisa ter localização cadastrada para validar a distância.
+  if (escala.loja.latitude == null || escala.loja.longitude == null) {
+    redirect(`/d/${token}?checkin=lojasemloc`);
+  }
+  // Só permite se estiver a no máximo 100 m da loja.
+  const dist = distanciaMetros(lat, lng, escala.loja.latitude, escala.loja.longitude);
+  if (dist > RAIO_CHECKIN_METROS) {
+    redirect(`/d/${token}?checkin=longe`);
   }
 
   await prisma.escala.update({
     where: { id: escalaId },
     data: {
       checkinEm: new Date(),
-      checkinLat: Number.isFinite(lat) ? lat : null,
-      checkinLng: Number.isFinite(lng) ? lng : null,
+      checkinLat: lat,
+      checkinLng: lng,
       presenca: "PRESENTE",
     },
   });
