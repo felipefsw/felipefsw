@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { parseBRLToCents } from "@/lib/format";
 import { dentroDaJanelaAgendamento, hojeISO, inicioDaSemana, isISODate } from "@/lib/dates";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
+import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
 import { notificarVagaPreenchida } from "@/lib/push";
 
 export async function createEscala(formData: FormData) {
@@ -31,6 +32,7 @@ export async function createEscala(formData: FormData) {
   await prisma.escala.create({
     data: { diaristaId, lojaId, data, valor },
   });
+  await limparOutrasInscricoesDoDia(diaristaId, data);
 
   revalidatePath("/escala");
   revalidatePath("/");
@@ -72,6 +74,8 @@ export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
       requisicaoId: requisicao.id,
     },
   });
+
+  await limparOutrasInscricoesDoDia(diaristaId, requisicao.data, requisicaoId);
 
   if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
     await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });

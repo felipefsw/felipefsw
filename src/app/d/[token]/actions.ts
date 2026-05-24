@@ -8,6 +8,7 @@ import { addDias, hojeISO, podeDesistir, turnoFinalizado } from "@/lib/dates";
 import { notificarNovaDiaria } from "@/lib/push";
 import { uploadImagemResultado } from "@/lib/storage";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
+import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
 
 // O diarista precisa avaliar as diárias já encerradas antes de pegar/aceitar novas.
 async function temAvaliacaoPendente(diaristaId: string): Promise<boolean> {
@@ -209,6 +210,7 @@ export async function responderConvocacao(formData: FormData) {
         },
       }),
     ]);
+    await limparOutrasInscricoesDoDia(convocacao.diaristaId, convocacao.data);
   } else {
     await prisma.convocacao.update({ where: { id: convocacaoId }, data: { status: "RECUSADA" } });
   }

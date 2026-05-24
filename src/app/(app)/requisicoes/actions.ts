@@ -12,6 +12,7 @@ import {
 } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
 import { notificarNovaDiaria, notificarVagaPreenchida } from "@/lib/push";
+import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
 
 export type ResultadoMagico = {
   total: number;
@@ -220,6 +221,7 @@ export async function fecharRequisicao(formData: FormData) {
     }),
   ]);
 
+  for (const d of livres) await limparOutrasInscricoesDoDia(d, data, id);
   await notificarVagaPreenchida(id);
 
   revalidatePath("/requisicoes");

@@ -9,6 +9,7 @@ import { parseBRLToCents } from "@/lib/format";
 import { valorProporcional } from "@/lib/geo";
 import { notificarNovaDiaria, notificarPagamentoDaEscala, notificarVagaPreenchida } from "@/lib/push";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
+import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
 import { uploadImagemResultado } from "@/lib/storage";
 
 // Loja ativa da sessão (loja avulsa ou gestor). Redireciona se não houver.
@@ -172,6 +173,9 @@ export async function aprovarCandidato(requisicaoId: string, diaristaId: string)
       data: { status: "ACEITA" },
     }),
   ]);
+
+  // Trava o diarista no dia: tira candidaturas pendentes dele em outras lojas.
+  await limparOutrasInscricoesDoDia(diaristaId, requisicao.data, requisicaoId);
 
   if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
     await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });
