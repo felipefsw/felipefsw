@@ -124,7 +124,7 @@ export default async function EntrarPage({
   const gestores =
     sel === "gestor" && !id
       ? await prisma.gestor.findMany({
-          where: { ativo: true },
+          where: { ativo: true, aprovado: true },
           orderBy: { nome: "asc" },
           select: { id: true, nome: true },
         })
@@ -211,6 +211,12 @@ export default async function EntrarPage({
                 </Link>
               ))}
             </div>
+            <p className="mt-3 text-center text-sm text-gray-500">
+              Sua loja não está aqui?{" "}
+              <Link href="/solicitar-acesso" className="font-medium text-orange-700 underline">
+                Solicitar acesso
+              </Link>
+            </p>
           </Card>
         ))}
 
@@ -241,6 +247,12 @@ export default async function EntrarPage({
                 ))}
               </div>
             )}
+            <p className="mt-3 text-center text-sm text-gray-500">
+              Não tem cadastro?{" "}
+              <Link href="/solicitar-acesso" className="font-medium text-orange-700 underline">
+                Solicitar acesso
+              </Link>
+            </p>
           </Card>
         ))}
 

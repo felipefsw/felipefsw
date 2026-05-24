@@ -49,7 +49,7 @@ export async function entrarComoGestor(formData: FormData) {
     where: { id },
     include: { lojas: { where: { ativo: true }, select: { id: true }, orderBy: { nome: "asc" } } },
   });
-  if (!gestor || !gestor.ativo) redirect("/entrar?perfil=gestor");
+  if (!gestor || !gestor.ativo || !gestor.aprovado) redirect("/entrar?perfil=gestor");
   if (semSenha(gestor.senha)) redirect(`/entrar?perfil=gestor&id=${id}&erro=semsenha`);
   if (!conferirSenha(senha, gestor.senha)) redirect(`/entrar?perfil=gestor&id=${id}&erro=login`);
 

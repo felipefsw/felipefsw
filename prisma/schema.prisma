@@ -70,6 +70,8 @@ model Gestor {
   usuario    String   @unique
   senha      String   @default("123456")
   tokenSenha String?  @unique // link secreto p/ definir/resetar a senha
+  telefone   String? // WhatsApp (para receber o link de acesso)
+  aprovado   Boolean  @default(true) // autocadastro entra como false até o RH/TI aprovar
   ativo      Boolean  @default(true)
   criadoEm   DateTime @default(now())
   lojas      Loja[]   @relation("GestorLojas")
