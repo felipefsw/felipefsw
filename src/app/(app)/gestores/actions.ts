@@ -18,6 +18,28 @@ export async function createGestor(formData: FormData) {
   redirect("/gestores");
 }
 
+// Atribui (e desatribui) lojas a um gestor a partir da tela de gestores.
+export async function atribuirLojasAoGestor(formData: FormData) {
+  const gestorId = String(formData.get("gestorId") ?? "");
+  if (!gestorId) return;
+  const lojaIds = formData.getAll("lojaIds").map(String).filter(Boolean);
+
+  if (lojaIds.length > 0) {
+    // As selecionadas passam a ser deste gestor.
+    await prisma.loja.updateMany({ where: { id: { in: lojaIds } }, data: { gestorId } });
+    // As que eram deste gestor e foram desmarcadas ficam sem gestor.
+    await prisma.loja.updateMany({
+      where: { gestorId, id: { notIn: lojaIds } },
+      data: { gestorId: null },
+    });
+  } else {
+    await prisma.loja.updateMany({ where: { gestorId }, data: { gestorId: null } });
+  }
+
+  revalidatePath("/gestores");
+  revalidatePath("/lojas");
+}
+
 export async function toggleGestorAtivo(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;

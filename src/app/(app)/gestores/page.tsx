@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, inputClass, labelClass, btnPrimary } from "@/components/ui";
-import { createGestor, toggleGestorAtivo } from "./actions";
+import { atribuirLojasAoGestor, createGestor, toggleGestorAtivo } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +10,16 @@ export default async function GestoresPage({
   searchParams: Promise<{ erro?: string }>;
 }) {
   const { erro } = await searchParams;
-  const gestores = await prisma.gestor.findMany({
-    orderBy: [{ ativo: "desc" }, { nome: "asc" }],
-    include: { _count: { select: { lojas: true } } },
-  });
+  const [gestores, lojas] = await Promise.all([
+    prisma.gestor.findMany({
+      orderBy: [{ ativo: "desc" }, { nome: "asc" }],
+      include: { _count: { select: { lojas: true } } },
+    }),
+    prisma.loja.findMany({
+      orderBy: { nome: "asc" },
+      select: { id: true, nome: true, gestorId: true },
+    }),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -50,7 +56,7 @@ export default async function GestoresPage({
           </button>
         </form>
         <p className="mt-2 text-xs text-gray-400">
-          Depois, associe as lojas a este gestor no cadastro de cada loja (campo Gestor).
+          Depois, escolha as lojas de cada gestor na lista abaixo (em “Lojas deste gestor”).
         </p>
       </Card>
 
@@ -84,6 +90,43 @@ export default async function GestoresPage({
                   </button>
                 </form>
               </div>
+
+              <details className="mt-3 border-t border-gray-100 pt-3">
+                <summary className="cursor-pointer text-sm font-medium text-orange-700">
+                  Lojas deste gestor
+                </summary>
+                <form action={atribuirLojasAoGestor} className="mt-2">
+                  <input type="hidden" name="gestorId" value={g.id} />
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    {lojas.map((l) => (
+                      <label
+                        key={l.id}
+                        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          name="lojaIds"
+                          value={l.id}
+                          defaultChecked={l.gestorId === g.id}
+                          className="h-4 w-4 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
+                        />
+                        <span className="min-w-0 truncate text-gray-700">
+                          {l.nome}
+                          {l.gestorId && l.gestorId !== g.id && (
+                            <span className="text-xs text-gray-400"> (de outro gestor)</span>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    type="submit"
+                    className="mt-2 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
+                  >
+                    Salvar lojas deste gestor
+                  </button>
+                </form>
+              </details>
             </Card>
           ))}
         </div>
