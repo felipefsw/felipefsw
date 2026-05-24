@@ -11,7 +11,11 @@ import {
 } from "@/components/ui";
 import { hojeISO, isISODate, maxAgendamentoISO } from "@/lib/dates";
 import { VALORES_DIARIA } from "@/lib/valoresDiaria";
-import { createEscala } from "../actions";
+import { formatBRL, formatDateShort } from "@/lib/format";
+import { grupoDaLoja } from "@/lib/marcas";
+import Avatar from "@/components/Avatar";
+import SubmitButton from "@/components/SubmitButton";
+import { createEscala, escalarNaVaga } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -26,15 +30,30 @@ export default async function NovoAgendamentoPage({
   const dataInicial =
     sp.data && isISODate(sp.data) && sp.data >= hoje && sp.data <= max ? sp.data : hoje;
 
-  const [diaristas, lojas] = await Promise.all([
-    prisma.diarista.findMany({ where: { ativo: true }, orderBy: { nome: "asc" } }),
+  const [diaristas, lojas, requisicoes] = await Promise.all([
+    prisma.diarista.findMany({
+      where: { ativo: true },
+      orderBy: { nome: "asc" },
+      include: {
+        escalas: { select: { lojaId: true, data: true } },
+        bloqueios: {
+          where: { OR: [{ ate: null }, { ate: { gt: new Date() } }] },
+          select: { lojaId: true },
+        },
+      },
+    }),
     prisma.loja.findMany({ where: { ativo: true }, orderBy: { nome: "asc" } }),
+    prisma.requisicao.findMany({
+      where: { status: "ABERTA", data: { gte: hoje } },
+      include: { loja: { select: { nome: true } }, _count: { select: { escalas: true } } },
+      orderBy: { data: "asc" },
+    }),
   ]);
 
   if (diaristas.length === 0 || lojas.length === 0) {
     return (
       <div>
-        <PageHeader title="Novo agendamento" />
+        <PageHeader title="Agendar" />
         <EmptyState>
           Para agendar, você precisa de pelo menos{" "}
           {diaristas.length === 0 && (
@@ -54,11 +73,114 @@ export default async function NovoAgendamentoPage({
     );
   }
 
+  // Info de cada diarista para sugerir nas vagas.
+  const info = diaristas.map((d) => {
+    const freq = new Map<string, number>();
+    const datas = new Set<string>();
+    for (const e of d.escalas) {
+      freq.set(e.lojaId, (freq.get(e.lojaId) ?? 0) + 1);
+      datas.add(e.data);
+    }
+    return {
+      id: d.id,
+      nome: d.nome,
+      funcao: d.funcao,
+      fotoUrl: d.fotoUrl,
+      freq,
+      datas,
+      bloq: new Set(d.bloqueios.map((b) => b.lojaId)),
+    };
+  });
+
+  // Vagas abertas com sugestões (top diaristas da loja, livres no dia).
+  const vagas = requisicoes
+    .map((r) => {
+      const faltam = r.quantidade - r._count.escalas;
+      const sugeridos = info
+        .filter(
+          (d) =>
+            (!r.funcao || d.funcao === r.funcao) &&
+            !d.bloq.has(r.lojaId) &&
+            !d.datas.has(r.data),
+        )
+        .sort((a, b) => (b.freq.get(r.lojaId) ?? 0) - (a.freq.get(r.lojaId) ?? 0))
+        .slice(0, 4);
+      return { r, faltam, sugeridos };
+    })
+    .filter((v) => v.faltam > 0);
+
+  const grupos = new Map<string, { label: string; ordem: number; itens: typeof vagas }>();
+  for (const v of vagas) {
+    const g = grupoDaLoja(v.r.loja.nome);
+    const cur = grupos.get(g.key) ?? { label: g.label, ordem: g.ordem, itens: [] as typeof vagas };
+    cur.itens.push(v);
+    grupos.set(g.key, cur);
+  }
+  const gruposOrdenados = [...grupos.values()].sort((a, b) => a.ordem - b.ordem);
+
   return (
-    <div>
-      <PageHeader title="Novo agendamento" subtitle="Quem trabalha, onde e quando" />
-      <Card>
-        <form action={createEscala} className="space-y-4">
+    <div className="space-y-4">
+      <PageHeader title="Agendar" subtitle="Escale nas vagas abertas com 1 toque" />
+
+      {gruposOrdenados.length === 0 ? (
+        <EmptyState>Nenhuma vaga aberta. Use o agendamento manual abaixo.</EmptyState>
+      ) : (
+        gruposOrdenados.map((g) => (
+          <section key={g.label}>
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
+              {g.label}
+            </h2>
+            <div className="space-y-2">
+              {g.itens.map(({ r, faltam, sugeridos }) => (
+                <Card key={r.id}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-gray-900">{r.loja.nome}</p>
+                    <span className="text-xs text-gray-400">{formatDateShort(r.data)}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {r.funcao ?? "qualquer função"} · {r.horaInicio}–{r.horaFim} ·{" "}
+                    {formatBRL(r.valorDiaria)} · faltam {faltam}
+                  </p>
+                  <div className="mt-2 space-y-1.5">
+                    {sugeridos.length === 0 ? (
+                      <p className="text-xs text-gray-400">Sem sugestões livres neste dia.</p>
+                    ) : (
+                      sugeridos.map((d) => (
+                        <div key={d.id} className="flex items-center justify-between gap-2">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-7 w-7" />
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm text-gray-800">{d.nome}</span>
+                              <span className="block text-[11px] text-gray-400">
+                                {d.freq.get(r.lojaId) ?? 0}× nesta loja
+                                {d.funcao ? ` · ${d.funcao}` : ""}
+                              </span>
+                            </span>
+                          </span>
+                          <form action={escalarNaVaga.bind(null, r.id, d.id)}>
+                            <SubmitButton
+                              pendingLabel="…"
+                              className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-800"
+                            >
+                              Escalar
+                            </SubmitButton>
+                          </form>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        ))
+      )}
+
+      <details className="rounded-xl border border-gray-200 bg-white p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+          Agendar manualmente (escolher diarista e valor)
+        </summary>
+        <form action={createEscala} className="mt-3 space-y-4">
           <div>
             <label className={labelClass} htmlFor="diaristaId">
               Diarista *
@@ -134,7 +256,7 @@ export default async function NovoAgendamentoPage({
             </Link>
           </div>
         </form>
-      </Card>
+      </details>
     </div>
   );
 }

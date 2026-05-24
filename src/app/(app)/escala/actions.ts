@@ -36,6 +36,51 @@ export async function createEscala(formData: FormData) {
   redirect(`/escala?inicio=${inicioDaSemana(data)}`);
 }
 
+// Escala um diarista direto numa vaga aberta (1 clique, pelo RH).
+export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
+  if (!requisicaoId || !diaristaId) return;
+  const requisicao = await prisma.requisicao.findUnique({
+    where: { id: requisicaoId },
+    include: { _count: { select: { escalas: true } } },
+  });
+  if (!requisicao || requisicao.status !== "ABERTA") return;
+  if (requisicao._count.escalas >= requisicao.quantidade) return;
+
+  const [jaNoDia, bloqueio] = await Promise.all([
+    prisma.escala.findFirst({ where: { data: requisicao.data, diaristaId }, select: { id: true } }),
+    prisma.bloqueio.findFirst({
+      where: {
+        lojaId: requisicao.lojaId,
+        diaristaId,
+        OR: [{ ate: null }, { ate: { gt: new Date() } }],
+      },
+      select: { id: true },
+    }),
+  ]);
+  if (jaNoDia || bloqueio) return;
+  if (!(await podeMaisUmaNaSemana(diaristaId, requisicao.lojaId, requisicao.data))) return;
+
+  await prisma.escala.create({
+    data: {
+      diaristaId,
+      lojaId: requisicao.lojaId,
+      data: requisicao.data,
+      horaInicio: requisicao.horaInicio,
+      horaFim: requisicao.horaFim,
+      valor: requisicao.valorDiaria,
+      requisicaoId: requisicao.id,
+    },
+  });
+
+  if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
+    await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });
+  }
+
+  revalidatePath("/escala/novo");
+  revalidatePath("/escala");
+  revalidatePath("/requisicoes");
+}
+
 export async function marcarPresenca(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const presenca = String(formData.get("presenca") ?? "");
