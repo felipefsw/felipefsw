@@ -61,6 +61,7 @@ export default async function DiaristaLinkPage({
         orderBy: { data: "asc" },
       },
       bonificacoes: { where: { pago: true }, orderBy: { criadoEm: "desc" } },
+      _count: { select: { avaliacoes: true } },
     },
   });
 
@@ -159,6 +160,27 @@ export default async function DiaristaLinkPage({
             🏆 Ranking
           </Link>
         </div>
+
+        {!diarista.bonificacoes.some((b) => b.tipo === "CASHBACK_5") &&
+          diarista._count.avaliacoes < 5 && (
+            <div className="rounded-xl border border-orange-200 bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold text-gray-900">
+                🎁 Bônus de R$ 100 chegando!
+              </p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Faltam {5 - diarista._count.avaliacoes} diária(s) bem avaliada(s) para concorrer.
+              </p>
+              <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-orange-500"
+                  style={{ width: `${(diarista._count.avaliacoes / 5) * 100}%` }}
+                />
+              </div>
+              <p className="mt-1 text-right text-xs font-medium text-orange-700">
+                {diarista._count.avaliacoes}/5
+              </p>
+            </div>
+          )}
 
         {diarista.bonificacoes.length > 0 && (
           <div className="rounded-xl border border-green-200 bg-green-50 p-4">
@@ -273,9 +295,9 @@ export default async function DiaristaLinkPage({
                         <input type="hidden" name="requisicaoId" value={r.id} />
                         <button
                           type="submit"
-                          className="w-full rounded-lg bg-orange-700 py-2 font-medium text-white hover:bg-orange-800"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 py-3 text-base font-bold text-white shadow-sm hover:bg-orange-700"
                         >
-                          Pegar esta diária
+                          <span className="text-lg">✓</span> Quero trabalhar aqui!
                         </button>
                       </form>
                     )}
