@@ -11,7 +11,7 @@ export default async function TrocarLojaPage() {
   if (!sessao || sessao.tipo !== "gestor") redirect("/entrar");
 
   const lojas = await prisma.loja.findMany({
-    where: { gestorId: sessao.gestorId, ativo: true },
+    where: { gestores: { some: { id: sessao.gestorId } }, ativo: true },
     orderBy: { nome: "asc" },
     select: { id: true, nome: true, bairro: true, cidade: true },
   });

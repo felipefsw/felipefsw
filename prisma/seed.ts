@@ -52,7 +52,7 @@ async function main() {
       cidade: "Cidade Exemplo",
       bairro: "Centro",
       endereco: "Rua das Flores, 100",
-      gestorId: gestor.id,
+      gestores: { connect: { id: gestor.id } },
     },
   });
   const shopping = await prisma.loja.create({
@@ -62,7 +62,7 @@ async function main() {
       cidade: "Cidade Exemplo",
       bairro: "Norte",
       endereco: "Av. Brasil, 2000 - Shopping Norte",
-      gestorId: gestor.id,
+      gestores: { connect: { id: gestor.id } },
     },
   });
   const bairro = await prisma.loja.create({

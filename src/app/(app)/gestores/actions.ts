@@ -10,31 +10,31 @@ export async function createGestor(formData: FormData) {
   const senha = String(formData.get("senha") ?? "").trim() || "123456";
   if (!nome || !usuario) return;
 
+  // Precisa alocar pelo menos uma loja ao criar o gestor.
+  const lojaIds = [...new Set(formData.getAll("lojaIds").map(String).filter(Boolean))];
+  if (lojaIds.length === 0) redirect("/gestores?erro=lojas");
+
   const existe = await prisma.gestor.findUnique({ where: { usuario } });
   if (existe) redirect("/gestores?erro=usuario");
 
-  await prisma.gestor.create({ data: { nome, usuario, senha } });
+  await prisma.gestor.create({
+    data: { nome, usuario, senha, lojas: { connect: lojaIds.map((id) => ({ id })) } },
+  });
   revalidatePath("/gestores");
+  revalidatePath("/lojas");
   redirect("/gestores");
 }
 
-// Atribui (e desatribui) lojas a um gestor a partir da tela de gestores.
+// Define exatamente as lojas deste gestor (marca/desmarca de uma vez).
 export async function atribuirLojasAoGestor(formData: FormData) {
   const gestorId = String(formData.get("gestorId") ?? "");
   if (!gestorId) return;
-  const lojaIds = formData.getAll("lojaIds").map(String).filter(Boolean);
+  const lojaIds = [...new Set(formData.getAll("lojaIds").map(String).filter(Boolean))];
 
-  if (lojaIds.length > 0) {
-    // As selecionadas passam a ser deste gestor.
-    await prisma.loja.updateMany({ where: { id: { in: lojaIds } }, data: { gestorId } });
-    // As que eram deste gestor e foram desmarcadas ficam sem gestor.
-    await prisma.loja.updateMany({
-      where: { gestorId, id: { notIn: lojaIds } },
-      data: { gestorId: null },
-    });
-  } else {
-    await prisma.loja.updateMany({ where: { gestorId }, data: { gestorId: null } });
-  }
+  await prisma.gestor.update({
+    where: { id: gestorId },
+    data: { lojas: { set: lojaIds.map((id) => ({ id })) } },
+  });
 
   revalidatePath("/gestores");
   revalidatePath("/lojas");

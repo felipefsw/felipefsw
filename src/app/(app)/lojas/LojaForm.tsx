@@ -9,7 +9,7 @@ type LojaDefaults = {
   cidade?: string | null;
   bairro?: string | null;
   endereco?: string | null;
-  gestorId?: string | null;
+  gestores?: { id: string }[];
   latitude?: number | null;
   longitude?: number | null;
   permiteMais2Semana?: boolean;
@@ -26,6 +26,7 @@ export default function LojaForm({
   gestores: { id: string; nome: string }[];
   submitLabel: string;
 }) {
+  const gestoresDaLoja = new Set(loja?.gestores?.map((g) => g.id) ?? []);
   return (
     <Card>
       <form action={action} className="space-y-4">
@@ -86,23 +87,29 @@ export default function LojaForm({
               className={inputClass}
             />
           </div>
-          <div>
-            <label className={labelClass} htmlFor="gestorId">
-              Gestor
-            </label>
-            <select
-              id="gestorId"
-              name="gestorId"
-              defaultValue={loja?.gestorId ?? ""}
-              className={inputClass}
-            >
-              <option value="">— Nenhum —</option>
-              {gestores.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.nome}
-                </option>
-              ))}
-            </select>
+          <div className="sm:col-span-2">
+            <p className={labelClass}>Gestores (sócios) — pode marcar mais de um</p>
+            {gestores.length === 0 ? (
+              <p className="text-xs text-gray-400">Nenhum gestor cadastrado ainda.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-1">
+                {gestores.map((g) => (
+                  <label
+                    key={g.id}
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      name="gestorIds"
+                      value={g.id}
+                      defaultChecked={gestoresDaLoja.has(g.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
+                    />
+                    <span className="truncate text-gray-700">{g.nome}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

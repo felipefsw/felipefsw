@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Card, EmptyState, PageHeader, btnDanger } from "@/components/ui";
+import { EmptyState, PageHeader, btnDanger } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import SubmitButton from "@/components/SubmitButton";
 import { grupoDaLoja } from "@/lib/marcas";
+import { corDaFuncao } from "@/lib/funcoesCor";
 import { cancelarRequisicao, clickMagico, deleteRequisicao, reabrirRequisicao } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -108,7 +109,10 @@ export default async function RequisicoesPage({
               </h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {grupo.itens.map((r) => (
-            <Card key={r.id}>
+            <div
+              key={r.id}
+              className={`rounded-xl border p-4 shadow-sm ${corDaFuncao(r.funcao).card}`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -175,7 +179,7 @@ export default async function RequisicoesPage({
                   </ConfirmSubmit>
                 </form>
               </div>
-            </Card>
+            </div>
           ))}
               </div>
             </section>

@@ -15,7 +15,7 @@ export default async function EditarLojaPage({
 }) {
   const { id } = await params;
   const [loja, avaliacoes, gestores] = await Promise.all([
-    prisma.loja.findUnique({ where: { id } }),
+    prisma.loja.findUnique({ where: { id }, include: { gestores: { select: { id: true } } } }),
     prisma.avaliacaoLoja.findMany({
       where: { lojaId: id },
       include: { diarista: { select: { nome: true } }, escala: { select: { data: true } } },

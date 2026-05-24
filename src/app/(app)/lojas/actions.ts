@@ -9,13 +9,16 @@ function coord(formData: FormData, campo: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function gestorIds(formData: FormData): { id: string }[] {
+  return [...new Set(formData.getAll("gestorIds").map(String).filter(Boolean))].map((id) => ({ id }));
+}
+
 export async function createLoja(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   const cnpj = String(formData.get("cnpj") ?? "").trim();
   const cidade = String(formData.get("cidade") ?? "").trim();
   const bairro = String(formData.get("bairro") ?? "").trim();
   const endereco = String(formData.get("endereco") ?? "").trim();
-  const gestorId = String(formData.get("gestorId") ?? "").trim();
   if (!nome) return;
 
   await prisma.loja.create({
@@ -25,7 +28,7 @@ export async function createLoja(formData: FormData) {
       cidade: cidade || null,
       bairro: bairro || null,
       endereco: endereco || null,
-      gestorId: gestorId || null,
+      gestores: { connect: gestorIds(formData) },
       latitude: coord(formData, "latitude"),
       longitude: coord(formData, "longitude"),
       permiteMais2Semana: formData.get("permiteMais2Semana") != null,
@@ -42,7 +45,6 @@ export async function updateLoja(formData: FormData) {
   const cidade = String(formData.get("cidade") ?? "").trim();
   const bairro = String(formData.get("bairro") ?? "").trim();
   const endereco = String(formData.get("endereco") ?? "").trim();
-  const gestorId = String(formData.get("gestorId") ?? "").trim();
   if (!id || !nome) return;
 
   await prisma.loja.update({
@@ -53,7 +55,7 @@ export async function updateLoja(formData: FormData) {
       cidade: cidade || null,
       bairro: bairro || null,
       endereco: endereco || null,
-      gestorId: gestorId || null,
+      gestores: { set: gestorIds(formData) },
       latitude: coord(formData, "latitude"),
       longitude: coord(formData, "longitude"),
       permiteMais2Semana: formData.get("permiteMais2Semana") != null,

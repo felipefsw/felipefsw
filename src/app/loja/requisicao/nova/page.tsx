@@ -50,7 +50,7 @@ export default async function NovaRequisicaoLojaPage() {
   const lojasDoGestor =
     sessao?.tipo === "gestor"
       ? await prisma.loja.findMany({
-          where: { gestorId: sessao.gestorId, ativo: true },
+          where: { gestores: { some: { id: sessao.gestorId } }, ativo: true },
           orderBy: { nome: "asc" },
           select: { id: true, nome: true },
         })

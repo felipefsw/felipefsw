@@ -5,6 +5,7 @@ import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import { formatBRL, formatDate, formatDateWithWeekday } from "@/lib/format";
 import { hojeISO, maxAgendamentoISO, turnoFinalizado } from "@/lib/dates";
 import { corDoTurno } from "@/lib/horarios";
+import { corDaFuncao } from "@/lib/funcoesCor";
 import Avatar from "@/components/Avatar";
 import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
 import SubmitButton from "@/components/SubmitButton";
@@ -104,7 +105,7 @@ export default async function LojaHome({
   // Gestor: visão das vagas abertas em TODAS as suas lojas.
   const gestorLojas = ctx.gestorId
     ? await prisma.loja.findMany({
-        where: { gestorId: ctx.gestorId, ativo: true },
+        where: { gestores: { some: { id: ctx.gestorId } }, ativo: true },
         select: {
           id: true,
           nome: true,
@@ -391,7 +392,10 @@ export default async function LojaHome({
               const turno = corDoTurno(r.horaInicio);
               const faltam = r.quantidade - r._count.escalas;
               return (
-                <div key={r.id} className={`rounded-xl border p-4 shadow-sm ${turno.card}`}>
+                <div
+                  key={r.id}
+                  className={`rounded-xl border p-4 shadow-sm ${corDaFuncao(r.funcao).card}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm capitalize text-gray-700">

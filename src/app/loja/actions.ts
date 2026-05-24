@@ -38,7 +38,7 @@ export async function criarRequisicaoLoja(formData: FormData) {
     const escolhida = String(formData.get("lojaId") ?? "");
     if (escolhida) {
       const ok = await prisma.loja.findFirst({
-        where: { id: escolhida, gestorId: sessao.gestorId },
+        where: { id: escolhida, gestores: { some: { id: sessao.gestorId } } },
         select: { id: true },
       });
       if (!ok) redirect("/entrar");
@@ -98,7 +98,7 @@ export async function trocarLoja(formData: FormData) {
   if (!sessao || sessao.tipo !== "gestor") redirect("/entrar");
   const lojaId = String(formData.get("lojaId") ?? "");
   const ok = await prisma.loja.findFirst({
-    where: { id: lojaId, gestorId: sessao.gestorId },
+    where: { id: lojaId, gestores: { some: { id: sessao.gestorId } } },
     select: { id: true },
   });
   if (!ok) redirect("/entrar");

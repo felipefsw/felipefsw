@@ -39,7 +39,9 @@ export default async function LojaLayout({
 
   let podeTrocar = false;
   if (ctx.gestorId) {
-    const n = await prisma.loja.count({ where: { gestorId: ctx.gestorId, ativo: true } });
+    const n = await prisma.loja.count({
+      where: { gestores: { some: { id: ctx.gestorId } }, ativo: true },
+    });
     podeTrocar = n > 1;
   }
 

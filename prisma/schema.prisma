@@ -32,8 +32,7 @@ model Loja {
   fotos       String[]     @default([]) // até 5 fotos do ambiente (URLs)
   vantagens   String? // texto com as vantagens de fazer diária nesta loja
   criadoEm    DateTime     @default(now())
-  gestorId    String?
-  gestor      Gestor?      @relation(fields: [gestorId], references: [id], onDelete: SetNull)
+  gestores    Gestor[]     @relation("GestorLojas") // uma loja pode ter vários gestores (sócios)
   escalas     Escala[]
   requisicoes Requisicao[]
   avaliacoesRecebidas AvaliacaoLoja[]
@@ -71,7 +70,7 @@ model Gestor {
   senha    String   @default("123456")
   ativo    Boolean  @default(true)
   criadoEm DateTime @default(now())
-  lojas    Loja[]
+  lojas    Loja[]   @relation("GestorLojas")
 }
 
 model Diarista {

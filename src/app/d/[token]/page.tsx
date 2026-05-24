@@ -4,6 +4,7 @@ import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import { corDoTurno } from "@/lib/horarios";
+import { corDaFuncao } from "@/lib/funcoesCor";
 import { bairroCidade, ruaDaLoja } from "@/lib/loja";
 import { DIARIAS_CASHBACK, DIARIAS_CASHBACK_20 } from "@/lib/bonificacoes";
 import CopyButton from "@/components/CopyButton";
@@ -353,11 +354,13 @@ export default async function DiaristaLinkPage({
         <section id="vagas" className="scroll-mt-14">
           <h2 className="mb-1 font-semibold text-gray-900">Agende sua diária</h2>
           <MapaDiariasPerto lojas={lojasMapa} />
-          <p className="mb-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
-            <span>🟦 manhã/tarde</span>
-            <span>🟩 tarde</span>
-            <span>🟪 noite</span>
+          <p className="mb-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
+            <span>Função: 🟧 Pizzaiolo</span>
+            <span>🟨 Aux. pizzaiolo</span>
+            <span>🟦 Atendente</span>
+            <span>🟩 Motoqueiro</span>
           </p>
+          <p className="mb-2 text-xs text-gray-400">Horário: 🟦 manhã/tarde · 🟩 tarde · 🟪 noite</p>
           {disponiveis.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-500">
               Nenhuma diária disponível no momento.
@@ -369,11 +372,12 @@ export default async function DiaristaLinkPage({
                 const pref = ehPreferida(r.lojaId);
                 const convidado = convidadoEm.has(r.id);
                 const turno = corDoTurno(r.horaInicio);
+                const fcor = corDaFuncao(r.funcao);
                 return (
                   <li
                     key={r.id}
-                    className={`rounded-xl border p-4 shadow-sm ${turno.bg} ${
-                      convidado ? "border-amber-400" : pref ? "border-orange-300" : turno.border
+                    className={`rounded-xl border p-4 shadow-sm ${fcor.bg} ${
+                      convidado ? "border-amber-400" : pref ? "border-orange-400" : fcor.border
                     }`}
                   >
                     {convidado && (

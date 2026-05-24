@@ -17,7 +17,7 @@ export default async function GestoresPage({
     }),
     prisma.loja.findMany({
       orderBy: { nome: "asc" },
-      select: { id: true, nome: true, gestorId: true },
+      select: { id: true, nome: true, gestores: { select: { id: true } } },
     }),
   ]);
 
@@ -29,6 +29,11 @@ export default async function GestoresPage({
         <h2 className="font-semibold text-gray-900">Novo gestor</h2>
         {erro === "usuario" && (
           <p className="mt-1 text-sm text-red-600">Esse usuário já existe.</p>
+        )}
+        {erro === "lojas" && (
+          <p className="mt-1 text-sm text-red-600">
+            Selecione pelo menos uma loja para o gestor.
+          </p>
         )}
         <form action={createGestor} className="mt-3 space-y-3">
           <div>
@@ -51,13 +56,35 @@ export default async function GestoresPage({
               <input id="senha" name="senha" placeholder="padrão 123456" className={inputClass} />
             </div>
           </div>
+
+          <div>
+            <p className={labelClass}>Lojas deste gestor * (marque ao menos uma)</p>
+            {lojas.length === 0 ? (
+              <p className="text-xs text-gray-400">Cadastre lojas antes de criar gestores.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-1">
+                {lojas.map((l) => (
+                  <label
+                    key={l.id}
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      name="lojaIds"
+                      value={l.id}
+                      className="h-4 w-4 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
+                    />
+                    <span className="truncate text-gray-700">{l.nome}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button type="submit" className={btnPrimary}>
             Criar gestor
           </button>
         </form>
-        <p className="mt-2 text-xs text-gray-400">
-          Depois, escolha as lojas de cada gestor na lista abaixo (em “Lojas deste gestor”).
-        </p>
       </Card>
 
       {gestores.length === 0 ? (
@@ -107,15 +134,10 @@ export default async function GestoresPage({
                           type="checkbox"
                           name="lojaIds"
                           value={l.id}
-                          defaultChecked={l.gestorId === g.id}
+                          defaultChecked={l.gestores.some((x) => x.id === g.id)}
                           className="h-4 w-4 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
                         />
-                        <span className="min-w-0 truncate text-gray-700">
-                          {l.nome}
-                          {l.gestorId && l.gestorId !== g.id && (
-                            <span className="text-xs text-gray-400"> (de outro gestor)</span>
-                          )}
-                        </span>
+                        <span className="min-w-0 truncate text-gray-700">{l.nome}</span>
                       </label>
                     ))}
                   </div>
