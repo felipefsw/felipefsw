@@ -48,7 +48,7 @@ export default async function DecidirRequisicaoPage({
         <PageHeader title="Requisição" />
         <EmptyState>
           Esta requisição já está <strong>{requisicao.status.toLowerCase()}</strong>.{" "}
-          <Link href="/loja" className="font-medium text-teal-700 underline">
+          <Link href="/loja" className="font-medium text-orange-700 underline">
             Voltar
           </Link>
         </EmptyState>
@@ -103,12 +103,12 @@ export default async function DecidirRequisicaoPage({
                         name="diaristaIds"
                         value={c.diarista.id}
                         defaultChecked={cabemTodos}
-                        className="h-5 w-5 rounded border-gray-300 text-teal-700 focus:ring-teal-600"
+                        className="h-5 w-5 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
                       />
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-gray-900">{c.diarista.nome}</span>
                         {c.diarista.funcao && (
-                          <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                          <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
                             {c.diarista.funcao}
                           </span>
                         )}

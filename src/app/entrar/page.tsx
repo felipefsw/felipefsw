@@ -4,61 +4,100 @@ import { entrarDiarista, loginGestao, loginGestor, loginLoja } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+const PERFIS = ["diarista", "lojista", "gestor", "gestao"] as const;
+type Perfil = (typeof PERFIS)[number];
+
+function Cabecalho() {
+  return (
+    <div className="mb-6 flex flex-col items-center text-center">
+      <div className="rounded-2xl bg-black p-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/rwp-logo.svg" alt="RWP" className="h-10 w-auto" />
+      </div>
+      <h1 className="mt-3 text-xl font-bold text-gray-900">Gestão de Diaristas</h1>
+      <p className="text-sm text-gray-500">Pizzarias RWP</p>
+    </div>
+  );
+}
+
+function Voltar() {
+  return (
+    <Link href="/entrar" className="mb-3 inline-block text-sm font-medium text-orange-700">
+      ← Voltar
+    </Link>
+  );
+}
+
 export default async function EntrarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<{ erro?: string; perfil?: string }>;
 }) {
-  const { erro } = await searchParams;
+  const { erro, perfil } = await searchParams;
+  const sel = (PERFIS as readonly string[]).includes(perfil ?? "") ? (perfil as Perfil) : null;
+
+  if (!sel) {
+    const opcoes: { perfil: Perfil; titulo: string; desc: string; emoji: string }[] = [
+      { perfil: "diarista", titulo: "Sou diarista", desc: "Quero pegar diárias", emoji: "🧑‍🍳" },
+      { perfil: "lojista", titulo: "Sou lojista", desc: "Solicitar diaristas (CNPJ)", emoji: "🏪" },
+      { perfil: "gestor", titulo: "Sou gestor", desc: "Administro lojas", emoji: "🧑‍💼" },
+      { perfil: "gestao", titulo: "RH / TI", desc: "Gestão completa", emoji: "🛠️" },
+    ];
+    return (
+      <div className="mx-auto max-w-md px-5 py-8">
+        <Cabecalho />
+        <div className="space-y-3">
+          {opcoes.map((o) => (
+            <Link
+              key={o.perfil}
+              href={`/entrar?perfil=${o.perfil}`}
+              className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm hover:border-orange-300"
+            >
+              <span className="text-2xl">{o.emoji}</span>
+              <span>
+                <span className="block font-semibold text-gray-900">{o.titulo}</span>
+                <span className="block text-sm text-gray-500">{o.desc}</span>
+              </span>
+              <span className="ml-auto text-gray-400">›</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-md px-5 py-8">
-      <div className="mb-6 flex flex-col items-center text-center">
-        <div className="rounded-2xl bg-black p-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/rwp-logo.svg" alt="RWP" className="h-10 w-auto" />
-        </div>
-        <h1 className="mt-3 text-xl font-bold text-gray-900">Gestão de Diaristas</h1>
-        <p className="text-sm text-gray-500">Pizzarias RWP</p>
-      </div>
+      <Cabecalho />
+      <Voltar />
 
-      <div className="space-y-4">
+      {sel === "diarista" && (
         <Card>
           <h2 className="font-semibold text-gray-900">Sou diarista</h2>
           <p className="mb-3 mt-1 text-sm text-gray-500">
             Quero me inscrever para diárias. Informe seu CPF.
           </p>
-          {erro === "diarista" && (
-            <p className="mb-2 text-sm text-red-600">Informe um CPF válido.</p>
-          )}
+          {erro === "diarista" && <p className="mb-2 text-sm text-red-600">Informe um CPF válido.</p>}
           <form action={entrarDiarista} className="space-y-3">
-            <input
-              name="cpf"
-              inputMode="numeric"
-              required
-              placeholder="Seu CPF"
-              className={inputClass}
-            />
+            <input name="cpf" inputMode="numeric" required placeholder="Seu CPF" className={inputClass} />
             <button type="submit" className={`${btnPrimary} w-full`}>
               Entrar
             </button>
           </form>
           <p className="mt-2 text-center text-sm text-gray-500">
             Primeira vez?{" "}
-            <Link href="/sou-diarista" className="font-medium text-teal-700 underline">
+            <Link href="/sou-diarista" className="font-medium text-orange-700 underline">
               Cadastre-se
             </Link>
           </p>
         </Card>
+      )}
 
+      {sel === "lojista" && (
         <Card>
           <h2 className="font-semibold text-gray-900">Sou lojista</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">
-            Quero solicitar diaristas para minha loja.
-          </p>
-          {erro === "loja" && (
-            <p className="mb-2 text-sm text-red-600">CNPJ ou senha incorretos.</p>
-          )}
+          <p className="mb-3 mt-1 text-sm text-gray-500">Solicitar diaristas para minha loja.</p>
+          {erro === "loja" && <p className="mb-2 text-sm text-red-600">CNPJ ou senha incorretos.</p>}
           <form action={loginLoja} className="space-y-3">
             <div>
               <label className={labelClass} htmlFor="cnpj">
@@ -77,12 +116,12 @@ export default async function EntrarPage({
             </button>
           </form>
         </Card>
+      )}
 
+      {sel === "gestor" && (
         <Card>
           <h2 className="font-semibold text-gray-900">Sou gestor</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">
-            Administro uma ou mais lojas. Entro com usuário e senha.
-          </p>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Administro uma ou mais lojas.</p>
           {erro === "gestor" && (
             <p className="mb-2 text-sm text-red-600">Usuário ou senha incorretos.</p>
           )}
@@ -104,18 +143,18 @@ export default async function EntrarPage({
             </button>
           </form>
         </Card>
+      )}
 
+      {sel === "gestao" && (
         <Card>
           <h2 className="font-semibold text-gray-900">RH / TI (gestão)</h2>
-          {erro === "gestao" && (
-            <p className="mb-2 mt-1 text-sm text-red-600">Senha incorreta.</p>
-          )}
+          {erro === "gestao" && <p className="mb-2 mt-1 text-sm text-red-600">Senha incorreta.</p>}
           <form action={loginGestao} className="mt-2 space-y-3">
             <div>
-              <label className={labelClass} htmlFor="perfil">
+              <label className={labelClass} htmlFor="perfil-gestao">
                 Perfil
               </label>
-              <select id="perfil" name="perfil" className={inputClass} defaultValue="rh">
+              <select id="perfil-gestao" name="perfil" className={inputClass} defaultValue="rh">
                 <option value="rh">RH</option>
                 <option value="ti">TI</option>
               </select>
@@ -131,13 +170,13 @@ export default async function EntrarPage({
             </button>
           </form>
         </Card>
+      )}
 
-        <p className="text-center text-sm">
-          <Link href="/recuperar-senha" className="text-gray-500 underline">
-            Recuperar senha
-          </Link>
-        </p>
-      </div>
+      <p className="mt-4 text-center text-sm">
+        <Link href="/recuperar-senha" className="text-gray-500 underline">
+          Recuperar senha
+        </Link>
+      </p>
     </div>
   );
 }

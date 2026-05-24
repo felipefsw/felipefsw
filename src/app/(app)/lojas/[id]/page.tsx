@@ -48,7 +48,7 @@ export default async function EditarLojaPage({
           <h2 className="font-semibold text-gray-900">Avaliações da loja</h2>
           {total > 0 && (
             <span className="text-sm text-gray-500">
-              média <strong className="text-teal-700">{mediaGeral.toFixed(1)}</strong> · {total}{" "}
+              média <strong className="text-orange-700">{mediaGeral.toFixed(1)}</strong> · {total}{" "}
               diária(s)
             </span>
           )}

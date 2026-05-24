@@ -12,7 +12,7 @@ export default async function AppLayout({
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-teal-700 text-white">
+      <header className="sticky top-0 z-10 border-b border-gray-200 bg-neutral-900 text-white">
         <div className="flex items-center justify-between gap-2 px-4 py-3">
           <Link href="/" className="flex min-w-0 items-center gap-2 font-semibold">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -20,11 +20,11 @@ export default async function AppLayout({
             <span className="truncate">Gestão · Pizzarias RWP</span>
           </Link>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="rounded-full bg-teal-600 px-2 py-0.5 text-xs font-medium uppercase">
+            <span className="rounded-full bg-orange-600 px-2 py-0.5 text-xs font-medium uppercase">
               {sessao.perfil}
             </span>
             <form action={sair}>
-              <button type="submit" className="text-xs font-medium text-teal-100 underline">
+              <button type="submit" className="text-xs font-medium text-orange-100 underline">
                 Sair
               </button>
             </form>

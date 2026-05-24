@@ -36,7 +36,7 @@ export default async function RequisicoesPage({
   });
 
   const chipBase = "rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap";
-  const chipOn = "border-teal-700 bg-teal-700 text-white";
+  const chipOn = "border-orange-700 bg-orange-700 text-white";
   const chipOff = "border-gray-300 bg-white text-gray-700 hover:bg-gray-50";
 
   return (
@@ -91,7 +91,7 @@ export default async function RequisicoesPage({
                     {r.funcao ? <> · {r.funcao}</> : null} · {formatBRL(r.valorDiaria)}
                   </p>
                   {r._count.escalas > 0 && (
-                    <p className="mt-1 text-sm text-teal-700">
+                    <p className="mt-1 text-sm text-orange-700">
                       {r._count.escalas} escalado(s)
                     </p>
                   )}
@@ -102,7 +102,7 @@ export default async function RequisicoesPage({
                 {r.status === "ABERTA" && (
                   <Link
                     href={`/requisicoes/${r.id}`}
-                    className="shrink-0 rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+                    className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
                   >
                     Fechar
                   </Link>

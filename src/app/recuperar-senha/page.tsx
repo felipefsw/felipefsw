@@ -28,7 +28,7 @@ export default function RecuperarSenhaPage() {
           </p>
         </Card>
         <p className="text-center text-sm">
-          <Link href="/entrar" className="font-medium text-teal-700 underline">
+          <Link href="/entrar" className="font-medium text-orange-700 underline">
             Voltar para o login
           </Link>
         </p>

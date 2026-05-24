@@ -34,7 +34,7 @@ export default async function FecharRequisicaoPage({
         <PageHeader title="Requisição" subtitle={requisicao.loja.nome} />
         <EmptyState>
           Esta requisição já está <strong>{requisicao.status.toLowerCase()}</strong>.{" "}
-          <Link href="/requisicoes" className="font-medium text-teal-700 underline">
+          <Link href="/requisicoes" className="font-medium text-orange-700 underline">
             Voltar
           </Link>
         </EmptyState>
@@ -96,7 +96,7 @@ export default async function FecharRequisicaoPage({
         <EmptyState>
           Nenhuma diarista ativa
           {requisicao.funcao ? <> com a função {requisicao.funcao}</> : null}.{" "}
-          <Link href="/diaristas/nova" className="font-medium text-teal-700 underline">
+          <Link href="/diaristas/nova" className="font-medium text-orange-700 underline">
             Cadastrar
           </Link>
         </EmptyState>
@@ -164,13 +164,13 @@ export default async function FecharRequisicaoPage({
                           type="checkbox"
                           name="diaristaIds"
                           value={d.id}
-                          className="h-5 w-5 rounded border-gray-300 text-teal-700 focus:ring-teal-600"
+                          className="h-5 w-5 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
                         />
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-2">
                             <span className="font-medium text-gray-900">{d.nome}</span>
                             {d.funcao && (
-                              <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                              <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
                                 {d.funcao}
                               </span>
                             )}

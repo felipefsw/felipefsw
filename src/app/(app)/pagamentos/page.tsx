@@ -45,10 +45,10 @@ export default async function PagamentosPage() {
         Diárias de quem trabalhou (presente) e ainda não recebeu.
       </p>
 
-      <Card className="mb-4 border-teal-200 bg-teal-50">
+      <Card className="mb-4 border-orange-200 bg-orange-50">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-teal-800">Total a pagar</span>
-          <span className="text-2xl font-bold text-teal-800">{formatBRL(totalGeral)}</span>
+          <span className="text-sm font-medium text-orange-800">Total a pagar</span>
+          <span className="text-2xl font-bold text-orange-800">{formatBRL(totalGeral)}</span>
         </div>
       </Card>
 
@@ -90,7 +90,7 @@ export default async function PagamentosPage() {
                       <input type="hidden" name="id" value={e.id} />
                       <button
                         type="submit"
-                        className="rounded-lg border border-teal-600 px-3 py-1 text-sm font-medium text-teal-700 hover:bg-teal-50"
+                        className="rounded-lg border border-orange-600 px-3 py-1 text-sm font-medium text-orange-700 hover:bg-orange-50"
                       >
                         Marcar pago
                       </button>

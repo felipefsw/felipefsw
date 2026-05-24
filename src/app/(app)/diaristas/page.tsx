@@ -47,7 +47,7 @@ export default async function DiaristasPage({
   };
 
   const chipBase = "rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap";
-  const chipOn = "border-teal-700 bg-teal-700 text-white";
+  const chipOn = "border-orange-700 bg-orange-700 text-white";
   const chipOff = "border-gray-300 bg-white text-gray-700 hover:bg-gray-50";
 
   return (
@@ -68,7 +68,7 @@ export default async function DiaristasPage({
         />
         <button
           type="submit"
-          className="shrink-0 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+          className="shrink-0 rounded-lg bg-orange-700 px-4 py-2 text-sm font-medium text-white hover:bg-orange-800"
         >
           Buscar
         </button>
@@ -118,7 +118,7 @@ export default async function DiaristasPage({
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-900">{d.nome}</span>
                     {d.funcao && (
-                      <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                      <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
                         {d.funcao}
                       </span>
                     )}
@@ -135,7 +135,7 @@ export default async function DiaristasPage({
                 </div>
                 <Link
                   href={`/diaristas/${d.id}`}
-                  className="text-sm font-medium text-teal-700 hover:underline"
+                  className="text-sm font-medium text-orange-700 hover:underline"
                 >
                   Editar
                 </Link>

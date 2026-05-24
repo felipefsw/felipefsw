@@ -53,7 +53,7 @@ export default async function EscalaPage({
         </Link>
         <Link
           href="/escala"
-          className="text-sm font-medium text-teal-700 hover:underline"
+          className="text-sm font-medium text-orange-700 hover:underline"
         >
           Esta semana
         </Link>
@@ -70,19 +70,19 @@ export default async function EscalaPage({
           const lista = porDia.get(dia) ?? [];
           const ehHoje = dia === hoje;
           return (
-            <Card key={dia} className={ehHoje ? "ring-2 ring-teal-200" : ""}>
+            <Card key={dia} className={ehHoje ? "ring-2 ring-orange-200" : ""}>
               <div className="mb-2 flex items-center justify-between">
                 <span className="font-semibold capitalize text-gray-900">
                   {formatDateWithWeekday(dia)}
                   {ehHoje && (
-                    <span className="ml-2 rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700">
+                    <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
                       hoje
                     </span>
                   )}
                 </span>
                 <Link
                   href={`/escala/novo?data=${dia}`}
-                  className="text-sm font-medium text-teal-700 hover:underline"
+                  className="text-sm font-medium text-orange-700 hover:underline"
                 >
                   + agendar
                 </Link>
@@ -142,7 +142,7 @@ export default async function EscalaPage({
                               </span>
                             )}
                             {e.pago && (
-                              <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700">
+                              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
                                 pago
                               </span>
                             )}
@@ -162,7 +162,7 @@ export default async function EscalaPage({
                         {e.avaliacao ? (
                           <Link
                             href={`/escala/${e.id}/avaliar`}
-                            className="text-xs font-medium text-teal-600 hover:underline"
+                            className="text-xs font-medium text-orange-600 hover:underline"
                           >
                             ★ avaliada
                           </Link>
@@ -176,7 +176,7 @@ export default async function EscalaPage({
                         ) : (
                           <Link
                             href={`/escala/${e.id}/avaliar`}
-                            className="text-xs font-medium text-gray-400 hover:text-teal-700"
+                            className="text-xs font-medium text-gray-400 hover:text-orange-700"
                           >
                             avaliar
                           </Link>
@@ -208,7 +208,7 @@ export default async function EscalaPage({
                               <input type="hidden" name="id" value={e.id} />
                               <button
                                 type="submit"
-                                className="text-xs font-medium text-teal-700 underline"
+                                className="text-xs font-medium text-orange-700 underline"
                               >
                                 🔗 gerar link de confirmação
                               </button>

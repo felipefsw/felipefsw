@@ -75,10 +75,10 @@ export default async function InicioPage() {
           </Card>
         </Link>
         <Link href="/pagamentos" className="col-span-2">
-          <Card className="border-teal-200 bg-teal-50">
+          <Card className="border-orange-200 bg-orange-50">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-teal-800">Total a pagar</p>
-              <p className="text-2xl font-bold text-teal-800">{formatBRL(totalAPagar)}</p>
+              <p className="text-sm font-medium text-orange-800">Total a pagar</p>
+              <p className="text-2xl font-bold text-orange-800">{formatBRL(totalAPagar)}</p>
             </div>
           </Card>
         </Link>
@@ -105,7 +105,7 @@ export default async function InicioPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Link
           href="/bonificacoes"
           className="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
@@ -118,18 +118,12 @@ export default async function InicioPage() {
         >
           🏆 Ranking
         </Link>
-        <Link
-          href="/valores-funcao"
-          className="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-        >
-          💲 Valores
-        </Link>
       </div>
 
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Hoje</h2>
-          <Link href="/escala" className="text-sm font-medium text-teal-700 hover:underline">
+          <Link href="/escala" className="text-sm font-medium text-orange-700 hover:underline">
             Ver escala
           </Link>
         </div>

@@ -17,16 +17,14 @@ import { createRequisicao } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NovaRequisicaoPage() {
-  const [lojas, valores, diaristas] = await Promise.all([
+  const [lojas, diaristas] = await Promise.all([
     prisma.loja.findMany({ where: { ativo: true }, orderBy: { nome: "asc" } }),
-    prisma.valorFuncao.findMany(),
     prisma.diarista.findMany({
       where: { ativo: true },
       orderBy: { nome: "asc" },
       select: { id: true, nome: true },
     }),
   ]);
-  const mapaValores = Object.fromEntries(valores.map((v) => [v.funcao, v.valor]));
 
   if (lojas.length === 0) {
     return (
@@ -34,7 +32,7 @@ export default async function NovaRequisicaoPage() {
         <PageHeader title="Nova requisição" />
         <EmptyState>
           Cadastre uma{" "}
-          <Link href="/lojas/nova" className="font-medium text-teal-700 underline">
+          <Link href="/lojas/nova" className="font-medium text-orange-700 underline">
             loja
           </Link>{" "}
           antes de criar uma requisição.
@@ -122,7 +120,7 @@ export default async function NovaRequisicaoPage() {
             </div>
           </div>
 
-          <FuncaoValor funcoes={FUNCOES} valores={mapaValores} />
+          <FuncaoValor funcoes={FUNCOES} />
 
           <div>
             <p className={labelClass}>Convidar diaristas (opcional)</p>

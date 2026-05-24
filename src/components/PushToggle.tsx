@@ -66,7 +66,7 @@ export default function PushToggle({ token }: { token: string }) {
     <button
       type="button"
       onClick={ativar}
-      className="w-full rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-800"
+      className="w-full rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-800"
     >
       🔔 Ativar avisos de diária
       {estado === "erro" && (

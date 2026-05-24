@@ -85,7 +85,7 @@ export default async function EditarDiaristaPage({
           <h2 className="font-semibold text-gray-900">Avaliações</h2>
           {notaLiberada && (
             <span className="text-sm text-gray-500">
-              nota <strong className="text-teal-700">{mediaGeral.toFixed(1)}</strong> (últimas 5)
+              nota <strong className="text-orange-700">{mediaGeral.toFixed(1)}</strong> (últimas 5)
             </span>
           )}
         </div>
@@ -113,7 +113,7 @@ export default async function EditarDiaristaPage({
                     <span className="text-sm text-gray-600">
                       {formatDate(a.escala.data)} · {a.escala.loja.nome}
                     </span>
-                    <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                    <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
                       {mediaDaAvaliacao(a).toFixed(1)}
                     </span>
                   </div>
@@ -183,7 +183,7 @@ export default async function EditarDiaristaPage({
                   <form action={removerBloqueio}>
                     <input type="hidden" name="id" value={b.id} />
                     <input type="hidden" name="diaristaId" value={diarista.id} />
-                    <button type="submit" className="text-xs text-teal-700 underline">
+                    <button type="submit" className="text-xs text-orange-700 underline">
                       remover
                     </button>
                   </form>

@@ -34,11 +34,11 @@ export default async function AvaliarLojaPage({
 
   return (
     <div className="mx-auto max-w-md">
-      <header className="bg-teal-700 px-5 py-6 text-white">
+      <header className="bg-neutral-900 px-5 py-6 text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
         <h1 className="text-xl font-bold">Avaliar a loja</h1>
-        <p className="mt-1 text-sm text-teal-100">
+        <p className="mt-1 text-sm text-orange-100">
           {escala.loja.nome} · <span className="capitalize">{formatDateWithWeekday(escala.data)}</span>
         </p>
       </header>
@@ -62,7 +62,7 @@ export default async function AvaliarLojaPage({
                 name={a.key}
                 required
                 defaultValue={atual ? String(atual[a.key]) : ""}
-                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
               >
                 <option value="" disabled>
                   —
@@ -85,14 +85,14 @@ export default async function AvaliarLojaPage({
               name="comentario"
               rows={3}
               defaultValue={escala.avaliacaoLoja?.comentario ?? ""}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
             />
           </div>
 
           <div className="flex gap-2 pt-1">
             <button
               type="submit"
-              className="flex-1 rounded-lg bg-teal-700 py-2.5 font-medium text-white hover:bg-teal-800"
+              className="flex-1 rounded-lg bg-orange-700 py-2.5 font-medium text-white hover:bg-orange-800"
             >
               Enviar avaliação
             </button>

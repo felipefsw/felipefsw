@@ -25,7 +25,7 @@ export default async function TrocarLojaPage() {
             <input type="hidden" name="lojaId" value={l.id} />
             <button type="submit" className="w-full text-left">
               <Card
-                className={`hover:bg-gray-50 ${l.id === sessao.lojaId ? "border-teal-400" : ""}`}
+                className={`hover:bg-gray-50 ${l.id === sessao.lojaId ? "border-orange-400" : ""}`}
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -37,7 +37,7 @@ export default async function TrocarLojaPage() {
                     )}
                   </div>
                   {l.id === sessao.lojaId && (
-                    <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700">
+                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
                       atual
                     </span>
                   )}

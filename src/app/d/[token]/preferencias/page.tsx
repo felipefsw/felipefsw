@@ -31,11 +31,11 @@ export default async function PreferenciasPage({
 
   return (
     <div className="mx-auto max-w-md">
-      <header className="bg-teal-700 px-5 py-6 text-white">
+      <header className="bg-neutral-900 px-5 py-6 text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
         <h1 className="text-xl font-bold">Lojas de preferência</h1>
-        <p className="mt-1 text-sm text-teal-100">
+        <p className="mt-1 text-sm text-orange-100">
           Escolha até 5 lojas onde você prefere trabalhar.
         </p>
       </header>
@@ -55,7 +55,7 @@ export default async function PreferenciasPage({
                       name="lojaIds"
                       value={l.id}
                       defaultChecked={preferidas.has(l.id)}
-                      className="mt-0.5 h-5 w-5 rounded border-gray-300 text-teal-700 focus:ring-teal-600"
+                      className="mt-0.5 h-5 w-5 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
                     />
                     <span className="min-w-0">
                       <span className="block font-medium text-gray-900">{l.nome}</span>
@@ -75,7 +75,7 @@ export default async function PreferenciasPage({
           <div className="flex gap-2">
             <button
               type="submit"
-              className="flex-1 rounded-lg bg-teal-700 py-2.5 font-medium text-white hover:bg-teal-800"
+              className="flex-1 rounded-lg bg-orange-700 py-2.5 font-medium text-white hover:bg-orange-800"
             >
               Salvar preferências
             </button>

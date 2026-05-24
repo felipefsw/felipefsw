@@ -61,7 +61,7 @@ export default async function AvaliarPage({
                 name={a.key}
                 required
                 defaultValue={atual ? String(atual[a.key]) : ""}
-                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
               >
                 <option value="" disabled>
                   —

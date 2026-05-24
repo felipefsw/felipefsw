@@ -5,7 +5,7 @@ import { confirmarPorLink } from "./actions";
 export const dynamic = "force-dynamic";
 
 const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100";
 
 export default async function ConfirmarPage({
   params,
@@ -33,7 +33,7 @@ export default async function ConfirmarPage({
 
   return (
     <div className="mx-auto max-w-md">
-      <header className="bg-teal-700 px-5 py-6 text-white">
+      <header className="bg-neutral-900 px-5 py-6 text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
         <h1 className="text-xl font-bold">Confirmar diária</h1>

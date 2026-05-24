@@ -184,7 +184,7 @@ export default async function LojaHome() {
                   {r.status === "ABERTA" && (
                     <Link
                       href={`/loja/requisicao/${r.id}`}
-                      className="mt-2 inline-block rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+                      className="mt-2 inline-block rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
                     >
                       {r._count.inscricoes > 0
                         ? `Ver candidatos (${r._count.inscricoes})`
@@ -214,7 +214,7 @@ export default async function LojaHome() {
                       href={`/loja/avaliar/${e.id}`}
                       className={
                         e.avaliacao
-                          ? "text-sm font-medium text-teal-600 hover:underline"
+                          ? "text-sm font-medium text-orange-600 hover:underline"
                           : "rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"
                       }
                     >
@@ -250,7 +250,7 @@ export default async function LojaHome() {
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-gray-900">{d.nome}</span>
                       {d.funcao && (
-                        <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                        <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
                           {d.funcao}
                         </span>
                       )}
@@ -260,7 +260,7 @@ export default async function LojaHome() {
 
                   <p className="mt-1 text-xs text-gray-500">
                     {d.nota !== null && (
-                      <span className="font-medium text-teal-700">nota {d.nota.toFixed(1)} · </span>
+                      <span className="font-medium text-orange-700">nota {d.nota.toFixed(1)} · </span>
                     )}
                     {d.datas.slice(0, 5).map(formatDate).join(", ")}
                     {d.datas.length > 5 ? "…" : ""}
@@ -279,7 +279,7 @@ export default async function LojaHome() {
                           </span>
                           <form action={desbloquearDiaristaLoja}>
                             <input type="hidden" name="diaristaId" value={d.id} />
-                            <button type="submit" className="text-xs text-teal-700 underline">
+                            <button type="submit" className="text-xs text-orange-700 underline">
                               desbloquear
                             </button>
                           </form>
@@ -326,7 +326,7 @@ export default async function LojaHome() {
                     />
                     <button
                       type="submit"
-                      className="rounded-lg bg-teal-700 px-3 py-1 text-sm font-medium text-white hover:bg-teal-800"
+                      className="rounded-lg bg-orange-700 px-3 py-1 text-sm font-medium text-white hover:bg-orange-800"
                     >
                       Convocar
                     </button>

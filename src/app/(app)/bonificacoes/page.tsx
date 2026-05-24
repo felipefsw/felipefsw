@@ -52,7 +52,7 @@ export default async function BonificacoesPage() {
       <PageHeader title="Bonificações" subtitle="Cashback e top do mês (R$ 100,00)" />
 
       <p className="text-sm">
-        <Link href="/ranking" className="font-medium text-teal-700 underline">
+        <Link href="/ranking" className="font-medium text-orange-700 underline">
           Ver ranking público →
         </Link>
       </p>
@@ -73,7 +73,7 @@ export default async function BonificacoesPage() {
                     <input type="hidden" name="diaristaId" value={d.id} />
                     <button
                       type="submit"
-                      className="rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+                      className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
                     >
                       Pagar {formatBRL(10000)}
                     </button>
@@ -113,7 +113,7 @@ export default async function BonificacoesPage() {
                       <input type="hidden" name="referencia" value={mes} />
                       <button
                         type="submit"
-                        className="rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+                        className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
                       >
                         Pagar {formatBRL(10000)}
                       </button>

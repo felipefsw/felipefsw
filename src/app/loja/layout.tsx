@@ -24,21 +24,21 @@ export default async function LojaLayout({
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-teal-700 text-white">
+      <header className="sticky top-0 z-10 border-b border-gray-200 bg-neutral-900 text-white">
         <div className="flex items-center justify-between gap-2 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2 font-semibold">
+          <Link href="/loja" className="flex min-w-0 items-center gap-2 font-semibold">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/rwp-logo.svg" alt="RWP" className="h-7 w-auto shrink-0" />
             <span className="truncate">{loja.nome}</span>
-          </div>
+          </Link>
           <div className="flex shrink-0 items-center gap-3">
             {podeTrocar && (
-              <Link href="/loja/trocar" className="text-xs font-medium text-teal-100 underline">
+              <Link href="/loja/trocar" className="text-xs font-medium text-orange-100 underline">
                 Trocar loja
               </Link>
             )}
             <form action={sair}>
-              <button type="submit" className="text-xs font-medium text-teal-100 underline">
+              <button type="submit" className="text-xs font-medium text-orange-100 underline">
                 Sair
               </button>
             </form>

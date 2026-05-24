@@ -38,13 +38,13 @@ export default async function NovoAgendamentoPage({
           Para agendar, você precisa de pelo menos{" "}
           {diaristas.length === 0 && (
             <>
-              uma <Link href="/diaristas/nova" className="font-medium text-teal-700 underline">diarista</Link>
+              uma <Link href="/diaristas/nova" className="font-medium text-orange-700 underline">diarista</Link>
             </>
           )}
           {diaristas.length === 0 && lojas.length === 0 && " e "}
           {lojas.length === 0 && (
             <>
-              uma <Link href="/lojas/nova" className="font-medium text-teal-700 underline">loja</Link>
+              uma <Link href="/lojas/nova" className="font-medium text-orange-700 underline">loja</Link>
             </>
           )}{" "}
           cadastrada.

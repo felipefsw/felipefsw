@@ -22,15 +22,11 @@ export default async function NovaRequisicaoLojaPage() {
   const ctx = contextoLoja(sessao);
   if (!ctx) redirect("/entrar");
 
-  const [valores, diaristas] = await Promise.all([
-    prisma.valorFuncao.findMany(),
-    prisma.diarista.findMany({
-      where: { ativo: true },
-      orderBy: { nome: "asc" },
-      select: { id: true, nome: true },
-    }),
-  ]);
-  const mapaValores = Object.fromEntries(valores.map((v) => [v.funcao, v.valor]));
+  const diaristas = await prisma.diarista.findMany({
+    where: { ativo: true },
+    orderBy: { nome: "asc" },
+    select: { id: true, nome: true },
+  });
 
   // Gestor escolhe a loja; loja avulsa já está fixa.
   const lojasDoGestor =
@@ -129,7 +125,7 @@ export default async function NovaRequisicaoLojaPage() {
             </div>
           </div>
 
-          <FuncaoValor funcoes={FUNCOES} valores={mapaValores} />
+          <FuncaoValor funcoes={FUNCOES} />
 
           <div>
             <p className={labelClass}>Convidar diaristas (opcional)</p>

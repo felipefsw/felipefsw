@@ -54,7 +54,7 @@ export default async function LojasPage({
       />
 
       <div className="mb-3">
-        <Link href="/gestores" className="text-sm font-medium text-teal-700 hover:underline">
+        <Link href="/gestores" className="text-sm font-medium text-orange-700 hover:underline">
           Gerenciar gestores →
         </Link>
       </div>
@@ -68,7 +68,7 @@ export default async function LojasPage({
         />
         <button
           type="submit"
-          className="shrink-0 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+          className="shrink-0 rounded-lg bg-orange-700 px-4 py-2 text-sm font-medium text-white hover:bg-orange-800"
         >
           Buscar
         </button>
@@ -111,7 +111,7 @@ export default async function LojasPage({
                 </div>
                 <Link
                   href={`/lojas/${loja.id}`}
-                  className="text-sm font-medium text-teal-700 hover:underline"
+                  className="text-sm font-medium text-orange-700 hover:underline"
                 >
                   Editar
                 </Link>

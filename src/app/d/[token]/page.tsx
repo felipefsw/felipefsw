@@ -90,17 +90,17 @@ export default async function DiaristaLinkPage({
 
   return (
     <div className="mx-auto max-w-md">
-      <header className="bg-teal-700 px-5 py-6 text-white">
+      <header className="bg-neutral-900 px-5 py-6 text-white">
         <div className="flex items-start justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
-          <a href="/entrar" className="text-xs font-medium text-teal-100 underline">
+          <a href="/entrar" className="text-xs font-medium text-orange-100 underline">
             Sair
           </a>
         </div>
-        <p className="text-sm text-teal-100">Olá,</p>
+        <p className="text-sm text-orange-100">Olá,</p>
         <h1 className="text-2xl font-bold">{diarista.nome}</h1>
-        <p className="mt-1 text-sm text-teal-100">Sua agenda de trabalho</p>
+        <p className="mt-1 text-sm text-orange-100">Sua agenda de trabalho</p>
       </header>
 
       <main className="space-y-6 p-5">
@@ -131,7 +131,7 @@ export default async function DiaristaLinkPage({
         <div className="flex gap-3">
           <Link
             href={`/d/${token}/preferencias`}
-            className="flex-1 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-center text-sm font-medium text-teal-800"
+            className="flex-1 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-center text-sm font-medium text-orange-800"
           >
             ⭐ Lojas preferidas
           </Link>
@@ -219,7 +219,7 @@ export default async function DiaristaLinkPage({
                   <li
                     key={r.id}
                     className={`rounded-xl border bg-white p-4 shadow-sm ${
-                      convidado ? "border-amber-400" : pref ? "border-teal-300" : "border-gray-200"
+                      convidado ? "border-amber-400" : pref ? "border-orange-300" : "border-gray-200"
                     }`}
                   >
                     {convidado && (
@@ -230,7 +230,7 @@ export default async function DiaristaLinkPage({
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-gray-900">{r.loja.nome}</p>
                       {pref && (
-                        <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                        <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
                           você já fez diária aqui
                         </span>
                       )}
@@ -247,7 +247,7 @@ export default async function DiaristaLinkPage({
                     </p>
 
                     {inscrito ? (
-                      <span className="mt-2 inline-block text-sm font-medium text-teal-600">
+                      <span className="mt-2 inline-block text-sm font-medium text-orange-600">
                         ✓ inscrição enviada
                       </span>
                     ) : (
@@ -256,7 +256,7 @@ export default async function DiaristaLinkPage({
                         <input type="hidden" name="requisicaoId" value={r.id} />
                         <button
                           type="submit"
-                          className="w-full rounded-lg bg-teal-700 py-2 font-medium text-white hover:bg-teal-800"
+                          className="w-full rounded-lg bg-orange-700 py-2 font-medium text-white hover:bg-orange-800"
                         >
                           Pegar esta diária
                         </button>
@@ -287,7 +287,7 @@ export default async function DiaristaLinkPage({
                       <p className="font-medium capitalize text-gray-900">
                         {formatDateWithWeekday(e.data)}
                         {e.data === hoje && (
-                          <span className="ml-2 rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700">
+                          <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
                             hoje
                           </span>
                         )}
@@ -387,13 +387,13 @@ export default async function DiaristaLinkPage({
                   </div>
                   {e.presenca === "PRESENTE" &&
                     (e.avaliacaoLoja ? (
-                      <span className="mt-1 inline-block text-xs text-teal-600">
+                      <span className="mt-1 inline-block text-xs text-orange-600">
                         ★ loja avaliada
                       </span>
                     ) : (
                       <Link
                         href={`/d/${token}/avaliar-loja/${e.id}`}
-                        className="mt-2 inline-block rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-800"
+                        className="mt-2 inline-block rounded-lg bg-orange-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-800"
                       >
                         Avaliar loja
                       </Link>

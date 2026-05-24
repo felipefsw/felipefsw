@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100";
 
 export default function GeoCapture({
   defaultLat = "",
@@ -56,7 +56,7 @@ export default function GeoCapture({
       <button
         type="button"
         onClick={usar}
-        className="mt-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-teal-700 hover:bg-gray-50"
+        className="mt-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-orange-700 hover:bg-gray-50"
       >
         📍 Usar localização atual (estando na loja)
       </button>

@@ -19,11 +19,11 @@ export default async function RankingPage() {
 
   return (
     <div className="mx-auto max-w-md">
-      <header className="bg-teal-700 px-5 py-6 text-white">
+      <header className="bg-neutral-900 px-5 py-6 text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
         <h1 className="text-xl font-bold">Ranking de diaristas</h1>
-        <p className="mt-1 text-sm capitalize text-teal-100">
+        <p className="mt-1 text-sm capitalize text-orange-100">
           {MESES[Number(m) - 1]} de {ano}
         </p>
       </header>
@@ -52,7 +52,7 @@ export default async function RankingPage() {
                   <span className="font-medium text-gray-900">{r.nome}</span>
                 </span>
                 <span className="text-right">
-                  <span className="block font-semibold text-teal-700">{r.media.toFixed(1)}</span>
+                  <span className="block font-semibold text-orange-700">{r.media.toFixed(1)}</span>
                   <span className="block text-xs text-gray-400">{r.diarias} diárias</span>
                 </span>
               </li>
@@ -61,7 +61,7 @@ export default async function RankingPage() {
         )}
 
         <p className="mt-5 text-center text-sm">
-          <Link href="/entrar" className="font-medium text-teal-700 underline">
+          <Link href="/entrar" className="font-medium text-orange-700 underline">
             Entrar
           </Link>
         </p>
