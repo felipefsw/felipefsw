@@ -7,6 +7,7 @@ import { corDoTurno } from "@/lib/horarios";
 import MarcaBadge from "./MarcaBadge";
 import MapaLojas, { type PontoLoja } from "./MapaLojas";
 import SubmitButton from "./SubmitButton";
+import CopyButton from "./CopyButton";
 import { inscreverNaDiaria } from "@/app/d/[token]/actions";
 
 export type ItemPerto = {
@@ -150,11 +151,28 @@ export default function PertoDeMim({ token, itens }: { token: string; itens: Ite
                   {it.funcao ? ` · ${it.funcao}` : ""}
                 </p>
 
-                <div className="mt-3 flex items-center gap-2">
+                {it.endereco && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <CopyButton
+                      text={it.endereco}
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+                    />
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.endereco)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
+                    >
+                      📍 Siga até a loja
+                    </a>
+                  </div>
+                )}
+
+                <div className="mt-3">
                   {it.inscrito ? (
                     <span className="text-sm font-medium text-orange-600">✓ inscrição enviada</span>
                   ) : (
-                    <form action={inscreverNaDiaria} className="flex-1">
+                    <form action={inscreverNaDiaria}>
                       <input type="hidden" name="token" value={token} />
                       <input type="hidden" name="requisicaoId" value={it.id} />
                       <SubmitButton
@@ -164,16 +182,6 @@ export default function PertoDeMim({ token, itens }: { token: string; itens: Ite
                         ✓ Quero trabalhar aqui!
                       </SubmitButton>
                     </form>
-                  )}
-                  {it.endereco && (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(it.endereco)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
-                    >
-                      Ver no mapa
-                    </a>
                   )}
                 </div>
               </li>

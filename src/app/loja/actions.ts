@@ -25,12 +25,6 @@ async function temPendenteAvaliacao(lojaId: string): Promise<boolean> {
   return escalas.some((e) => !e.avaliacao && turnoFinalizado(e.data, e.horaFim));
 }
 
-function nota(formData: FormData, campo: string): number {
-  const n = Number.parseInt(String(formData.get(campo) ?? ""), 10);
-  if (Number.isNaN(n)) return 0;
-  return Math.min(10, Math.max(0, n));
-}
-
 export async function criarRequisicaoLoja(formData: FormData) {
   const sessao = await getSessao();
   const ctx = contextoLoja(sessao);
@@ -110,43 +104,11 @@ export async function trocarLoja(formData: FormData) {
   redirect("/loja");
 }
 
-export async function avaliarDiaristaLoja(formData: FormData) {
+// Avaliação por estrelas (1 a 5), com 1 toque — sem abrir página.
+export async function avaliarComEstrelas(escalaId: string, estrelas: number) {
   const lojaId = await lojaSessaoId();
-  const escalaId = String(formData.get("escalaId") ?? "");
-  if (!escalaId) return;
-
-  const escala = await prisma.escala.findUnique({
-    where: { id: escalaId },
-    select: { id: true, lojaId: true, diaristaId: true },
-  });
-  if (!escala || escala.lojaId !== lojaId) return;
-
-  const notas = {
-    pontualidade: nota(formData, "pontualidade"),
-    limpeza: nota(formData, "limpeza"),
-    educacao: nota(formData, "educacao"),
-    rapidez: nota(formData, "rapidez"),
-    habilidadeTecnica: nota(formData, "habilidadeTecnica"),
-    respeito: nota(formData, "respeito"),
-    espiritoEquipe: nota(formData, "espiritoEquipe"),
-  };
-  const comentario = String(formData.get("comentario") ?? "").trim() || null;
-
-  await prisma.avaliacao.upsert({
-    where: { escalaId },
-    update: { ...notas, comentario },
-    create: { escalaId, diaristaId: escala.diaristaId, ...notas, comentario },
-  });
-
-  revalidatePath("/loja");
-  revalidatePath(`/diaristas/${escala.diaristaId}`);
-  redirect("/loja");
-}
-
-export async function desfazerAvaliacaoDiarista(formData: FormData) {
-  const lojaId = await lojaSessaoId();
-  const escalaId = String(formData.get("escalaId") ?? "");
-  if (!escalaId) return;
+  const n = Math.round(estrelas);
+  if (!escalaId || n < 1 || n > 5) return;
 
   const escala = await prisma.escala.findUnique({
     where: { id: escalaId },
@@ -154,7 +116,12 @@ export async function desfazerAvaliacaoDiarista(formData: FormData) {
   });
   if (!escala || escala.lojaId !== lojaId) return;
 
-  await prisma.avaliacao.deleteMany({ where: { escalaId } });
+  await prisma.avaliacao.upsert({
+    where: { escalaId },
+    update: { estrelas: n },
+    create: { escalaId, diaristaId: escala.diaristaId, estrelas: n },
+  });
+
   revalidatePath("/loja");
   revalidatePath(`/diaristas/${escala.diaristaId}`);
 }

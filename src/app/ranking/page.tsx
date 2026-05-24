@@ -63,7 +63,9 @@ export default async function RankingPage({
                   <span className="font-medium text-gray-900">{r.nome}</span>
                 </span>
                 <span className="text-right">
-                  <span className="block font-semibold text-orange-700">{r.media.toFixed(1)}</span>
+                  <span className="block font-semibold text-orange-700">
+                    ★ {r.media.toFixed(1)}
+                  </span>
                   <span className="block text-xs text-gray-400">{r.diarias} diárias</span>
                 </span>
               </li>

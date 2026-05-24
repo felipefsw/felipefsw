@@ -47,10 +47,7 @@ export default async function DiaristasPage({
     const diarias = d._count.escalas;
     const nota =
       d.avaliacoes.length >= 5
-        ? d.avaliacoes.reduce(
-            (s, a) => s + mediaDaAvaliacao(a as unknown as Record<string, number>),
-            0,
-          ) / d.avaliacoes.length
+        ? d.avaliacoes.reduce((s, a) => s + mediaDaAvaliacao(a), 0) / d.avaliacoes.length
         : null;
     return { diarias, nota };
   };

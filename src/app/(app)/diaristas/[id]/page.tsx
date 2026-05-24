@@ -4,7 +4,6 @@ import { Card } from "@/components/ui";
 import CopyLink from "@/components/CopyLink";
 import Avatar from "@/components/Avatar";
 import { formatBRL, formatDate } from "@/lib/format";
-import { ASPECTOS } from "@/lib/aspectos";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import DiaristaForm from "../DiaristaForm";
 import { bloquearPermanente, removerBloqueio, updateDiarista } from "../actions";
@@ -53,14 +52,9 @@ export default async function EditarDiaristaPage({
   const total = avaliacoes.length;
   const notaLiberada = total >= MIN_AVALIACOES;
   const usadas = avaliacoes.slice(0, MIN_AVALIACOES);
-  const mediaDe = (key: string) =>
-    usadas.length
-      ? usadas.reduce((s, a) => s + (a as unknown as Record<string, number>)[key], 0) / usadas.length
-      : 0;
-  const mediaGeral = ASPECTOS.reduce((s, a) => s + mediaDe(a.key), 0) / ASPECTOS.length;
-  const mediaDaAvaliacao = (a: (typeof avaliacoes)[number]) =>
-    ASPECTOS.reduce((s, asp) => s + (a as unknown as Record<string, number>)[asp.key], 0) /
-    ASPECTOS.length;
+  const mediaGeral = usadas.length
+    ? usadas.reduce((s, a) => s + a.estrelas, 0) / usadas.length
+    : 0;
   const agora = new Date();
   const medalhas = await medalhasDoDiarista(id);
 
@@ -110,7 +104,8 @@ export default async function EditarDiaristaPage({
           <h2 className="font-semibold text-gray-900">Avaliações</h2>
           {notaLiberada && (
             <span className="text-sm text-gray-500">
-              nota <strong className="text-orange-700">{mediaGeral.toFixed(1)}</strong> (últimas 5)
+              nota <strong className="text-orange-700">★ {mediaGeral.toFixed(1)}</strong> de 5
+              (últimas 5)
             </span>
           )}
         </div>
@@ -121,16 +116,7 @@ export default async function EditarDiaristaPage({
           </p>
         ) : (
           <>
-            <ul className="mt-3 space-y-1.5">
-              {ASPECTOS.map((a) => (
-                <li key={a.key} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-gray-600">{a.label}</span>
-                  <span className="font-medium text-gray-900">{mediaDe(a.key).toFixed(1)}</span>
-                </li>
-              ))}
-            </ul>
-
-            <h3 className="mb-2 mt-4 text-sm font-semibold text-gray-700">Últimas diárias</h3>
+            <h3 className="mb-2 mt-3 text-sm font-semibold text-gray-700">Últimas diárias</h3>
             <ul className="divide-y divide-gray-100">
               {avaliacoes.slice(0, 5).map((a) => (
                 <li key={a.id} className="py-2">
@@ -139,12 +125,10 @@ export default async function EditarDiaristaPage({
                       {formatDate(a.escala.data)} · {a.escala.loja.nome}
                     </span>
                     <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
-                      {mediaDaAvaliacao(a).toFixed(1)}
+                      ★ {a.estrelas}
                     </span>
                   </div>
-                  {a.comentario && (
-                    <p className="mt-1 text-sm text-gray-500">{a.comentario}</p>
-                  )}
+                  {a.comentario && <p className="mt-1 text-sm text-gray-500">{a.comentario}</p>}
                 </li>
               ))}
             </ul>
@@ -162,12 +146,7 @@ export default async function EditarDiaristaPage({
         ) : (
           <ul className="mt-3 divide-y divide-gray-100">
             {historico.map((e) => {
-              const notaDia = e.avaliacao
-                ? ASPECTOS.reduce(
-                    (s, a) => s + (e.avaliacao as unknown as Record<string, number>)[a.key],
-                    0,
-                  ) / ASPECTOS.length
-                : null;
+              const notaDia = e.avaliacao ? e.avaliacao.estrelas : null;
               return (
                 <li key={e.id} className="flex items-start justify-between gap-3 py-2 text-sm">
                   <span className="min-w-0">
@@ -176,7 +155,7 @@ export default async function EditarDiaristaPage({
                     <span className="block text-xs text-gray-400">
                       {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim} · ` : ""}
                       {formatBRL(e.valorPago ?? e.valor)}
-                      {notaDia !== null ? ` · ★ ${notaDia.toFixed(1)}` : ""}
+                      {notaDia !== null ? ` · ★ ${notaDia}` : ""}
                     </span>
                   </span>
                   <span className="shrink-0">

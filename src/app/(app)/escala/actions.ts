@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseBRLToCents } from "@/lib/format";
-import { dentroDaJanelaAgendamento, inicioDaSemana, isISODate } from "@/lib/dates";
+import { dentroDaJanelaAgendamento, hojeISO, inicioDaSemana, isISODate } from "@/lib/dates";
 
 export async function createEscala(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
@@ -45,6 +45,20 @@ export async function marcarPresenca(formData: FormData) {
 export async function deleteEscala(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+
+  // Não pode excluir diárias passadas ou já realizadas (check-in/presença).
+  const escala = await prisma.escala.findUnique({
+    where: { id },
+    select: { data: true, presenca: true, checkinEm: true, checkoutEm: true },
+  });
+  if (!escala) return;
+  const realizada =
+    escala.data < hojeISO() ||
+    escala.presenca === "PRESENTE" ||
+    escala.checkinEm != null ||
+    escala.checkoutEm != null;
+  if (realizada) return;
+
   await prisma.escala.delete({ where: { id } });
 
   revalidatePath("/escala");
@@ -69,15 +83,10 @@ export async function gerarLinkConfirmacao(formData: FormData) {
   revalidatePath("/escala");
 }
 
-function nota(formData: FormData, campo: string): number {
-  const n = Number.parseInt(String(formData.get(campo) ?? ""), 10);
-  if (Number.isNaN(n)) return 0;
-  return Math.min(10, Math.max(0, n));
-}
-
 export async function salvarAvaliacao(formData: FormData) {
   const escalaId = String(formData.get("escalaId") ?? "");
-  if (!escalaId) return;
+  const estrelas = Number.parseInt(String(formData.get("estrelas") ?? ""), 10);
+  if (!escalaId || Number.isNaN(estrelas) || estrelas < 1 || estrelas > 5) return;
 
   const escala = await prisma.escala.findUnique({
     where: { id: escalaId },
@@ -85,21 +94,12 @@ export async function salvarAvaliacao(formData: FormData) {
   });
   if (!escala) return;
 
-  const notas = {
-    pontualidade: nota(formData, "pontualidade"),
-    limpeza: nota(formData, "limpeza"),
-    educacao: nota(formData, "educacao"),
-    rapidez: nota(formData, "rapidez"),
-    habilidadeTecnica: nota(formData, "habilidadeTecnica"),
-    respeito: nota(formData, "respeito"),
-    espiritoEquipe: nota(formData, "espiritoEquipe"),
-  };
   const comentario = String(formData.get("comentario") ?? "").trim() || null;
 
   await prisma.avaliacao.upsert({
     where: { escalaId },
-    update: { ...notas, comentario },
-    create: { escalaId, diaristaId: escala.diaristaId, ...notas, comentario },
+    update: { estrelas, comentario },
+    create: { escalaId, diaristaId: escala.diaristaId, estrelas, comentario },
   });
 
   revalidatePath("/escala");

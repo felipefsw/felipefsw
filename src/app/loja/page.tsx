@@ -5,8 +5,8 @@ import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import { formatBRL, formatDate, formatDateWithWeekday } from "@/lib/format";
 import { hojeISO, maxAgendamentoISO, turnoFinalizado } from "@/lib/dates";
 import { corDoTurno } from "@/lib/horarios";
-import { ASPECTOS } from "@/lib/aspectos";
 import Avatar from "@/components/Avatar";
+import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   bloquearDiaristaLoja,
@@ -104,12 +104,7 @@ export default async function LojaHome({
       };
     cur.datas.push(e.data);
     if (e.avaliacao) {
-      const m =
-        ASPECTOS.reduce(
-          (s, a) => s + (e.avaliacao as unknown as Record<string, number>)[a.key],
-          0,
-        ) / ASPECTOS.length;
-      cur.somaNotas += m;
+      cur.somaNotas += e.avaliacao.estrelas;
       cur.qtdNotas += 1;
     }
     vistos.set(e.diarista.id, cur);
@@ -135,15 +130,23 @@ export default async function LojaHome({
             + Solicitar diaristas
           </Link>
         ) : (
-          <span className="text-xs font-medium text-amber-700">Avalie para liberar</span>
+          <a
+            href="#avaliar-diaristas"
+            className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
+          >
+            Avalie para liberar
+          </a>
         )}
       </div>
 
       {(pendentes > 0 || erro === "avalie") && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-800">
-          Você tem {pendentes} diária(s) para avaliar. Avalie os diaristas (seção abaixo) antes de
-          abrir novas vagas ou convocar.
-        </div>
+        <a
+          href="#avaliar-diaristas"
+          className="block rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-800 hover:bg-amber-100"
+        >
+          Você tem {pendentes} diária(s) para avaliar. Toque aqui para avaliar agora e liberar novas
+          vagas/convocações. →
+        </a>
       )}
 
       {pendentes === 0 && ultima && (
@@ -257,28 +260,23 @@ export default async function LojaHome({
       </section>
 
       {aAvaliar.length > 0 && (
-        <section>
+        <section id="avaliar-diaristas" className="scroll-mt-4">
           <h2 className="mb-2 font-semibold text-gray-900">Avaliar diaristas</h2>
+          <p className="mb-2 text-xs text-gray-500">
+            Toque nas estrelas para avaliar — registra na hora, sem abrir outra página.
+          </p>
           <Card>
             <ul className="divide-y divide-gray-100">
               {aAvaliar.map((e) => (
-                <li key={e.id} className="flex items-center justify-between gap-3 py-2">
+                <li
+                  key={e.id}
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2"
+                >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-gray-900">{e.diarista.nome}</p>
                     <p className="text-sm capitalize text-gray-500">{formatDate(e.data)}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <Link
-                      href={`/loja/avaliar/${e.id}`}
-                      className={
-                        e.avaliacao
-                          ? "text-sm font-medium text-orange-600 hover:underline"
-                          : "rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"
-                      }
-                    >
-                      {e.avaliacao ? "★ avaliada" : "★ Avaliar"}
-                    </Link>
-                  </div>
+                  <EstrelasAvaliacao escalaId={e.id} valorInicial={e.avaliacao?.estrelas ?? 0} />
                 </li>
               ))}
             </ul>
@@ -313,7 +311,9 @@ export default async function LojaHome({
 
                   <p className="mt-1 text-xs text-gray-500">
                     {d.nota !== null && (
-                      <span className="font-medium text-orange-700">nota {d.nota.toFixed(1)} · </span>
+                      <span className="font-medium text-orange-700">
+                        ★ {d.nota.toFixed(1)} de 5 ·{" "}
+                      </span>
                     )}
                     {d.datas.slice(0, 5).map(formatDate).join(", ")}
                     {d.datas.length > 5 ? "…" : ""}

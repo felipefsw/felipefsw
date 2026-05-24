@@ -23,8 +23,7 @@ export async function medalhasDoDiarista(diaristaId: string): Promise<Medalha[]>
   const total = presentes + faltas;
   const media =
     avals.length >= 5
-      ? avals.reduce((s, a) => s + mediaDaAvaliacao(a as unknown as Record<string, number>), 0) /
-        avals.length
+      ? avals.reduce((s, a) => s + mediaDaAvaliacao(a), 0) / avals.length
       : null;
 
   let pontuais = 0;
@@ -39,9 +38,9 @@ export async function medalhasDoDiarista(diaristaId: string): Promise<Medalha[]>
   const m: Medalha[] = [];
   if (presentes >= 50) m.push({ emoji: "🏅", nome: "Veterano" });
   else if (presentes >= 30) m.push({ emoji: "🎖️", nome: "Experiente" });
-  if (media !== null && media >= 9) m.push({ emoji: "⭐", nome: "Super bem avaliado" });
+  if (media !== null && media >= 4.5) m.push({ emoji: "⭐", nome: "Super bem avaliado" });
   if (total >= 10 && faltas / total <= 0.05) m.push({ emoji: "✅", nome: "Presença certa" });
-  if (diarista?.funcao === "Pizzaiolo" && presentes >= 10 && (media ?? 0) >= 9)
+  if (diarista?.funcao === "Pizzaiolo" && presentes >= 10 && (media ?? 0) >= 4.5)
     m.push({ emoji: "🍕", nome: "Mestre da Massa" });
   if (comCheckin >= 5 && pontuais / comCheckin >= 0.9)
     m.push({ emoji: "⏱️", nome: "Sempre no horário" });

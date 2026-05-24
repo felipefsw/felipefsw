@@ -209,7 +209,7 @@ export default async function DiaristaLinkPage({
               <p className="text-sm font-semibold text-gray-900">🎁 Bônus de R$ 100 chegando!</p>
               <p className="mt-0.5 text-xs text-gray-500">
                 Faltam {DIARIAS_CASHBACK - diarista._count.avaliacoes} diária(s) bem avaliada(s)
-                (média ≥ 9,0) para concorrer.
+                (média ≥ 4,5 de 5 ★) para concorrer.
               </p>
               <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
                 <div
@@ -232,7 +232,7 @@ export default async function DiaristaLinkPage({
               </p>
               <p className="mt-0.5 text-xs text-gray-500">
                 Faltam {DIARIAS_CASHBACK_20 - diarista._count.avaliacoes} diária(s) bem avaliada(s)
-                (média ≥ 8,5) para ganhar outro bônus.
+                (média ≥ 4,2 de 5 ★) para ganhar outro bônus.
               </p>
               <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
                 <div
@@ -350,7 +350,23 @@ export default async function DiaristaLinkPage({
                       )}
                     </div>
                     {enderecoCompleto(r.loja) && (
-                      <p className="text-sm text-gray-500">{enderecoCompleto(r.loja)}</p>
+                      <>
+                        <p className="text-sm text-gray-500">{enderecoCompleto(r.loja)}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <CopyButton
+                            text={enderecoCompleto(r.loja)}
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+                          />
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(enderecoCompleto(r.loja))}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
+                          >
+                            📍 Siga até a loja
+                          </a>
+                        </div>
+                      </>
                     )}
                     <p className="mt-1 text-sm capitalize text-gray-600">
                       {formatDateWithWeekday(r.data)} · {r.horaInicio}–{r.horaFim}

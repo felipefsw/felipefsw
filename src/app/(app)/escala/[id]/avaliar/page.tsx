@@ -1,21 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import {
-  Card,
-  PageHeader,
-  btnPrimary,
-  btnSecondary,
-  inputClass,
-  labelClass,
-} from "@/components/ui";
+import { Card, PageHeader, btnSecondary, inputClass, labelClass } from "@/components/ui";
 import { formatDateWithWeekday } from "@/lib/format";
-import { ASPECTOS } from "@/lib/aspectos";
 import { salvarAvaliacao } from "../../actions";
 
 export const dynamic = "force-dynamic";
-
-const NOTAS = Array.from({ length: 11 }, (_, i) => i); // 0..10
 
 export default async function AvaliarPage({
   params,
@@ -29,7 +19,7 @@ export default async function AvaliarPage({
   });
   if (!escala) notFound();
 
-  const atual = escala.avaliacao as Record<string, number> | null;
+  const atual = escala.avaliacao?.estrelas ?? 0;
 
   return (
     <div className="space-y-4">
@@ -40,40 +30,32 @@ export default async function AvaliarPage({
 
       <Card>
         <p className="text-sm text-gray-600">{escala.loja.nome}</p>
-        <p className="text-sm capitalize text-gray-500">
-          {formatDateWithWeekday(escala.data)}
-        </p>
+        <p className="text-sm capitalize text-gray-500">{formatDateWithWeekday(escala.data)}</p>
       </Card>
 
       <Card>
         <form action={salvarAvaliacao} className="space-y-4">
           <input type="hidden" name="escalaId" value={escala.id} />
 
-          <p className="text-sm text-gray-500">Notas de 0 a 10 em cada aspecto.</p>
-
-          {ASPECTOS.map((a) => (
-            <div key={a.key} className="flex items-center justify-between gap-3">
-              <label className="text-sm font-medium text-gray-700" htmlFor={a.key}>
-                {a.label}
-              </label>
-              <select
-                id={a.key}
-                name={a.key}
-                required
-                defaultValue={atual ? String(atual[a.key]) : ""}
-                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
-              >
-                <option value="" disabled>
-                  —
-                </option>
-                {NOTAS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
+          <div>
+            <p className="mb-1 text-sm font-medium text-gray-700">
+              Nota (toque numa estrela para salvar)
+            </p>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="submit"
+                  name="estrelas"
+                  value={n}
+                  aria-label={`${n} estrela${n > 1 ? "s" : ""}`}
+                  className="p-0.5 text-3xl leading-none transition-transform active:scale-90"
+                >
+                  <span className={n <= atual ? "text-amber-500" : "text-gray-300"}>★</span>
+                </button>
+              ))}
             </div>
-          ))}
+          </div>
 
           <div>
             <label className={labelClass} htmlFor="comentario">
@@ -88,14 +70,9 @@ export default async function AvaliarPage({
             />
           </div>
 
-          <div className="flex gap-2 pt-1">
-            <button type="submit" className={btnPrimary}>
-              Salvar avaliação
-            </button>
-            <Link href="/escala" className={btnSecondary}>
-              Cancelar
-            </Link>
-          </div>
+          <Link href="/escala" className={btnSecondary}>
+            Voltar
+          </Link>
         </form>
       </Card>
     </div>

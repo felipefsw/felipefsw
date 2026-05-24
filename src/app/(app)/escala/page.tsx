@@ -184,15 +184,17 @@ export default async function EscalaPage({
                           </Link>
                         )}
 
-                        <form action={deleteEscala}>
-                          <input type="hidden" name="id" value={e.id} />
-                          <ConfirmSubmit
-                            className="text-xs text-gray-400 hover:text-red-600"
-                            message="Excluir este agendamento?"
-                          >
-                            excluir
-                          </ConfirmSubmit>
-                        </form>
+                        {e.data >= hoje && e.presenca === "PENDENTE" && (
+                          <form action={deleteEscala}>
+                            <input type="hidden" name="id" value={e.id} />
+                            <ConfirmSubmit
+                              className="text-xs text-gray-400 hover:text-red-600"
+                              message="Excluir este agendamento?"
+                            >
+                              excluir
+                            </ConfirmSubmit>
+                          </form>
+                        )}
                       </div>
                       </div>
 

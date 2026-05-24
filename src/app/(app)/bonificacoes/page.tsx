@@ -35,9 +35,8 @@ export default async function BonificacoesPage() {
     }),
   ]);
 
-  const mediaDe = (avs: unknown[]): number =>
-    avs.reduce<number>((s, a) => s + mediaDaAvaliacao(a as Record<string, number>), 0) /
-    (avs.length || 1);
+  const mediaDe = (avs: { estrelas: number }[]): number =>
+    avs.reduce((s, a) => s + mediaDaAvaliacao(a), 0) / (avs.length || 1);
 
   // Elegíveis ao cashback: 5 primeiras diárias avaliadas com média >= 9, ainda não pagos.
   const elegiveisCashback = diaristas
