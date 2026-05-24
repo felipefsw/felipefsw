@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
+import { medalhasDoDiarista } from "@/lib/medalhas";
 import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
 import PushToggle from "@/components/PushToggle";
@@ -96,6 +97,8 @@ export default async function DiaristaLinkPage({
     (convidadoEm.has(r.id) ? 2 : 0) + (ehPreferida(r.lojaId) ? 1 : 0);
   disponiveis.sort((a, b) => peso(b) - peso(a));
 
+  const medalhas = await medalhasDoDiarista(diarista.id);
+
   return (
     <div className="mx-auto max-w-md">
       <header className="bg-neutral-900 px-5 py-6 text-white">
@@ -130,6 +133,19 @@ export default async function DiaristaLinkPage({
         {desistir === "tarde" && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
             Já passou do prazo (até 4h antes) para desistir desta diária.
+          </div>
+        )}
+
+        {medalhas.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {medalhas.map((m) => (
+              <span
+                key={m.nome}
+                className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800"
+              >
+                {m.emoji} {m.nome}
+              </span>
+            ))}
           </div>
         )}
 

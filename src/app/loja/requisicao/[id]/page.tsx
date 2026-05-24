@@ -11,6 +11,7 @@ import {
 } from "@/components/ui";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { contextoLoja, getSessao } from "@/lib/auth";
+import { medalhasDoDiarista } from "@/lib/medalhas";
 import { decidirRequisicao } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,13 @@ export default async function DecidirRequisicaoPage({
 
   const candidatos = requisicao.inscricoes;
   const cabemTodos = candidatos.length <= requisicao.quantidade;
+
+  const medalhasMap = new Map<string, { emoji: string; nome: string }[]>();
+  await Promise.all(
+    candidatos.map(async (c) => {
+      medalhasMap.set(c.diarista.id, await medalhasDoDiarista(c.diarista.id));
+    }),
+  );
 
   return (
     <div className="space-y-4">
@@ -111,6 +119,11 @@ export default async function DecidirRequisicaoPage({
                             convidado
                           </span>
                         )}
+                        {(medalhasMap.get(c.diarista.id) ?? []).map((mm) => (
+                          <span key={mm.nome} title={mm.nome}>
+                            {mm.emoji}
+                          </span>
+                        ))}
                       </span>
                     </label>
                   </li>

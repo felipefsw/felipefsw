@@ -4,6 +4,7 @@ import { Card, PageHeader } from "@/components/ui";
 import CopyLink from "@/components/CopyLink";
 import { formatDate } from "@/lib/format";
 import { ASPECTOS } from "@/lib/aspectos";
+import { medalhasDoDiarista } from "@/lib/medalhas";
 import DiaristaForm from "../DiaristaForm";
 import { bloquearPermanente, removerBloqueio, updateDiarista } from "../actions";
 
@@ -60,6 +61,7 @@ export default async function EditarDiaristaPage({
     ASPECTOS.reduce((s, asp) => s + (a as unknown as Record<string, number>)[asp.key], 0) /
     ASPECTOS.length;
   const agora = new Date();
+  const medalhas = await medalhasDoDiarista(id);
 
   return (
     <div className="space-y-4">
@@ -79,6 +81,22 @@ export default async function EditarDiaristaPage({
         </p>
         <CopyLink path={`/d/${diarista.token}`} />
       </Card>
+
+      {medalhas.length > 0 && (
+        <Card>
+          <h2 className="font-semibold text-gray-900">Medalhas</h2>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {medalhas.map((m) => (
+              <span
+                key={m.nome}
+                className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800"
+              >
+                {m.emoji} {m.nome}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card>
         <div className="flex items-center justify-between">
