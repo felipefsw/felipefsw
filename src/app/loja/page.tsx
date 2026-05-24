@@ -12,6 +12,8 @@ import SubmitButton from "@/components/SubmitButton";
 import CopyButton from "@/components/CopyButton";
 import CopyLink from "@/components/CopyLink";
 import CompartilharCadastro from "@/components/CompartilharCadastro";
+import TrilhaAprendizado from "@/components/TrilhaAprendizado";
+import { TRILHA_GESTOR, TRILHA_LOJA } from "@/lib/trilhas";
 import PushToggleLoja from "@/components/PushToggleLoja";
 import FotosLojaUpload from "@/components/FotosLojaUpload";
 import BotaoBloquear from "@/components/BotaoBloquear";
@@ -286,6 +288,12 @@ export default async function LojaHome({
       )}
 
       <PushToggleLoja />
+
+      <TrilhaAprendizado
+        id={ctx.gestorId ? "gestor-v1" : "loja-v1"}
+        titulo={ctx.gestorId ? "Guia do Gestor" : "Guia da Loja"}
+        passos={ctx.gestorId ? TRILHA_GESTOR : TRILHA_LOJA}
+      />
 
       <CompartilharCadastro />
 

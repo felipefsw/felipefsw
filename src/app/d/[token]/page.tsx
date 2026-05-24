@@ -16,6 +16,8 @@ import FotoUpload from "@/components/FotoUpload";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import ListaDiarias, { type DiariaItem } from "@/components/ListaDiarias";
 import ChatRH from "@/components/ChatRH";
+import TrilhaAprendizado from "@/components/TrilhaAprendizado";
+import { TRILHA_DIARISTA } from "@/lib/trilhas";
 import {
   confirmarPresenca,
   desistirDaDiaria,
@@ -600,6 +602,8 @@ export default async function DiaristaLinkPage({
       </main>
 
       <ChatRH token={token} mensagens={diarista.mensagens} />
+
+      <TrilhaAprendizado id="diarista-v1" titulo="Como funciona" passos={TRILHA_DIARISTA} />
     </div>
   );
 }

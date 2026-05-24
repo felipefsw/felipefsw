@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
+import TrilhaAprendizado from "@/components/TrilhaAprendizado";
+import { TRILHA_RH, TRILHA_TI } from "@/lib/trilhas";
 import { getSessao } from "@/lib/auth";
 import { sair } from "@/app/entrar/actions";
 
@@ -39,6 +41,13 @@ export default async function AppLayout({
       </header>
 
       <main className="flex-1 px-4 pb-24 pt-4">{children}</main>
+
+      <TrilhaAprendizado
+        id={`${sessao.perfil}-v1`}
+        titulo={sessao.perfil === "ti" ? "Guia da TI" : "Guia do RH"}
+        passos={sessao.perfil === "ti" ? TRILHA_TI : TRILHA_RH}
+        posicao="acimaMenu"
+      />
 
       <BottomNav />
     </div>
