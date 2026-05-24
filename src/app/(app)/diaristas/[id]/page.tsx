@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui";
 import CopyLink from "@/components/CopyLink";
+import CopyButton from "@/components/CopyButton";
 import Avatar from "@/components/Avatar";
 import { formatBRL, formatDate } from "@/lib/format";
 import { medalhasDoDiarista } from "@/lib/medalhas";
@@ -81,6 +82,26 @@ export default async function EditarDiaristaPage({
           própria escala e confirma presença — sem precisar de senha.
         </p>
         <CopyLink path={`/d/${diarista.token}`} />
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0 text-sm text-gray-700">
+            {diarista.chavePix ? (
+              <>
+                Pix: <span className="font-medium">{diarista.chavePix}</span>
+              </>
+            ) : (
+              <span className="text-gray-400">Sem Pix cadastrado</span>
+            )}
+          </span>
+          {diarista.chavePix && (
+            <CopyButton
+              text={diarista.chavePix}
+              className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+            />
+          )}
+        </div>
       </Card>
 
       {medalhas.length > 0 && (

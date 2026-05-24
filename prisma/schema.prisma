@@ -38,6 +38,20 @@ model Loja {
   bloqueios   Bloqueio[]
   convocacoes Convocacao[]
   diaristasPreferem Diarista[] @relation("LojaPreferida")
+  pushLojas   PushLoja[]
+}
+
+// Inscrição de push da loja/gestor (para lembrete de pagamento, etc.).
+model PushLoja {
+  id       String   @id @default(cuid())
+  endpoint String   @unique
+  p256dh   String
+  auth     String
+  criadoEm DateTime @default(now())
+  lojaId   String
+  loja     Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+
+  @@index([lojaId])
 }
 
 // Valor padrão da diária por função (definido pelo RH).

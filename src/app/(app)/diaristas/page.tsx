@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, btnDanger, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
+import CopyButton from "@/components/CopyButton";
 import Avatar from "@/components/Avatar";
 import { formatBRL } from "@/lib/format";
 import { FUNCOES } from "@/lib/funcoes";
@@ -171,7 +172,14 @@ export default async function DiaristasPage({
                 </Link>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+                {d.chavePix && (
+                  <CopyButton
+                    text={d.chavePix}
+                    label="Copiar Pix"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700"
+                  />
+                )}
                 <form action={toggleDiaristaAtivo}>
                   <input type="hidden" name="id" value={d.id} />
                   <button

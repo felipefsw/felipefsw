@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { agoraHHMM, hojeISO } from "@/lib/dates";
+import { notificarPagamentoDaEscala } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
       where: { id: e.id },
       data: { checkoutEm: saida, valorPago: e.valor, checkoutAuto: true },
     });
+    await notificarPagamentoDaEscala(e.id);
     fechadas++;
   }
 

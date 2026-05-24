@@ -7,7 +7,7 @@ import { contextoLoja, getSessao, setSessao } from "@/lib/auth";
 import { dentroDaJanelaAgendamento, isHHMM, isISODate, turnoFinalizado } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
 import { valorProporcional } from "@/lib/geo";
-import { notificarNovaDiaria } from "@/lib/push";
+import { notificarNovaDiaria, notificarPagamentoDaEscala } from "@/lib/push";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
 
 // Loja ativa da sessão (loja avulsa ou gestor). Redireciona se não houver.
@@ -229,9 +229,25 @@ export async function registrarCheckout(formData: FormData) {
     where: { id: escalaId },
     data: { checkoutEm: agora, valorPago },
   });
+  await notificarPagamentoDaEscala(escalaId);
   revalidatePath("/loja");
   revalidatePath("/");
   revalidatePath("/pagamentos");
+}
+
+// Salva a inscrição de push da loja/gestor (para lembrete de pagamento).
+export async function salvarPushLoja(
+  endpoint: string,
+  p256dh: string,
+  auth: string,
+) {
+  const lojaId = await lojaSessaoId();
+  if (!endpoint || !p256dh || !auth) return;
+  await prisma.pushLoja.upsert({
+    where: { endpoint },
+    update: { p256dh, auth, lojaId },
+    create: { endpoint, p256dh, auth, lojaId },
+  });
 }
 
 export async function convocarDiarista(formData: FormData) {

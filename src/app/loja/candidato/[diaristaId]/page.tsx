@@ -7,6 +7,10 @@ import { medalhasDoDiarista } from "@/lib/medalhas";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import Avatar from "@/components/Avatar";
 import MarcaBadge from "@/components/MarcaBadge";
+import CopyButton from "@/components/CopyButton";
+import SubmitButton from "@/components/SubmitButton";
+import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
+import { convocarDiarista } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +81,45 @@ export default async function CandidatoPage({
       {primeira && (
         <p className="text-center text-xs text-gray-400">Na rede desde {formatDate(primeira)}</p>
       )}
+
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0 text-sm text-gray-700">
+            {diarista.chavePix ? (
+              <>
+                Pix: <span className="font-medium">{diarista.chavePix}</span>
+              </>
+            ) : (
+              <span className="text-gray-400">Sem Pix cadastrado</span>
+            )}
+          </span>
+          {diarista.chavePix && (
+            <CopyButton
+              text={diarista.chavePix}
+              className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+            />
+          )}
+        </div>
+
+        <form action={convocarDiarista} className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+          <input type="hidden" name="diaristaId" value={diarista.id} />
+          <input
+            type="date"
+            name="data"
+            required
+            min={hojeISO()}
+            max={maxAgendamentoISO()}
+            defaultValue={hojeISO()}
+            className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          />
+          <SubmitButton
+            pendingLabel="Convocando…"
+            className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
+          >
+            Convocar
+          </SubmitButton>
+        </form>
+      </div>
 
       {medalhas.length > 0 && (
         <div className="flex flex-wrap gap-2">

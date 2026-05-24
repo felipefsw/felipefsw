@@ -9,6 +9,7 @@ import Avatar from "@/components/Avatar";
 import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
 import SubmitButton from "@/components/SubmitButton";
 import CopyButton from "@/components/CopyButton";
+import PushToggleLoja from "@/components/PushToggleLoja";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   alternarLimiteSemana,
@@ -85,6 +86,30 @@ export default async function LojaHome({
     prisma.loja.findUnique({ where: { id: lojaId }, select: { permiteMais2Semana: true } }),
   ]);
 
+  // Gestor: visão das vagas abertas em TODAS as suas lojas.
+  const gestorLojas = ctx.gestorId
+    ? await prisma.loja.findMany({
+        where: { gestorId: ctx.gestorId, ativo: true },
+        select: {
+          id: true,
+          nome: true,
+          requisicoes: {
+            where: { status: "ABERTA" },
+            select: {
+              id: true,
+              data: true,
+              horaInicio: true,
+              horaFim: true,
+              funcao: true,
+              valorDiaria: true,
+            },
+            orderBy: { data: "asc" },
+          },
+        },
+        orderBy: { nome: "asc" },
+      })
+    : [];
+
   const bloqueioPorDiarista = new Map<string, { ate: Date | null; origem: string }>();
   for (const b of bloqueios) {
     const cur = bloqueioPorDiarista.get(b.diaristaId);
@@ -118,6 +143,7 @@ export default async function LojaHome({
     nome: string;
     funcao: string | null;
     fotoUrl: string | null;
+    chavePix: string | null;
     datas: string[];
     somaNotas: number;
     qtdNotas: number;
@@ -130,6 +156,7 @@ export default async function LojaHome({
         nome: e.diarista.nome,
         funcao: e.diarista.funcao,
         fotoUrl: e.diarista.fotoUrl,
+        chavePix: e.diarista.chavePix,
         datas: [],
         somaNotas: 0,
         qtdNotas: 0,
@@ -147,11 +174,15 @@ export default async function LojaHome({
       nome: v.nome,
       funcao: v.funcao,
       fotoUrl: v.fotoUrl,
+      chavePix: v.chavePix,
       vezes: v.datas.length,
       datas: v.datas,
       nota: v.qtdNotas ? v.somaNotas / v.qtdNotas : null,
     }))
     .sort((a, b) => b.vezes - a.vezes);
+
+  // Top 3 que mais vieram nesta loja (para convocar direto na vaga).
+  const topConvocar = diaristas.slice(0, 3);
 
   // Só as diárias que faltam avaliar (para o atalho "Avalie para liberar").
   const pendentesList = aAvaliar.filter((e) => !e.avaliacao);
@@ -191,6 +222,37 @@ export default async function LojaHome({
           Você tem {pendentes} diária(s) para avaliar. Toque aqui para avaliar agora e liberar novas
           vagas/convocações. →
         </a>
+      )}
+
+      <PushToggleLoja />
+
+      {ctx.gestorId && gestorLojas.length > 0 && (
+        <section>
+          <h2 className="mb-2 font-semibold text-gray-900">Vagas abertas nas suas lojas</h2>
+          <div className="space-y-2">
+            {gestorLojas.map((gl) => (
+              <div key={gl.id} className="rounded-xl border border-gray-200 bg-white p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-gray-900">{gl.nome}</span>
+                  <span className="text-xs text-gray-500">{gl.requisicoes.length} vaga(s) aberta(s)</span>
+                </div>
+                {gl.requisicoes.length > 0 && (
+                  <ul className="mt-1 space-y-0.5">
+                    {gl.requisicoes.slice(0, 6).map((r) => (
+                      <li key={r.id} className="text-xs capitalize text-gray-600">
+                        {formatDateWithWeekday(r.data)} ·{" "}
+                        <span className={`rounded px-1 ${corDoTurno(r.horaInicio).chip}`}>
+                          {r.horaInicio}–{r.horaFim}
+                        </span>{" "}
+                        · {r.funcao ?? "qualquer"} · {formatBRL(r.valorDiaria)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {pendentes === 0 && ultima && (
@@ -330,6 +392,20 @@ export default async function LojaHome({
                       <p className="mt-1 text-xs text-gray-500">
                         {r._count.escalas} escalado(s) · {r._count.inscricoes} candidato(s)
                       </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {Array.from({ length: r.quantidade }).map((_, i) => (
+                          <span
+                            key={i}
+                            className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                              i < r._count.escalas
+                                ? "bg-green-600 text-white"
+                                : "border border-dashed border-gray-400 text-gray-400"
+                            }`}
+                          >
+                            {i < r._count.escalas ? "✓" : i + 1}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>
                       {st.txt}
@@ -394,6 +470,44 @@ export default async function LojaHome({
                             );
                           })}
                         </>
+                      )}
+
+                      {faltam > 0 && topConvocar.length > 0 && (
+                        <div className="border-t border-black/5 pt-2">
+                          <p className="text-[11px] font-medium text-gray-600">
+                            Ou convoque quem mais trabalha aqui:
+                          </p>
+                          {topConvocar.map((d, i) => (
+                            <div key={d.id} className="mt-1 flex items-center justify-between gap-2">
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm text-gray-800">
+                                  {d.nome}{" "}
+                                  <span className="text-[10px] text-gray-400">top {i + 1}</span>
+                                </span>
+                                {d.chavePix && (
+                                  <span className="flex items-center gap-1 text-[11px] text-gray-500">
+                                    <span className="max-w-[9rem] truncate">Pix: {d.chavePix}</span>
+                                    <CopyButton
+                                      text={d.chavePix}
+                                      label="copiar"
+                                      className="rounded border border-gray-300 bg-white px-1 py-0.5 text-[10px] font-medium text-gray-700"
+                                    />
+                                  </span>
+                                )}
+                              </span>
+                              <form action={convocarDiarista}>
+                                <input type="hidden" name="diaristaId" value={d.id} />
+                                <input type="hidden" name="data" value={r.data} />
+                                <SubmitButton
+                                  pendingLabel="…"
+                                  className="shrink-0 rounded-lg border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100"
+                                >
+                                  Convocar {d.nome.split(" ")[0]}
+                                </SubmitButton>
+                              </form>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
