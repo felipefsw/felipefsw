@@ -12,8 +12,13 @@ let configurado = false;
 function configurar(): boolean {
   if (!PUB || !PRIV) return false;
   if (!configurado) {
-    webpush.setVapidDetails(SUBJECT, PUB, PRIV);
-    configurado = true;
+    try {
+      webpush.setVapidDetails(SUBJECT, PUB, PRIV);
+      configurado = true;
+    } catch {
+      // Chaves VAPID inválidas: desliga o push em vez de quebrar o fluxo.
+      return false;
+    }
   }
   return true;
 }

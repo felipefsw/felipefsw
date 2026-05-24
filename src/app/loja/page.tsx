@@ -20,6 +20,7 @@ import {
   criarRequisicaoLoja,
   desbloquearDiaristaLoja,
   marcarPagoDiaria,
+  recusarCandidato,
   registrarCheckout,
   salvarVantagensLoja,
 } from "./actions";
@@ -469,16 +470,26 @@ export default async function LojaHome({
                                     </span>
                                   </span>
                                 </span>
-                                {faltam > 0 && (
-                                  <form action={aprovarCandidato.bind(null, r.id, d.id)}>
+                                <div className="flex shrink-0 items-center gap-1.5">
+                                  {faltam > 0 && (
+                                    <form action={aprovarCandidato.bind(null, r.id, d.id)}>
+                                      <SubmitButton
+                                        pendingLabel="…"
+                                        className="rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                                      >
+                                        ✓ Sim
+                                      </SubmitButton>
+                                    </form>
+                                  )}
+                                  <form action={recusarCandidato.bind(null, r.id, d.id)}>
                                     <SubmitButton
-                                      pendingLabel="..."
-                                      className="shrink-0 rounded-lg bg-orange-700 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-800"
+                                      pendingLabel="…"
+                                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
                                     >
-                                      Aprovar
+                                      ✕ Não
                                     </SubmitButton>
                                   </form>
-                                )}
+                                </div>
                               </div>
                             );
                           })}

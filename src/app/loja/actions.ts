@@ -198,6 +198,20 @@ export async function marcarPagoDiaria(escalaId: string, pago: boolean) {
   revalidatePath("/pagamentos");
 }
 
+// Recusa um candidato (remove a inscrição dele desta vaga).
+export async function recusarCandidato(requisicaoId: string, diaristaId: string) {
+  const lojaId = await lojaSessaoId();
+  if (!requisicaoId || !diaristaId) return;
+  const requisicao = await prisma.requisicao.findUnique({
+    where: { id: requisicaoId },
+    select: { lojaId: true },
+  });
+  if (!requisicao || requisicao.lojaId !== lojaId) return;
+  await prisma.inscricao.deleteMany({ where: { requisicaoId, diaristaId } });
+  revalidatePath("/loja");
+  revalidatePath("/requisicoes");
+}
+
 // Liga/desliga a permissão de mais de 2 diárias por semana (a loja assume o risco).
 export async function alternarLimiteSemana() {
   const lojaId = await lojaSessaoId();
@@ -298,15 +312,16 @@ export async function convocarDiarista(formData: FormData) {
   if (!diaristaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
   if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
-  // Garante que o diarista existe e evita convocação duplicada (idempotente).
-  const [diarista, jaConvocado] = await Promise.all([
+  // Garante que o diarista existe, não está já convocado e não tem diária nesse dia.
+  const [diarista, jaConvocado, jaNoDia] = await Promise.all([
     prisma.diarista.findUnique({ where: { id: diaristaId }, select: { id: true } }),
     prisma.convocacao.findFirst({
       where: { lojaId, diaristaId, data, status: "PENDENTE" },
       select: { id: true },
     }),
+    prisma.escala.findFirst({ where: { diaristaId, data }, select: { id: true } }),
   ]);
-  if (!diarista || jaConvocado) {
+  if (!diarista || jaConvocado || jaNoDia) {
     revalidatePath("/loja");
     return;
   }

@@ -13,8 +13,10 @@ import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
 import { FUNCOES } from "@/lib/funcoes";
 import { opcoesHoraFim } from "@/lib/horariosOpcoes";
 import FuncaoValor from "@/components/FuncaoValor";
+import Avatar from "@/components/Avatar";
+import SubmitButton from "@/components/SubmitButton";
 import { contextoLoja, getSessao } from "@/lib/auth";
-import { criarRequisicaoLoja } from "../../actions";
+import { convocarDiarista, criarRequisicaoLoja } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +28,23 @@ export default async function NovaRequisicaoLojaPage() {
   const diaristas = await prisma.diarista.findMany({
     where: { ativo: true },
     orderBy: { nome: "asc" },
-    select: { id: true, nome: true },
+    select: {
+      id: true,
+      nome: true,
+      funcao: true,
+      fotoUrl: true,
+      _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
+    },
   });
+
+  // Sugestões: top 5 diaristas de cada função (quem mais trabalhou).
+  const sugestoesPorFuncao = FUNCOES.map((f) => ({
+    funcao: f,
+    lista: diaristas
+      .filter((d) => d.funcao === f)
+      .sort((a, b) => b._count.escalas - a._count.escalas)
+      .slice(0, 5),
+  })).filter((g) => g.lista.length > 0);
 
   // Gestor escolhe a loja; loja avulsa já está fixa.
   const lojasDoGestor =
@@ -40,8 +57,66 @@ export default async function NovaRequisicaoLojaPage() {
       : [];
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader title="Solicitar diaristas" subtitle="Para um dia e horário" />
+
+      {sugestoesPorFuncao.length > 0 && (
+        <Card>
+          <h2 className="font-semibold text-gray-900">💡 Sugestões</h2>
+          <p className="mt-0.5 text-xs text-gray-500">
+            Os que mais trabalham, por função. Você pode convocar direto (escolha a data). Quem já
+            tem diária no dia não é convocado.
+          </p>
+          <div className="mt-2 space-y-2">
+            {sugestoesPorFuncao.map((g) => (
+              <details key={g.funcao} className="rounded-lg border border-gray-200">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-gray-800">
+                  {g.funcao} ({g.lista.length})
+                </summary>
+                <ul className="divide-y divide-gray-100 px-3 pb-2">
+                  {g.lista.map((d, i) => (
+                    <li key={d.id} className="flex items-center justify-between gap-2 py-2">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="w-4 text-center text-xs font-bold text-gray-400">
+                          {i + 1}
+                        </span>
+                        <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-8 w-8" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-gray-900">
+                            {d.nome}
+                          </span>
+                          <span className="block text-[11px] text-gray-500">
+                            {d._count.escalas} diária(s)
+                          </span>
+                        </span>
+                      </span>
+                      <form action={convocarDiarista} className="flex shrink-0 items-center gap-1">
+                        <input type="hidden" name="diaristaId" value={d.id} />
+                        <input
+                          type="date"
+                          name="data"
+                          required
+                          min={hojeISO()}
+                          max={maxAgendamentoISO()}
+                          defaultValue={hojeISO()}
+                          className="rounded-lg border border-gray-300 bg-white px-1.5 py-1 text-xs"
+                        />
+                        <SubmitButton
+                          pendingLabel="…"
+                          className="rounded-lg bg-orange-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-orange-800"
+                        >
+                          Convocar
+                        </SubmitButton>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Card>
         <form action={criarRequisicaoLoja} className="space-y-4">
           {lojasDoGestor.length > 0 && (
