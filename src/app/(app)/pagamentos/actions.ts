@@ -25,6 +25,18 @@ export async function desfazerPago(formData: FormData) {
   revalidatePath("/");
 }
 
+// Marca como pagas as diárias indicadas (usado por grupo de marca + diarista).
+export async function pagarEscalas(formData: FormData) {
+  const ids = formData.getAll("escalaIds").map(String).filter(Boolean);
+  if (ids.length === 0) return;
+  await prisma.escala.updateMany({
+    where: { id: { in: ids }, pago: false },
+    data: { pago: true, pagoEm: new Date() },
+  });
+  revalidatePath("/pagamentos");
+  revalidatePath("/");
+}
+
 export async function pagarTudoDoDiarista(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
   if (!diaristaId) return;

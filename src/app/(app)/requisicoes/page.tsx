@@ -4,6 +4,7 @@ import { Card, EmptyState, PageHeader, btnDanger } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import SubmitButton from "@/components/SubmitButton";
+import { grupoDaLoja } from "@/lib/marcas";
 import { cancelarRequisicao, clickMagico, deleteRequisicao, reabrirRequisicao } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,17 @@ export default async function RequisicoesPage({
     include: { loja: true, _count: { select: { escalas: true } } },
     orderBy: [{ data: "asc" }, { criadoEm: "desc" }],
   });
+
+  // Agrupa por marca (quadrantes).
+  type ReqItem = (typeof requisicoes)[number];
+  const grupos = new Map<string, { label: string; ordem: number; itens: ReqItem[] }>();
+  for (const r of requisicoes) {
+    const g = grupoDaLoja(r.loja.nome);
+    const cur = grupos.get(g.key) ?? { label: g.label, ordem: g.ordem, itens: [] };
+    cur.itens.push(r);
+    grupos.set(g.key, cur);
+  }
+  const gruposOrdenados = [...grupos.values()].sort((a, b) => a.ordem - b.ordem);
 
   const chipBase = "rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap";
   const chipOn = "border-orange-700 bg-orange-700 text-white";
@@ -88,8 +100,14 @@ export default async function RequisicoesPage({
           )}
         </EmptyState>
       ) : (
-        <div className="space-y-3">
-          {requisicoes.map((r) => (
+        <div className="space-y-5">
+          {gruposOrdenados.map((grupo) => (
+            <section key={grupo.label}>
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
+                {grupo.label} ({grupo.itens.length})
+              </h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {grupo.itens.map((r) => (
             <Card key={r.id}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -158,6 +176,9 @@ export default async function RequisicoesPage({
                 </form>
               </div>
             </Card>
+          ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

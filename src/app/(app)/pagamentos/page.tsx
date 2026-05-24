@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import { formatBRL, formatDateShort } from "@/lib/format";
-import { desfazerPago, marcarPago, pagarTudoDoDiarista } from "./actions";
+import { grupoDaLoja } from "@/lib/marcas";
+import { desfazerPago, marcarPago, pagarEscalas } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,22 +20,32 @@ export default async function PagamentosPage() {
     take: 30,
   });
 
-  // Agrupa "a pagar" por diarista.
-  const grupos = new Map<
-    string,
-    { nome: string; chavePix: string | null; total: number; itens: typeof aPagar }
-  >();
+  type Item = (typeof aPagar)[number];
+  // Agrupa "a pagar" por marca e, dentro, por diarista.
+  type SubGrupo = { nome: string; chavePix: string | null; total: number; itens: Item[] };
+  type Grupo = { label: string; ordem: number; total: number; porDiarista: Map<string, SubGrupo> };
+  const marcas = new Map<string, Grupo>();
   for (const e of aPagar) {
-    const g = grupos.get(e.diaristaId) ?? {
+    const g = grupoDaLoja(e.loja.nome);
+    const marca = marcas.get(g.key) ?? {
+      label: g.label,
+      ordem: g.ordem,
+      total: 0,
+      porDiarista: new Map<string, SubGrupo>(),
+    };
+    marca.total += e.valor;
+    const sub = marca.porDiarista.get(e.diaristaId) ?? {
       nome: e.diarista.nome,
       chavePix: e.diarista.chavePix,
       total: 0,
-      itens: [] as typeof aPagar,
+      itens: [],
     };
-    g.total += e.valor;
-    g.itens.push(e);
-    grupos.set(e.diaristaId, g);
+    sub.total += e.valor;
+    sub.itens.push(e);
+    marca.porDiarista.set(e.diaristaId, sub);
+    marcas.set(g.key, marca);
   }
+  const marcasOrdenadas = [...marcas.values()].sort((a, b) => a.ordem - b.ordem);
 
   const totalGeral = aPagar.reduce((s, e) => s + e.valor, 0);
 
@@ -52,53 +63,63 @@ export default async function PagamentosPage() {
         </div>
       </Card>
 
-      {grupos.size === 0 ? (
+      {marcasOrdenadas.length === 0 ? (
         <EmptyState>Tudo em dia! Não há diárias pendentes de pagamento.</EmptyState>
       ) : (
-        <div className="space-y-3">
-          {[...grupos.entries()].map(([diaristaId, g]) => (
-            <Card key={diaristaId}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-gray-900">{g.nome}</p>
-                  {g.chavePix && (
-                    <p className="text-sm text-gray-500">Pix: {g.chavePix}</p>
-                  )}
-                  <p className="mt-1 text-sm text-gray-600">
-                    {g.itens.length} diária(s) · <strong>{formatBRL(g.total)}</strong>
-                  </p>
-                </div>
-                <form action={pagarTudoDoDiarista}>
-                  <input type="hidden" name="diaristaId" value={diaristaId} />
-                  <button type="submit" className={btnPrimary}>
-                    Pagar tudo
-                  </button>
-                </form>
-              </div>
-
-              <ul className="mt-3 divide-y divide-gray-100 border-t border-gray-100">
-                {g.itens.map((e) => (
-                  <li key={e.id} className="flex items-center justify-between gap-3 py-2">
-                    <div className="text-sm">
-                      <span className="text-gray-500">{formatDateShort(e.data)}</span>{" "}
-                      <span className="text-gray-700">· {e.loja.nome}</span>
-                      <span className="ml-2 font-medium text-gray-900">
-                        {formatBRL(e.valor)}
-                      </span>
+        <div className="space-y-5">
+          {marcasOrdenadas.map((marca) => (
+            <section key={marca.label}>
+              <h2 className="mb-2 flex items-center justify-between text-sm font-bold uppercase tracking-wide text-gray-500">
+                <span>{marca.label}</span>
+                <span className="text-orange-700">{formatBRL(marca.total)}</span>
+              </h2>
+              <div className="space-y-3">
+                {[...marca.porDiarista.entries()].map(([diaristaId, g]) => (
+                  <Card key={diaristaId}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-gray-900">{g.nome}</p>
+                        {g.chavePix && <p className="text-sm text-gray-500">Pix: {g.chavePix}</p>}
+                        <p className="mt-1 text-sm text-gray-600">
+                          {g.itens.length} diária(s) · <strong>{formatBRL(g.total)}</strong>
+                        </p>
+                      </div>
+                      <form action={pagarEscalas}>
+                        {g.itens.map((e) => (
+                          <input key={e.id} type="hidden" name="escalaIds" value={e.id} />
+                        ))}
+                        <button type="submit" className={btnPrimary}>
+                          Pagar tudo
+                        </button>
+                      </form>
                     </div>
-                    <form action={marcarPago}>
-                      <input type="hidden" name="id" value={e.id} />
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-orange-600 px-3 py-1 text-sm font-medium text-orange-700 hover:bg-orange-50"
-                      >
-                        Marcar pago
-                      </button>
-                    </form>
-                  </li>
+
+                    <ul className="mt-3 divide-y divide-gray-100 border-t border-gray-100">
+                      {g.itens.map((e) => (
+                        <li key={e.id} className="flex items-center justify-between gap-3 py-2">
+                          <div className="text-sm">
+                            <span className="text-gray-500">{formatDateShort(e.data)}</span>{" "}
+                            <span className="text-gray-700">· {e.loja.nome}</span>
+                            <span className="ml-2 font-medium text-gray-900">
+                              {formatBRL(e.valor)}
+                            </span>
+                          </div>
+                          <form action={marcarPago}>
+                            <input type="hidden" name="id" value={e.id} />
+                            <button
+                              type="submit"
+                              className="rounded-lg border border-orange-600 px-3 py-1 text-sm font-medium text-orange-700 hover:bg-orange-50"
+                            >
+                              Marcar pago
+                            </button>
+                          </form>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
                 ))}
-              </ul>
-            </Card>
+              </div>
+            </section>
           ))}
         </div>
       )}

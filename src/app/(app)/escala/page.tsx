@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, btnPrimary } from "@/components/ui";
@@ -5,6 +6,7 @@ import ConfirmSubmit from "@/components/ConfirmSubmit";
 import CopyLink from "@/components/CopyLink";
 import { formatBRL, formatDateShort, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO, inicioDaSemana, isISODate, semana, turnoFinalizado } from "@/lib/dates";
+import { grupoDaLoja } from "@/lib/marcas";
 import { deleteEscala, gerarLinkConfirmacao, marcarPresenca } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +70,12 @@ export default async function EscalaPage({
       <div className="space-y-3">
         {dias.map((dia) => {
           const lista = porDia.get(dia) ?? [];
+          // Ordena por marca para agrupar visualmente dentro do dia.
+          const ordenada = [...lista].sort((a, b) => {
+            const ga = grupoDaLoja(a.loja.nome);
+            const gb = grupoDaLoja(b.loja.nome);
+            return ga.ordem - gb.ordem || a.loja.nome.localeCompare(b.loja.nome);
+          });
           const ehHoje = dia === hoje;
           return (
             <Card key={dia} className={ehHoje ? "ring-2 ring-orange-200" : ""}>
@@ -92,8 +100,18 @@ export default async function EscalaPage({
                 <p className="text-sm text-gray-400">Sem agendamentos.</p>
               ) : (
                 <ul className="divide-y divide-gray-100">
-                  {lista.map((e) => (
-                    <li key={e.id} className="py-2">
+                  {ordenada.map((e, idx) => {
+                    const marcaLabel = grupoDaLoja(e.loja.nome).label;
+                    const prevLabel =
+                      idx > 0 ? grupoDaLoja(ordenada[idx - 1].loja.nome).label : null;
+                    return (
+                    <Fragment key={e.id}>
+                    {marcaLabel !== prevLabel && (
+                      <li className="pt-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                        {marcaLabel}
+                      </li>
+                    )}
+                    <li className="py-2">
                       <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-medium text-gray-900">
@@ -221,7 +239,9 @@ export default async function EscalaPage({
                         </div>
                       )}
                     </li>
-                  ))}
+                    </Fragment>
+                    );
+                  })}
                 </ul>
               )}
             </Card>
