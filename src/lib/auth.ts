@@ -79,3 +79,11 @@ export function senhaGestao(perfil: "rh" | "ti"): string {
   if (perfil === "rh") return process.env.RH_SENHA || "123456";
   return process.env.TI_SENHA || "123456";
 }
+
+// TEMPORÁRIO (fase de testes): permite entrar sem senha em qualquer perfil
+// (diarista, lojista, gestor, RH/TI). Fica LIGADO por padrão; para exigir
+// senha de novo (produção), defina ACESSO_SEM_SENHA=0 no Vercel.
+export function acessoSemSenha(): boolean {
+  const v = process.env.ACESSO_SEM_SENHA;
+  return v !== "0" && v !== "false";
+}

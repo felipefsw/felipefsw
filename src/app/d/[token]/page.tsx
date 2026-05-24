@@ -19,7 +19,7 @@ import ListaDiarias, { type DiariaItem } from "@/components/ListaDiarias";
 import ChatRH from "@/components/ChatRH";
 import TrilhaAprendizado from "@/components/TrilhaAprendizado";
 import { TRILHA_DIARISTA } from "@/lib/trilhas";
-import { getSessao } from "@/lib/auth";
+import { acessoSemSenha, getSessao } from "@/lib/auth";
 import {
   confirmarPresenca,
   definirSenhaDiarista,
@@ -101,8 +101,13 @@ export default async function DiaristaLinkPage({
     );
   }
 
+  // Sessão deste diarista (login por CPF + senha, ou acesso de teste sem senha).
+  const sessao = await getSessao();
+  const sessaoDoDiarista = sessao?.tipo === "diarista" && sessao.diaristaId === diarista.id;
+
   // Primeiro acesso: ainda não tem senha → cria a senha (não exige sessão).
-  if (!diarista.senha) {
+  // No modo de teste, uma sessão válida deste diarista pula essa etapa.
+  if (!diarista.senha && !(acessoSemSenha() && sessaoDoDiarista)) {
     return (
       <div className="mx-auto max-w-md">
         <header className="bg-neutral-900 px-5 py-6 text-white">
@@ -163,9 +168,8 @@ export default async function DiaristaLinkPage({
     );
   }
 
-  // Já tem senha: exige sessão deste diarista (login por CPF + senha).
-  const sessao = await getSessao();
-  if (!(sessao?.tipo === "diarista" && sessao.diaristaId === diarista.id)) {
+  // Exige sessão deste diarista (login por CPF + senha, ou acesso de teste).
+  if (!sessaoDoDiarista) {
     redirect("/entrar?perfil=diarista");
   }
 
