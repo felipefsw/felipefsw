@@ -10,6 +10,7 @@ import Avatar from "@/components/Avatar";
 import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
 import SubmitButton from "@/components/SubmitButton";
 import CopyButton from "@/components/CopyButton";
+import CopyLink from "@/components/CopyLink";
 import PushToggleLoja from "@/components/PushToggleLoja";
 import FotosLojaUpload from "@/components/FotosLojaUpload";
 import BotaoBloquear from "@/components/BotaoBloquear";
@@ -567,6 +568,13 @@ export default async function LojaHome({
                           ))}
                         </div>
                       )}
+
+                      <div className="border-t border-black/5 pt-2">
+                        <p className="mb-1 text-[11px] font-medium text-gray-600">
+                          Candidato sem cadastro? Envie este link (ele já entra nesta vaga):
+                        </p>
+                        <CopyLink path={`/sou-diarista?vaga=${r.id}`} />
+                      </div>
                     </div>
                   )}
                 </div>

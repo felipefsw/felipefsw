@@ -4,8 +4,8 @@ import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import { corDoTurno } from "@/lib/horarios";
-import { corDaFuncao } from "@/lib/funcoesCor";
 import { bairroCidade, ruaDaLoja } from "@/lib/loja";
+import { grupoDaLoja } from "@/lib/marcas";
 import { DIARIAS_CASHBACK, DIARIAS_CASHBACK_20 } from "@/lib/bonificacoes";
 import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
@@ -13,16 +13,13 @@ import PushToggle from "@/components/PushToggle";
 import MarcaBadge from "@/components/MarcaBadge";
 import Avatar from "@/components/Avatar";
 import FotoUpload from "@/components/FotoUpload";
-import SubmitButton from "@/components/SubmitButton";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
-import MapaDiariasPerto from "@/components/MapaDiariasPerto";
-import CarrosselFotos from "@/components/CarrosselFotos";
+import ListaDiarias, { type DiariaItem } from "@/components/ListaDiarias";
 import {
   confirmarPresenca,
   desistirDaDiaria,
   enviarMensagemDiarista,
   fazerCheckin,
-  inscreverNaDiaria,
   responderConvocacao,
 } from "./actions";
 
@@ -114,20 +111,57 @@ export default async function DiaristaLinkPage({
     (convidadoEm.has(r.id) ? 2 : 0) + (ehPreferida(r.lojaId) ? 1 : 0);
   disponiveis.sort((a, b) => peso(b) - peso(a));
 
-  // Lojas (únicas, com coordenadas) com diária disponível, para o mapa.
-  const lojasMapa: { id: string; nome: string; lat: number; lng: number }[] = [];
-  const vistosMapa = new Set<string>();
-  for (const r of disponiveis) {
-    if (r.loja.latitude != null && r.loja.longitude != null && !vistosMapa.has(r.lojaId)) {
-      vistosMapa.add(r.lojaId);
-      lojasMapa.push({
-        id: r.lojaId,
-        nome: r.loja.nome,
-        lat: r.loja.latitude,
-        lng: r.loja.longitude,
-      });
-    }
+  // Nota das lojas (avaliação dos diaristas), para o filtro "nota".
+  const lojaIdsDisp = [...new Set(disponiveis.map((r) => r.lojaId))];
+  const avalLojas = lojaIdsDisp.length
+    ? await prisma.avaliacaoLoja.findMany({
+        where: { lojaId: { in: lojaIdsDisp } },
+        select: {
+          lojaId: true,
+          ambiente: true,
+          tratamento: true,
+          pagamentoEmDia: true,
+          organizacao: true,
+          seguranca: true,
+        },
+      })
+    : [];
+  const notaAcc = new Map<string, { soma: number; qtd: number }>();
+  for (const a of avalLojas) {
+    const m = (a.ambiente + a.tratamento + a.pagamentoEmDia + a.organizacao + a.seguranca) / 5 / 2;
+    const cur = notaAcc.get(a.lojaId) ?? { soma: 0, qtd: 0 };
+    cur.soma += m;
+    cur.qtd += 1;
+    notaAcc.set(a.lojaId, cur);
   }
+  const notaDaLoja = (id: string): number | null => {
+    const c = notaAcc.get(id);
+    return c ? c.soma / c.qtd : null;
+  };
+
+  const itensDiarias: DiariaItem[] = disponiveis.map((r) => {
+    const g = grupoDaLoja(r.loja.nome);
+    return {
+      id: r.id,
+      lojaId: r.lojaId,
+      lojaNome: r.loja.nome,
+      marcaLabel: g.label,
+      marcaOrdem: g.ordem,
+      rua: ruaDaLoja(r.loja),
+      enderecoCompleto: enderecoCompleto(r.loja) || ruaDaLoja(r.loja),
+      bairroCidade: bairroCidade(r.loja),
+      lat: r.loja.latitude,
+      lng: r.loja.longitude,
+      data: r.data,
+      horaInicio: r.horaInicio,
+      horaFim: r.horaFim,
+      valor: r.valorDiaria,
+      funcao: r.funcao,
+      inscrito: inscritoEm.has(r.id),
+      convidado: convidadoEm.has(r.id),
+      nota: notaDaLoja(r.lojaId),
+    };
+  });
 
   const medalhas = await medalhasDoDiarista(diarista.id);
 
@@ -143,10 +177,11 @@ export default async function DiaristaLinkPage({
         </div>
         <div className="mt-1 flex items-center gap-3">
           <Avatar nome={diarista.nome} fotoUrl={diarista.fotoUrl} className="h-12 w-12" />
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-sm text-orange-100">Olá,</p>
-            <h1 className="text-2xl font-bold leading-tight">{diarista.nome}</h1>
+            <h1 className="truncate text-2xl font-bold leading-tight">{diarista.nome}</h1>
           </div>
+          <FotoUpload token={token} />
         </div>
         <p className="mt-1 text-sm text-orange-100">Sua agenda de trabalho</p>
       </header>
@@ -190,8 +225,6 @@ export default async function DiaristaLinkPage({
             Já passou do prazo (até 4h antes) para desistir desta diária.
           </div>
         )}
-        <FotoUpload token={token} nome={diarista.nome} fotoUrl={diarista.fotoUrl} />
-
         {medalhas.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {medalhas.map((m) => (
@@ -222,23 +255,8 @@ export default async function DiaristaLinkPage({
           href={`/d/${token}/perto`}
           className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-center text-base font-bold text-white shadow-sm hover:bg-orange-700"
         >
-          📍 Lojas perto de mim
+          📍 Encontrar diárias perto de mim
         </Link>
-
-        <div className="flex gap-3">
-          <Link
-            href={`/d/${token}/preferencias`}
-            className="flex-1 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-center text-sm font-medium text-orange-800"
-          >
-            ⭐ Lojas preferidas
-          </Link>
-          <Link
-            href={`/ranking?token=${token}`}
-            className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700"
-          >
-            🏆 Ranking
-          </Link>
-        </div>
 
         {!diarista.bonificacoes.some((b) => b.tipo === "CASHBACK_5") &&
           diarista._count.avaliacoes < DIARIAS_CASHBACK && (
@@ -352,112 +370,8 @@ export default async function DiaristaLinkPage({
         )}
 
         <section id="vagas" className="scroll-mt-14">
-          <h2 className="mb-1 font-semibold text-gray-900">Agende sua diária</h2>
-          <MapaDiariasPerto lojas={lojasMapa} />
-          <p className="mb-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
-            <span>Função: 🟧 Pizzaiolo</span>
-            <span>🟨 Aux. pizzaiolo</span>
-            <span>🟦 Atendente</span>
-            <span>🟩 Motoqueiro</span>
-          </p>
-          <p className="mb-2 text-xs text-gray-400">Horário: 🟦 manhã/tarde · 🟩 tarde · 🟪 noite</p>
-          {disponiveis.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-500">
-              Nenhuma diária disponível no momento.
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {disponiveis.map((r) => {
-                const inscrito = inscritoEm.has(r.id);
-                const pref = ehPreferida(r.lojaId);
-                const convidado = convidadoEm.has(r.id);
-                const turno = corDoTurno(r.horaInicio);
-                const fcor = corDaFuncao(r.funcao);
-                return (
-                  <li
-                    key={r.id}
-                    className={`rounded-xl border p-4 shadow-sm ${fcor.bg} ${
-                      convidado ? "border-amber-400" : pref ? "border-orange-400" : fcor.border
-                    }`}
-                  >
-                    {convidado && (
-                      <p className="mb-1 text-xs font-semibold text-amber-700">
-                        ⭐ Você foi convidado para esta diária
-                      </p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <MarcaBadge nome={r.loja.nome} className="h-7 w-7 shrink-0 rounded" />
-                      <p className="font-medium text-gray-900">{r.loja.nome}</p>
-                      {bairroCidade(r.loja) && (
-                        <span className="text-xs text-gray-500">· {bairroCidade(r.loja)}</span>
-                      )}
-                      {pref && (
-                        <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
-                          você já fez diária aqui
-                        </span>
-                      )}
-                    </div>
-                    {(
-                      <>
-                        <p className="text-sm text-gray-500">{ruaDaLoja(r.loja)}</p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                          <CopyButton
-                            text={enderecoCompleto(r.loja) || ruaDaLoja(r.loja)}
-                            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
-                          />
-                          <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(enderecoCompleto(r.loja) || ruaDaLoja(r.loja))}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
-                          >
-                            📍 Siga até a loja
-                          </a>
-                        </div>
-                      </>
-                    )}
-                    {r.loja.fotos.length > 0 && (
-                      <div className="mt-2">
-                        <CarrosselFotos fotos={r.loja.fotos} />
-                      </div>
-                    )}
-                    {r.loja.vantagens && (
-                      <p className="mt-1.5 rounded-lg bg-orange-50 px-3 py-2 text-xs text-orange-900">
-                        ⭐ {r.loja.vantagens}
-                      </p>
-                    )}
-                    <p className="mt-1 text-sm capitalize text-gray-600">
-                      {formatDateWithWeekday(r.data)} ·{" "}
-                      <span className={`rounded px-1.5 py-0.5 font-medium ${turno.chip}`}>
-                        {r.horaInicio}–{r.horaFim}
-                      </span>
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {formatBRL(r.valorDiaria)}
-                      {r.funcao ? ` · ${r.funcao}` : ""}
-                    </p>
-
-                    {inscrito ? (
-                      <span className="mt-2 inline-block text-sm font-medium text-orange-600">
-                        ✓ inscrição enviada
-                      </span>
-                    ) : (
-                      <form action={inscreverNaDiaria} className="mt-3">
-                        <input type="hidden" name="token" value={token} />
-                        <input type="hidden" name="requisicaoId" value={r.id} />
-                        <SubmitButton
-                          pendingLabel="Enviando…"
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 py-3 text-base font-bold text-white shadow-sm hover:bg-orange-700"
-                        >
-                          <span className="text-lg">✓</span> Quero trabalhar aqui!
-                        </SubmitButton>
-                      </form>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <h2 className="mb-2 font-semibold text-gray-900">Agende sua diária</h2>
+          <ListaDiarias token={token} itens={itensDiarias} />
         </section>
 
         <section id="proximas" className="scroll-mt-14">

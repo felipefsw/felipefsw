@@ -7,7 +7,12 @@ const inputClass =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100";
 const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
-export default function SouDiaristaPage() {
+export default async function SouDiaristaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ vaga?: string }>;
+}) {
+  const { vaga } = await searchParams;
   return (
     <div className="mx-auto max-w-md">
       <header className="bg-neutral-900 px-5 py-6 text-white">
@@ -15,12 +20,15 @@ export default function SouDiaristaPage() {
         <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
         <h1 className="text-xl font-bold">Quero me inscrever para diárias</h1>
         <p className="mt-1 text-sm text-orange-100">
-          Preencha seus dados. Depois você acompanha e escolhe as diárias por aqui.
+          {vaga
+            ? "Você foi convidado para uma diária! Cadastre-se e ela já fica na sua agenda."
+            : "Preencha seus dados. Depois você acompanha e escolhe as diárias por aqui."}
         </p>
       </header>
 
       <main className="p-5">
         <form action={cadastrarDiarista} className="space-y-4">
+          {vaga ? <input type="hidden" name="vaga" value={vaga} /> : null}
           <div>
             <label className={labelClass} htmlFor="nome">
               Nome e sobrenome *

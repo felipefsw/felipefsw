@@ -73,7 +73,7 @@ export default async function PertoPage({
         <Link href={`/d/${token}`} className="text-sm font-medium text-orange-100 underline">
           ← Voltar
         </Link>
-        <h1 className="mt-2 text-xl font-bold">Lojas perto de mim</h1>
+        <h1 className="mt-2 text-xl font-bold">Encontrar diárias perto de mim</h1>
         <p className="mt-1 text-sm text-orange-100">
           As diárias mais próximas de onde você está, da mais perto para a mais longe.
         </p>

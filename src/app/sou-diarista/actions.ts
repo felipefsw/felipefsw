@@ -26,5 +26,19 @@ export async function cadastrarDiarista(formData: FormData) {
     },
   });
 
+  // Se veio por um convite de vaga, já inscreve o novo candidato nela.
+  const vaga = String(formData.get("vaga") ?? "").trim();
+  if (vaga) {
+    const req = await prisma.requisicao.findUnique({
+      where: { id: vaga },
+      select: { id: true, status: true },
+    });
+    if (req && req.status === "ABERTA") {
+      await prisma.inscricao
+        .create({ data: { requisicaoId: vaga, diaristaId: diarista.id } })
+        .catch(() => {});
+    }
+  }
+
   redirect(`/d/${diarista.token}`);
 }
