@@ -11,11 +11,31 @@ export default async function LojaLayout({
   const ctx = contextoLoja(await getSessao());
   if (!ctx) redirect("/entrar");
 
-  const loja = await prisma.loja.findUnique({
-    where: { id: ctx.lojaId },
-    select: { nome: true },
-  });
-  if (!loja) redirect("/entrar");
+  const loja = ctx.lojaId
+    ? await prisma.loja.findUnique({ where: { id: ctx.lojaId }, select: { nome: true } })
+    : null;
+
+  // Gestor sem loja associada: avisa em vez de entrar em loop.
+  if (!loja) {
+    if (!ctx.gestorId) redirect("/entrar");
+    return (
+      <div className="mx-auto max-w-md p-6">
+        <h1 className="text-xl font-bold text-gray-900">Sem loja associada</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Seu usuário ainda não tem nenhuma loja vinculada. Peça ao RH para associar suas lojas
+          (RH → Lojas → editar a loja → campo <strong>Gestor</strong>) e depois saia e entre de novo.
+        </p>
+        <form action={sair} className="mt-4">
+          <button
+            type="submit"
+            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+          >
+            Sair
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   let podeTrocar = false;
   if (ctx.gestorId) {

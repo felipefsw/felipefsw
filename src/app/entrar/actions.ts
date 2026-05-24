@@ -36,7 +36,7 @@ export async function loginLoja(formData: FormData) {
 }
 
 export async function loginGestor(formData: FormData) {
-  const usuario = String(formData.get("usuario") ?? "").trim();
+  const usuario = String(formData.get("usuario") ?? "").trim().toLowerCase();
   const senha = String(formData.get("senha") ?? "");
   if (!usuario) redirect("/entrar?erro=gestor");
 
@@ -45,10 +45,11 @@ export async function loginGestor(formData: FormData) {
     include: { lojas: { where: { ativo: true }, select: { id: true }, orderBy: { nome: "asc" } } },
   });
 
-  if (!gestor || !gestor.ativo || gestor.senha !== senha || gestor.lojas.length === 0) {
+  // Login não exige loja associada; se não tiver, a área avisa para o RH associar.
+  if (!gestor || !gestor.ativo || gestor.senha !== senha) {
     redirect("/entrar?erro=gestor");
   }
-  await setSessao({ tipo: "gestor", gestorId: gestor.id, lojaId: gestor.lojas[0].id });
+  await setSessao({ tipo: "gestor", gestorId: gestor.id, lojaId: gestor.lojas[0]?.id ?? "" });
   redirect("/loja");
 }
 
