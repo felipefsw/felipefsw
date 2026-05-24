@@ -37,6 +37,11 @@ export default async function SouDiaristaPage({
             Preencha nome, sobrenome, CPF e data de nascimento.
           </p>
         )}
+        {erro === "senha" && (
+          <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            As senhas não conferem ou têm menos de 6 caracteres.
+          </p>
+        )}
         <form action={cadastrarDiarista} className="space-y-4">
           {vaga ? <input type="hidden" name="vaga" value={vaga} /> : null}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -118,6 +123,36 @@ export default async function SouDiaristaPage({
               placeholder="CPF, e-mail, telefone ou chave aleatória"
               className={inputClass}
             />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass} htmlFor="senha">
+                Crie uma senha *
+              </label>
+              <input
+                id="senha"
+                name="senha"
+                type="password"
+                required
+                minLength={6}
+                placeholder="mínimo 6 caracteres"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="confirmarSenha">
+                Repita a senha *
+              </label>
+              <input
+                id="confirmarSenha"
+                name="confirmarSenha"
+                type="password"
+                required
+                minLength={6}
+                className={inputClass}
+              />
+            </div>
           </div>
 
           <div>

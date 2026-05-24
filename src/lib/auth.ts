@@ -5,7 +5,8 @@ import crypto from "crypto";
 export type Sessao =
   | { tipo: "gestao"; perfil: "rh" | "ti"; nome?: string; papel?: string }
   | { tipo: "loja"; lojaId: string }
-  | { tipo: "gestor"; gestorId: string; lojaId: string };
+  | { tipo: "gestor"; gestorId: string; lojaId: string }
+  | { tipo: "diarista"; diaristaId: string };
 
 const COOKIE = "sessao";
 const SECRET = process.env.SESSION_SECRET || "dev-secret-troque-no-vercel";
@@ -51,6 +52,11 @@ export async function setSessao(s: Sessao): Promise<void> {
 export async function limparSessao(): Promise<void> {
   const c = await cookies();
   c.delete(COOKIE);
+}
+
+// Atalho para iniciar a sessão de um diarista (após login/cadastro com senha).
+export async function entrarDiaristaSessao(diaristaId: string): Promise<void> {
+  await setSessao({ tipo: "diarista", diaristaId });
 }
 
 // Contexto "lado loja": loja avulsa (login por CNPJ) ou gestor (com loja ativa).

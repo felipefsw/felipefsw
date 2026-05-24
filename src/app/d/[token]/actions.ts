@@ -9,6 +9,27 @@ import { notificarNovaDiaria } from "@/lib/push";
 import { uploadImagemResultado } from "@/lib/storage";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
 import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
+import { gerarHashSenha, senhaForte } from "@/lib/senha";
+import { entrarDiaristaSessao } from "@/lib/auth";
+
+// Primeiro acesso do diarista: define a senha e inicia a sessão.
+export async function definirSenhaDiarista(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const senha = String(formData.get("senha") ?? "");
+  const confirmar = String(formData.get("confirmarSenha") ?? "");
+  if (!token) redirect("/entrar");
+  if (!senhaForte(senha) || senha !== confirmar) redirect(`/d/${token}?erro=senha`);
+
+  const d = await prisma.diarista.findUnique({
+    where: { token },
+    select: { id: true, senha: true },
+  });
+  if (!d) redirect("/entrar");
+  if (d.senha) redirect(`/d/${token}`); // já tem senha definida
+  await prisma.diarista.update({ where: { id: d.id }, data: { senha: gerarHashSenha(senha) } });
+  await entrarDiaristaSessao(d.id);
+  redirect(`/d/${token}`);
+}
 
 // O diarista precisa avaliar as diárias já encerradas antes de pegar/aceitar novas.
 async function temAvaliacaoPendente(diaristaId: string): Promise<boolean> {

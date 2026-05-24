@@ -2,8 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { limparSessao, setSessao } from "@/lib/auth";
+import { entrarDiaristaSessao, limparSessao, setSessao } from "@/lib/auth";
 import { membroEquipe } from "@/lib/equipe";
+import { conferirSenha } from "@/lib/senha";
 
 const soDigitos = (s: string) => s.replace(/\D/g, "");
 
@@ -40,11 +41,12 @@ export async function entrarComoGestor(gestorId: string) {
 
 export async function entrarDiarista(formData: FormData) {
   const cpf = soDigitos(String(formData.get("cpf") ?? ""));
-  if (!cpf) redirect("/entrar?erro=diarista");
+  const senha = String(formData.get("senha") ?? "");
+  if (!cpf) redirect("/entrar?perfil=diarista&erro=diarista");
 
   const diaristas = await prisma.diarista.findMany({
     where: { cpf: { not: null } },
-    select: { token: true, cpf: true },
+    select: { id: true, token: true, cpf: true, senha: true },
   });
   const d = diaristas.find((x) => soDigitos(x.cpf ?? "") === cpf);
 
@@ -52,6 +54,16 @@ export async function entrarDiarista(formData: FormData) {
     // não cadastrado ainda → leva ao cadastro
     redirect("/sou-diarista");
   }
+  // Primeiro acesso (sem senha definida): vai ao link pessoal para criar a senha.
+  if (!d.senha) {
+    await entrarDiaristaSessao(d.id);
+    redirect(`/d/${d.token}`);
+  }
+  // Já tem senha: confere.
+  if (!conferirSenha(senha, d.senha)) {
+    redirect("/entrar?perfil=diarista&erro=senha");
+  }
+  await entrarDiaristaSessao(d.id);
   redirect(`/d/${d.token}`);
 }
 

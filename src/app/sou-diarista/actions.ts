@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { cpfValido } from "@/lib/cpf";
+import { gerarHashSenha, senhaForte } from "@/lib/senha";
+import { entrarDiaristaSessao } from "@/lib/auth";
 
 export async function cadastrarDiarista(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
@@ -12,6 +14,8 @@ export async function cadastrarDiarista(formData: FormData) {
   const funcao = String(formData.get("funcao") ?? "").trim();
   const telefone = String(formData.get("telefone") ?? "").trim();
   const chavePix = String(formData.get("chavePix") ?? "").trim();
+  const senha = String(formData.get("senha") ?? "");
+  const confirmarSenha = String(formData.get("confirmarSenha") ?? "");
   const vagaParam = String(formData.get("vaga") ?? "").trim();
 
   const erroUrl = (e: string) =>
@@ -20,6 +24,7 @@ export async function cadastrarDiarista(formData: FormData) {
   // Obrigatórios: nome, sobrenome, CPF e data de nascimento.
   if (!nome || !sobrenome || !cpf || !dataNascimento) redirect(erroUrl("campos"));
   if (!cpfValido(cpf)) redirect(erroUrl("cpf"));
+  if (!senhaForte(senha) || senha !== confirmarSenha) redirect(erroUrl("senha"));
 
   const diarista = await prisma.diarista.create({
     data: {
@@ -29,6 +34,7 @@ export async function cadastrarDiarista(formData: FormData) {
       funcao: funcao || null,
       telefone: telefone || null,
       chavePix: chavePix || null,
+      senha: gerarHashSenha(senha),
       observacoes: String(formData.get("observacoes") ?? "").trim() || null,
     },
   });
@@ -46,5 +52,6 @@ export async function cadastrarDiarista(formData: FormData) {
     }
   }
 
+  await entrarDiaristaSessao(diarista.id);
   redirect(`/d/${diarista.token}`);
 }

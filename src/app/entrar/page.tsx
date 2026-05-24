@@ -97,10 +97,19 @@ export default async function EntrarPage({
       {sel === "diarista" && (
         <Card>
           <h2 className="font-semibold text-gray-900">Sou diarista</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">Informe seu CPF para entrar.</p>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Informe seu CPF e sua senha.</p>
           {erro === "diarista" && <p className="mb-2 text-sm text-red-600">Informe um CPF válido.</p>}
+          {erro === "senha" && (
+            <p className="mb-2 text-sm text-red-600">CPF ou senha incorretos.</p>
+          )}
           <form action={entrarDiarista} className="space-y-3">
             <input name="cpf" inputMode="numeric" required placeholder="Seu CPF" className={inputClass} />
+            <input
+              name="senha"
+              type="password"
+              placeholder="Sua senha"
+              className={inputClass}
+            />
             <button type="submit" className={`${btnPrimary} w-full`}>
               Entrar
             </button>
