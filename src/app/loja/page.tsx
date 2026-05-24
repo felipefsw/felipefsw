@@ -257,7 +257,7 @@ export default async function LojaHome({
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Minha loja</h1>
         {pendentes === 0 ? (
-          <Link href="/loja/requisicao/nova" className={btnPrimary}>
+          <Link href="/loja/requisicao/nova" data-tour="loja-solicitar" className={btnPrimary}>
             + Solicitar diaristas
           </Link>
         ) : (
@@ -295,10 +295,12 @@ export default async function LojaHome({
         passos={ctx.gestorId ? TRILHA_GESTOR : TRILHA_LOJA}
       />
 
-      <CompartilharCadastro />
+      <div data-tour="loja-convidar">
+        <CompartilharCadastro />
+      </div>
 
       {ctx.gestorId && gestorLojas.length > 0 && (
-        <section>
+        <section data-tour="gestor-lojas">
           <h2 className="mb-2 font-semibold text-gray-900">Vagas abertas nas suas lojas</h2>
           <div className="space-y-2">
             {gestorLojas.map((gl) => (
@@ -348,7 +350,7 @@ export default async function LojaHome({
       )}
 
       {escalasHoje.length > 0 && (
-        <section>
+        <section data-tour="loja-resumo">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h2 className="font-semibold text-gray-900">Resumo de hoje</h2>
             <div className="flex shrink-0 gap-1.5">
@@ -456,7 +458,7 @@ export default async function LojaHome({
         </section>
       )}
 
-      <section>
+      <section data-tour="loja-requisicoes">
         <h2 className="mb-2 font-semibold text-gray-900">Minhas requisições</h2>
         {requisicoes.length === 0 ? (
           <EmptyState>

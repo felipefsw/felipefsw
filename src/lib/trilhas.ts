@@ -1,10 +1,11 @@
 // Conteúdo das trilhas de aprendizado (guia passo a passo por tipo de usuário).
+// "alvo" é um seletor CSS do elemento real a destacar (holofote). Sem alvo
+// (ou se o elemento não estiver na tela), o passo aparece centralizado.
 export type PassoTrilha = {
   emoji?: string;
   titulo: string;
   descricao: string;
-  href?: string;
-  hrefLabel?: string;
+  alvo?: string;
 };
 
 export const TRILHA_RH: PassoTrilha[] = [
@@ -13,54 +14,46 @@ export const TRILHA_RH: PassoTrilha[] = [
     titulo: "Painel do dia",
     descricao:
       "Na tela inicial você vê o resumo do dia: diaristas escalados, presenças pendentes e o total a pagar.",
-    href: "/",
-    hrefLabel: "Ver painel",
+    alvo: '[data-tour="nav-inicio"]',
   },
   {
     emoji: "🧑‍🍳",
     titulo: "Cadastre os diaristas",
     descricao:
-      "Cadastre quem vai trabalhar ou use 'Convidar diarista' para enviar o link pelo WhatsApp — a pessoa se cadastra sozinha (nome, sobrenome, CPF e nascimento).",
-    href: "/diaristas",
-    hrefLabel: "Ir para Diaristas",
+      "Aqui você cadastra quem vai trabalhar ou envia o link de convite pelo WhatsApp — a pessoa se cadastra sozinha (nome, sobrenome, CPF e nascimento).",
+    alvo: '[data-tour="nav-diaristas"]',
   },
   {
     emoji: "🏪",
     titulo: "Confira as lojas",
     descricao: "Veja as lojas da rede, as vagas abertas de cada uma e quem são os gestores.",
-    href: "/lojas",
-    hrefLabel: "Ir para Lojas",
+    alvo: '[data-tour="nav-lojas"]',
   },
   {
     emoji: "📋",
     titulo: "Crie as requisições",
     descricao:
       "Abra as solicitações de diaristas (dia, horário, função e valor). O 'Click mágico' preenche as vagas com os melhores automaticamente.",
-    href: "/requisicoes",
-    hrefLabel: "Ir para Requisições",
+    alvo: '[data-tour="nav-pedidos"]',
   },
   {
     emoji: "🗓️",
     titulo: "Monte a escala",
     descricao:
       "Agende manualmente ou pelas vagas abertas. O sistema bloqueia furos: 1 diária por pessoa por dia.",
-    href: "/escala",
-    hrefLabel: "Ir para Escala",
+    alvo: '[data-tour="nav-escala"]',
   },
   {
     emoji: "💰",
     titulo: "Pagamentos",
     descricao: "Acompanhe o que está a pagar por diarista, copie o Pix e marque como pago.",
-    href: "/pagamentos",
-    hrefLabel: "Ir para Pagamentos",
+    alvo: '[data-tour="nav-pagamentos"]',
   },
   {
     emoji: "⭐",
     titulo: "Avaliações e ranking",
     descricao:
       "Avalie cada diária com estrelas e acompanhe o ranking dos melhores diaristas da rede.",
-    href: "/ranking",
-    hrefLabel: "Ver ranking",
   },
 ];
 
@@ -76,22 +69,18 @@ export const TRILHA_TI: PassoTrilha[] = [
     titulo: "Lojas e gestores",
     descricao:
       "Cadastre lojas, vincule os gestores (sócios) de cada uma e mantenha os dados sempre em dia.",
-    href: "/lojas",
-    hrefLabel: "Ir para Lojas",
+    alvo: '[data-tour="nav-lojas"]',
   },
   {
     emoji: "💵",
     titulo: "Valores por função",
     descricao: "Defina o valor padrão da diária para cada função (Atendente, Pizzaiolo, Aux.).",
-    href: "/valores-funcao",
-    hrefLabel: "Definir valores",
   },
   {
     emoji: "🧑‍🍳",
     titulo: "Diaristas",
     descricao: "Cadastre diaristas ou envie o link de auto-cadastro pelo WhatsApp.",
-    href: "/diaristas",
-    hrefLabel: "Ir para Diaristas",
+    alvo: '[data-tour="nav-diaristas"]',
   },
   {
     emoji: "🔔",
@@ -104,8 +93,7 @@ export const TRILHA_TI: PassoTrilha[] = [
     titulo: "Acompanhe tudo",
     descricao:
       "Requisições, escala, pagamentos e ranking estão disponíveis para você acompanhar e dar suporte.",
-    href: "/",
-    hrefLabel: "Ver painel",
+    alvo: '[data-tour="nav-inicio"]',
   },
 ];
 
@@ -114,31 +102,36 @@ export const TRILHA_LOJA: PassoTrilha[] = [
     emoji: "📲",
     titulo: "Convide diaristas",
     descricao:
-      "Use 'Convidar diarista' para mandar o link de cadastro pelo WhatsApp de quem você quer chamar.",
+      "Use este botão para mandar o link de cadastro pelo WhatsApp de quem você quer chamar.",
+    alvo: '[data-tour="loja-convidar"]',
   },
   {
     emoji: "➕",
     titulo: "Solicite diaristas",
     descricao:
-      "Toque em 'Solicitar diaristas' para abrir uma vaga: escolha o dia, o horário, a função e o valor.",
+      "Toque aqui para abrir uma vaga: escolha o dia, o horário, a função e o valor da diária.",
+    alvo: '[data-tour="loja-solicitar"]',
   },
   {
     emoji: "👍",
     titulo: "Aprove os candidatos",
     descricao:
-      "Quando alguém se candidatar, aprove com um toque (Sim/Não). Você também pode convocar quem mais trabalha aí.",
+      "Nas suas requisições, quando alguém se candidatar, aprove com um toque (Sim/Não) ou convoque quem mais trabalha aí.",
+    alvo: '[data-tour="loja-requisicoes"]',
   },
   {
     emoji: "✅",
     titulo: "Resumo de hoje",
     descricao:
       "Veja quem trabalha hoje, copie a lista pronta pro grupo e acompanhe o check-in de cada um.",
+    alvo: '[data-tour="loja-resumo"]',
   },
   {
     emoji: "💸",
     titulo: "Pague e avalie",
     descricao:
-      "Copie o Pix, marque como pago e avalie a diária. A avaliação é obrigatória para abrir novas vagas.",
+      "No resumo de hoje você copia o Pix, marca como pago e avalia a diária (obrigatório para abrir novas vagas).",
+    alvo: '[data-tour="loja-resumo"]',
   },
 ];
 
@@ -146,29 +139,34 @@ export const TRILHA_GESTOR: PassoTrilha[] = [
   {
     emoji: "🏬",
     titulo: "Suas lojas",
-    descricao: "Você vê as vagas abertas de todas as lojas que administra, num lugar só.",
+    descricao: "Aqui você vê as vagas abertas de todas as lojas que administra, num lugar só.",
+    alvo: '[data-tour="gestor-lojas"]',
   },
   {
     emoji: "✅",
     titulo: "Resumo de hoje",
     descricao:
       "As diárias de hoje de todas as suas lojas, com função e valor. Copie a lista pronta pro grupo dos diaristas.",
+    alvo: '[data-tour="loja-resumo"]',
   },
   {
     emoji: "➕",
     titulo: "Solicite diaristas",
     descricao: "Abra vagas para qualquer loja sua (dia, horário, função e valor).",
+    alvo: '[data-tour="loja-solicitar"]',
   },
   {
     emoji: "👍",
     titulo: "Aprove e convoque",
     descricao: "Aprove candidatos com um toque ou convoque os top diaristas de cada loja.",
+    alvo: '[data-tour="loja-requisicoes"]',
   },
   {
     emoji: "💸",
     titulo: "Pague e avalie",
     descricao:
-      "Copie o Pix, marque como pago e avalie a diária (obrigatório para liberar novas vagas).",
+      "No resumo de hoje você copia o Pix, marca como pago e avalia (obrigatório para liberar novas vagas).",
+    alvo: '[data-tour="loja-resumo"]',
   },
 ];
 
@@ -184,6 +182,7 @@ export const TRILHA_DIARISTA: PassoTrilha[] = [
     titulo: "Ache diárias",
     descricao:
       "Veja as vagas abertas e candidate-se nas que quiser, tocando em 'Quero trabalhar aqui'.",
+    alvo: '[data-tour="diarista-vagas"]',
   },
   {
     emoji: "📍",
@@ -200,6 +199,7 @@ export const TRILHA_DIARISTA: PassoTrilha[] = [
   {
     emoji: "💬",
     titulo: "Fale com o RH",
-    descricao: "Tem um chat com o RH para tirar dúvidas, avisar imprevistos ou receber recados.",
+    descricao: "Use o chat com o RH para tirar dúvidas, avisar imprevistos ou receber recados.",
+    alvo: '[data-tour="diarista-chat"]',
   },
 ];

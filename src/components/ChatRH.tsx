@@ -35,6 +35,7 @@ export default function ChatRH({ token, mensagens }: { token: string; mensagens:
         type="button"
         onClick={() => setAberto(true)}
         aria-label="Falar com o RH"
+        data-tour="diarista-chat"
         className="fixed bottom-4 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg ring-4 ring-orange-600/20 hover:bg-orange-700"
       >
         💬

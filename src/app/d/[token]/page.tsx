@@ -204,7 +204,7 @@ export default async function DiaristaLinkPage({
       </header>
 
       <nav className="sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-gray-200 bg-white px-4 py-2 text-sm">
-        <a href="#vagas" className="whitespace-nowrap rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-800">
+        <a href="#vagas" data-tour="diarista-vagas" className="whitespace-nowrap rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-800">
           📋 Vagas
         </a>
         <a href="#proximas" className="whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
@@ -603,7 +603,12 @@ export default async function DiaristaLinkPage({
 
       <ChatRH token={token} mensagens={diarista.mensagens} />
 
-      <TrilhaAprendizado id="diarista-v1" titulo="Como funciona" passos={TRILHA_DIARISTA} />
+      <TrilhaAprendizado
+        id="diarista-v1"
+        titulo="Como funciona"
+        passos={TRILHA_DIARISTA}
+        posicao="esquerda"
+      />
     </div>
   );
 }
