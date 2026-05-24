@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { cpfValido } from "@/lib/cpf";
+import { isISODate } from "@/lib/dates";
 import { gerarHashSenha, senhaForte } from "@/lib/senha";
 import { entrarDiaristaSessao } from "@/lib/auth";
 
@@ -21,8 +22,8 @@ export async function cadastrarDiarista(formData: FormData) {
   const erroUrl = (e: string) =>
     `/sou-diarista${vagaParam ? `?vaga=${vagaParam}&erro=${e}` : `?erro=${e}`}`;
 
-  // Obrigatórios: nome, sobrenome, CPF e data de nascimento.
-  if (!nome || !sobrenome || !cpf || !dataNascimento) redirect(erroUrl("campos"));
+  // Obrigatórios: nome, sobrenome, CPF, data de nascimento e função.
+  if (!nome || !sobrenome || !cpf || !isISODate(dataNascimento) || !funcao) redirect(erroUrl("campos"));
   if (!cpfValido(cpf)) redirect(erroUrl("cpf"));
   if (!senhaForte(senha) || senha !== confirmarSenha) redirect(erroUrl("senha"));
 
@@ -31,7 +32,7 @@ export async function cadastrarDiarista(formData: FormData) {
       nome: `${nome} ${sobrenome}`,
       cpf,
       dataNascimento,
-      funcao: funcao || null,
+      funcao,
       telefone: telefone || null,
       chavePix: chavePix || null,
       senha: gerarHashSenha(senha),

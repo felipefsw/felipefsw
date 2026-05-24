@@ -192,11 +192,13 @@ export default async function DiaristaLinkPage({
   );
   // Vagas (mais novas primeiro): tira loja bloqueada, dias que já trabalha e
   // vagas da loja/dia em que já foi convocada (responde pelo convite).
+  // Só mostra vagas da função da diarista (ou vagas sem função definida).
   const disponiveis = disponiveisRaw.filter(
     (r) =>
       !lojasBloqueadas.has(r.lojaId) &&
       !datasComEscala.has(r.data) &&
-      !convocadoLojaData.has(`${r.lojaId}|${r.data}`),
+      !convocadoLojaData.has(`${r.lojaId}|${r.data}`) &&
+      (!r.funcao || !diarista.funcao || r.funcao === diarista.funcao),
   );
 
   // Nota das lojas (avaliação dos diaristas), para o filtro "nota".

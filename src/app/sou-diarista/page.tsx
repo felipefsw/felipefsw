@@ -1,4 +1,5 @@
 import { FUNCOES } from "@/lib/funcoes";
+import DataNascimentoInput from "@/components/DataNascimentoInput";
 import { cadastrarDiarista } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function SouDiaristaPage({
         )}
         {erro === "campos" && (
           <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
-            Preencha nome, sobrenome, CPF e data de nascimento.
+            Preencha nome, sobrenome, CPF, data de nascimento (DD/MM/AAAA) e função.
           </p>
         )}
         {erro === "senha" && (
@@ -77,13 +78,7 @@ export default async function SouDiaristaPage({
               <label className={labelClass} htmlFor="dataNascimento">
                 Data de nascimento *
               </label>
-              <input
-                id="dataNascimento"
-                name="dataNascimento"
-                type="date"
-                required
-                className={inputClass}
-              />
+              <DataNascimentoInput className={inputClass} />
             </div>
           </div>
 
@@ -100,17 +95,17 @@ export default async function SouDiaristaPage({
           </div>
 
           <div>
-            <label className={labelClass} htmlFor="funcao">
-              Função (opcional)
-            </label>
-            <select id="funcao" name="funcao" defaultValue="" className={inputClass}>
-              <option value="">— Não sei / preencher depois —</option>
+            <p className={labelClass}>Função * (escolha uma)</p>
+            <div className="grid grid-cols-2 gap-2">
               {FUNCOES.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
+                <label key={f}>
+                  <input type="radio" name="funcao" value={f} required className="peer sr-only" />
+                  <span className="block cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-center text-sm font-medium text-gray-700 peer-checked:border-orange-600 peer-checked:bg-orange-50 peer-checked:text-orange-800 peer-checked:ring-2 peer-checked:ring-orange-300">
+                    {f}
+                  </span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
           <div>
