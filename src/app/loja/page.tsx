@@ -352,7 +352,7 @@ export default async function LojaHome({
                 label="📋 Copiar lista"
                 className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100"
               />
-              {pixHoje && (
+              {pixHoje && ctx.gestorId && (
                 <CopyButton
                   text={pixHoje}
                   label="Copiar Pix"
@@ -406,41 +406,43 @@ export default async function LojaHome({
                           </div>
                         </div>
 
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          {e.diarista.chavePix ? (
-                            <span className="flex items-center gap-1 text-xs text-gray-600">
-                              <span className="max-w-[11rem] truncate">
-                                Pix: {e.diarista.chavePix}
+                        {ctx.gestorId && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {e.diarista.chavePix ? (
+                              <span className="flex items-center gap-1 text-xs text-gray-600">
+                                <span className="max-w-[11rem] truncate">
+                                  Pix: {e.diarista.chavePix}
+                                </span>
+                                <CopyButton
+                                  text={e.diarista.chavePix}
+                                  label="copiar"
+                                  className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-700"
+                                />
                               </span>
-                              <CopyButton
-                                text={e.diarista.chavePix}
-                                label="copiar"
-                                className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-700"
-                              />
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-400">sem Pix cadastrado</span>
-                          )}
-                          {e.pago ? (
-                            <form action={marcarPagoDiaria.bind(null, e.id, false)}>
-                              <SubmitButton
-                                pendingLabel="…"
-                                className="rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700"
-                              >
-                                ✓ Pago (desfazer)
-                              </SubmitButton>
-                            </form>
-                          ) : (
-                            <form action={marcarPagoDiaria.bind(null, e.id, true)}>
-                              <SubmitButton
-                                pendingLabel="…"
-                                className="rounded-lg bg-orange-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-orange-800"
-                              >
-                                Marcar pago
-                              </SubmitButton>
-                            </form>
-                          )}
-                        </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">sem Pix cadastrado</span>
+                            )}
+                            {e.pago ? (
+                              <form action={marcarPagoDiaria.bind(null, e.id, false)}>
+                                <SubmitButton
+                                  pendingLabel="…"
+                                  className="rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700"
+                                >
+                                  ✓ Pago (desfazer)
+                                </SubmitButton>
+                              </form>
+                            ) : (
+                              <form action={marcarPagoDiaria.bind(null, e.id, true)}>
+                                <SubmitButton
+                                  pendingLabel="…"
+                                  className="rounded-lg bg-orange-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-orange-800"
+                                >
+                                  Marcar pago
+                                </SubmitButton>
+                              </form>
+                            )}
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
