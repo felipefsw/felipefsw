@@ -3,10 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { EmptyState, PageHeader, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import MarcaBadge from "@/components/MarcaBadge";
-import SubmitButton from "@/components/SubmitButton";
+import ClickMagicoBotao from "@/components/ClickMagicoBotao";
 import { grupoDaLoja } from "@/lib/marcas";
 import { deleteLoja, toggleLojaAtivo } from "./actions";
-import { clickMagico } from "../requisicoes/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -71,18 +70,14 @@ export default async function LojasPage({
         action={{ href: "/lojas/nova", label: "+ Nova" }}
       />
 
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3">
         <Link href="/gestores" className="text-sm font-medium text-orange-700 hover:underline">
           Gerenciar gestores →
         </Link>
-        <form action={clickMagico}>
-          <SubmitButton
-            pendingLabel="Convocando…"
-            className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-700"
-          >
-            ✨ Click mágico
-          </SubmitButton>
-        </form>
+      </div>
+
+      <div className="mb-4">
+        <ClickMagicoBotao />
       </div>
 
       <form method="get" className="mb-4 flex gap-2">

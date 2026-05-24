@@ -5,9 +5,10 @@ import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import CopyLink from "@/components/CopyLink";
 import { formatBRL, formatDateShort, formatDateWithWeekday } from "@/lib/format";
-import { addDias, hojeISO, inicioDaSemana, isISODate, semana, turnoFinalizado } from "@/lib/dates";
+import { addDias, hojeISO, inicioDaSemana, isISODate, semana } from "@/lib/dates";
 import { grupoDaLoja } from "@/lib/marcas";
-import { deleteEscala, gerarLinkConfirmacao, marcarPresenca } from "./actions";
+import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
+import { avaliarEstrelasRH, deleteEscala, gerarLinkConfirmacao, marcarPresenca } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function EscalaPage({
 
   const escalas = await prisma.escala.findMany({
     where: { data: { gte: dias[0], lte: dias[6] } },
-    include: { diarista: true, loja: true, avaliacao: { select: { id: true } } },
+    include: { diarista: true, loja: true, avaliacao: { select: { id: true, estrelas: true } } },
     orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
   });
 
@@ -179,27 +180,12 @@ export default async function EscalaPage({
                           </div>
                         )}
 
-                        {e.avaliacao ? (
-                          <Link
-                            href={`/escala/${e.id}/avaliar`}
-                            className="text-xs font-medium text-orange-600 hover:underline"
-                          >
-                            ★ avaliada
-                          </Link>
-                        ) : turnoFinalizado(e.data, e.horaInicio, e.horaFim) && e.presenca === "PRESENTE" ? (
-                          <Link
-                            href={`/escala/${e.id}/avaliar`}
-                            className="rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"
-                          >
-                            ★ Avaliar
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/escala/${e.id}/avaliar`}
-                            className="text-xs font-medium text-gray-400 hover:text-orange-700"
-                          >
-                            avaliar
-                          </Link>
+                        {e.presenca === "PRESENTE" && (
+                          <EstrelasAvaliacao
+                            escalaId={e.id}
+                            valorInicial={e.avaliacao?.estrelas ?? 0}
+                            acao={avaliarEstrelasRH}
+                          />
                         )}
 
                         {e.data >= hoje && e.presenca === "PENDENTE" && (

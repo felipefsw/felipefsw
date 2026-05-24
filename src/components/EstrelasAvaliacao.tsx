@@ -8,9 +8,11 @@ import { avaliarComEstrelas } from "@/app/loja/actions";
 export default function EstrelasAvaliacao({
   escalaId,
   valorInicial = 0,
+  acao,
 }: {
   escalaId: string;
   valorInicial?: number;
+  acao?: (escalaId: string, estrelas: number) => Promise<void>;
 }) {
   const router = useRouter();
   const [valor, setValor] = useState(valorInicial);
@@ -20,7 +22,7 @@ export default function EstrelasAvaliacao({
   function escolher(n: number) {
     setValor(n);
     start(async () => {
-      await avaliarComEstrelas(escalaId, n);
+      await (acao ?? avaliarComEstrelas)(escalaId, n);
       router.refresh();
     });
   }

@@ -13,22 +13,35 @@ import {
 import { parseBRLToCents } from "@/lib/format";
 import { notificarNovaDiaria, notificarVagaPreenchida } from "@/lib/push";
 
+export type ResultadoMagico = {
+  total: number;
+  itens: {
+    loja: string;
+    funcao: string | null;
+    data: string;
+    horaInicio: string;
+    horaFim: string;
+    nomes: string[];
+  }[];
+};
+
 // "Click mágico": convoca automaticamente os diaristas que mais trabalham em
 // cada loja para preencher as vagas abertas, sem repetir ninguém em duas lojas.
 // Desempate: preferência do diarista (geolocalização fica para o futuro).
-export async function clickMagico() {
+export async function clickMagico(): Promise<ResultadoMagico> {
   const hoje = hojeISO();
 
   const [requisicoes, diaristas] = await Promise.all([
     prisma.requisicao.findMany({
       where: { status: "ABERTA", data: { gte: hoje } },
-      include: { _count: { select: { escalas: true } } },
+      include: { loja: { select: { nome: true } }, _count: { select: { escalas: true } } },
       orderBy: { data: "asc" },
     }),
     prisma.diarista.findMany({
       where: { ativo: true },
       select: {
         id: true,
+        nome: true,
         funcao: true,
         escalas: { select: { lojaId: true, data: true } },
         lojasPreferidas: { select: { id: true } },
@@ -50,6 +63,7 @@ export async function clickMagico() {
     }
     return {
       id: d.id,
+      nome: d.nome,
       funcao: d.funcao,
       freq,
       datas,
@@ -61,6 +75,7 @@ export async function clickMagico() {
 
   const usados = new Set<string>();
   const novas: { lojaId: string; diaristaId: string; data: string }[] = [];
+  const itens: ResultadoMagico["itens"] = [];
 
   for (const r of requisicoes) {
     const faltam = r.quantidade - r._count.escalas;
@@ -82,10 +97,20 @@ export async function clickMagico() {
         return (b.pref.has(r.lojaId) ? 1 : 0) - (a.pref.has(r.lojaId) ? 1 : 0);
       });
 
-    for (const d of candidatos.slice(0, faltam)) {
+    const escolhidos = candidatos.slice(0, faltam);
+    if (escolhidos.length === 0) continue;
+    for (const d of escolhidos) {
       usados.add(d.id);
       novas.push({ lojaId: r.lojaId, diaristaId: d.id, data: r.data });
     }
+    itens.push({
+      loja: r.loja.nome,
+      funcao: r.funcao,
+      data: r.data,
+      horaInicio: r.horaInicio,
+      horaFim: r.horaFim,
+      nomes: escolhidos.map((d) => d.nome),
+    });
   }
 
   if (novas.length > 0) {
@@ -94,7 +119,7 @@ export async function clickMagico() {
 
   revalidatePath("/requisicoes");
   revalidatePath("/loja");
-  redirect(`/requisicoes?magico=${novas.length}`);
+  return { total: novas.length, itens };
 }
 
 export async function createRequisicao(formData: FormData) {

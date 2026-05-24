@@ -83,6 +83,24 @@ export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
   revalidatePath("/requisicoes");
 }
 
+// Avaliação por estrelas direto na lista da escala (RH), 1 toque.
+export async function avaliarEstrelasRH(escalaId: string, estrelas: number) {
+  const n = Math.round(estrelas);
+  if (!escalaId || n < 1 || n > 5) return;
+  const escala = await prisma.escala.findUnique({
+    where: { id: escalaId },
+    select: { diaristaId: true },
+  });
+  if (!escala) return;
+  await prisma.avaliacao.upsert({
+    where: { escalaId },
+    update: { estrelas: n },
+    create: { escalaId, diaristaId: escala.diaristaId, estrelas: n },
+  });
+  revalidatePath("/escala");
+  revalidatePath(`/diaristas/${escala.diaristaId}`);
+}
+
 export async function marcarPresenca(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const presenca = String(formData.get("presenca") ?? "");
