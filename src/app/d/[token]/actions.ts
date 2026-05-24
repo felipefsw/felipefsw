@@ -108,6 +108,19 @@ export async function desistirDaDiaria(formData: FormData) {
   redirect(`/d/${token}?desistir=ok`);
 }
 
+export async function enviarMensagemDiarista(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const texto = String(formData.get("texto") ?? "").trim();
+  if (!token || !texto) return;
+  const diarista = await prisma.diarista.findUnique({ where: { token }, select: { id: true } });
+  if (!diarista) return;
+  await prisma.mensagem.create({
+    data: { diaristaId: diarista.id, autor: "DIARISTA", texto },
+  });
+  revalidatePath(`/d/${token}`);
+  revalidatePath("/mensagens");
+}
+
 export async function confirmarPresenca(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const token = String(formData.get("token") ?? "");

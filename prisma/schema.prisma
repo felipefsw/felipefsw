@@ -79,8 +79,22 @@ model Diarista {
   bonificacoes Bonificacao[]
   convidadoEm Requisicao[] @relation("ConvidadosRequisicao")
   pushSubscriptions PushSubscription[]
+  mensagens   Mensagem[]
   // Lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
   lojasPreferidas Loja[] @relation("LojaPreferida")
+}
+
+// Chat entre o diarista e o RH (avisos, dúvidas, imprevistos).
+model Mensagem {
+  id         String   @id @default(cuid())
+  autor      String // DIARISTA | GESTAO
+  texto      String
+  lida       Boolean  @default(false)
+  criadoEm   DateTime @default(now())
+  diaristaId String
+  diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+
+  @@index([diaristaId])
 }
 
 // Inscrição de push web (um aparelho/navegador do diarista).

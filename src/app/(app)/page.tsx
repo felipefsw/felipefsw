@@ -18,6 +18,7 @@ export default async function InicioPage() {
     requisicoesAbertas,
     vagasAbertasHoje,
     faltasHoje,
+    mensagensNaoLidas,
   ] = await Promise.all([
     prisma.escala.findMany({
       where: { data: hoje },
@@ -34,6 +35,7 @@ export default async function InicioPage() {
     prisma.requisicao.count({ where: { status: "ABERTA" } }),
     prisma.requisicao.count({ where: { status: "ABERTA", data: hoje } }),
     prisma.escala.count({ where: { data: hoje, presenca: "FALTOU" } }),
+    prisma.mensagem.count({ where: { autor: "DIARISTA", lida: false } }),
   ]);
 
   const totalAPagar = aPagar.reduce((s, e) => s + e.valor, 0);
@@ -138,7 +140,7 @@ export default async function InicioPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <Link
           href="/bonificacoes"
           className="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
@@ -150,6 +152,17 @@ export default async function InicioPage() {
           className="rounded-xl border border-gray-200 bg-white px-2 py-3 text-center text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
         >
           🏆 Ranking
+        </Link>
+        <Link
+          href="/mensagens"
+          className="relative rounded-xl border border-gray-200 bg-white px-2 py-3 text-center text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+        >
+          💬 Mensagens
+          {mensagensNaoLidas > 0 && (
+            <span className="absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 py-0.5 text-xs font-bold text-white">
+              {mensagensNaoLidas}
+            </span>
+          )}
         </Link>
       </div>
 

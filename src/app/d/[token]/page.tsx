@@ -11,6 +11,7 @@ import ConfirmSubmit from "@/components/ConfirmSubmit";
 import {
   confirmarPresenca,
   desistirDaDiaria,
+  enviarMensagemDiarista,
   fazerCheckin,
   inscreverNaDiaria,
   responderConvocacao,
@@ -63,6 +64,7 @@ export default async function DiaristaLinkPage({
         orderBy: { data: "asc" },
       },
       bonificacoes: { where: { pago: true }, orderBy: { criadoEm: "desc" } },
+      mensagens: { orderBy: { criadoEm: "asc" }, take: 30 },
       _count: { select: { avaliacoes: true } },
     },
   });
@@ -476,6 +478,50 @@ export default async function DiaristaLinkPage({
             </ul>
           </section>
         )}
+
+        <section>
+          <h2 className="mb-1 font-semibold text-gray-900">Falar com o RH</h2>
+          <p className="mb-2 text-xs text-gray-400">
+            Avise atraso, imprevisto ou tire dúvidas. Isso não muda sua nota nem sua presença.
+          </p>
+          <div className="space-y-2">
+            {diarista.mensagens.length === 0 ? (
+              <p className="text-sm text-gray-400">Nenhuma mensagem ainda.</p>
+            ) : (
+              diarista.mensagens.map((m) => (
+                <div
+                  key={m.id}
+                  className={
+                    m.autor === "DIARISTA"
+                      ? "ml-6 rounded-xl bg-orange-50 p-2 text-sm text-gray-800"
+                      : "mr-6 rounded-xl bg-gray-100 p-2 text-sm text-gray-800"
+                  }
+                >
+                  <span className="block text-[10px] font-medium text-gray-400">
+                    {m.autor === "DIARISTA" ? "Você" : "RH"}
+                  </span>
+                  {m.texto}
+                </div>
+              ))
+            )}
+          </div>
+          <form action={enviarMensagemDiarista} className="mt-3 space-y-2">
+            <input type="hidden" name="token" value={token} />
+            <textarea
+              name="texto"
+              required
+              rows={2}
+              placeholder="Escreva sua mensagem…"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-orange-600 py-2 font-medium text-white hover:bg-orange-700"
+            >
+              Enviar
+            </button>
+          </form>
+        </section>
 
         <p className="pb-6 text-center text-xs text-gray-400">
           Em caso de dúvida, fale com o responsável.
