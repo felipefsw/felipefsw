@@ -87,3 +87,10 @@ export async function sair() {
   await limparSessao();
   redirect("/entrar");
 }
+
+// TEMPORÁRIO: acesso de configuração sem senha, para a fase inicial.
+// REMOVER quando o login por senha/link estiver ativo (é uma porta aberta).
+export async function entrarConfiguracao() {
+  await setSessao({ tipo: "gestao", perfil: "rh", nome: "Configuração" });
+  redirect("/");
+}

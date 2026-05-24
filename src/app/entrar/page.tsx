@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, btnPrimary, inputClass } from "@/components/ui";
 import MarcaBadge from "@/components/MarcaBadge";
-import { entrarComoGestao, entrarComoGestor, entrarComoLoja, entrarDiarista } from "./actions";
+import { entrarComoGestao, entrarComoGestor, entrarComoLoja, entrarConfiguracao, entrarDiarista } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -267,7 +267,18 @@ export default async function EntrarPage({
         ) : (
           <Card>
             <h2 className="font-semibold text-gray-900">RH / TI (gestão)</h2>
-            <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
+            <form action={entrarConfiguracao} className="mt-3">
+              <button
+                type="submit"
+                className="w-full rounded-lg bg-orange-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-orange-800"
+              >
+                🔧 Entrar para configurar (sem senha)
+              </button>
+            </form>
+            <p className="mb-3 mt-1 text-xs text-amber-700">
+              Acesso temporário só para a configuração inicial.
+            </p>
+            <p className="mb-3 mt-1 text-sm text-gray-500">Ou toque no seu nome para entrar.</p>
             {(["rh", "ti"] as const).map((p) => {
               const lista = membros.filter((m) => m.perfil === p);
               if (lista.length === 0) return null;
