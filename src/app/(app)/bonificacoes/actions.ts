@@ -17,6 +17,19 @@ export async function pagarCashback(formData: FormData) {
   revalidatePath("/bonificacoes");
 }
 
+export async function pagarCashback20(formData: FormData) {
+  const diaristaId = String(formData.get("diaristaId") ?? "");
+  if (!diaristaId) return;
+  const ja = await prisma.bonificacao.findFirst({
+    where: { diaristaId, tipo: "CASHBACK_20" },
+  });
+  if (ja) return;
+  await prisma.bonificacao.create({
+    data: { diaristaId, tipo: "CASHBACK_20", valor: VALOR_BONUS, pago: true, pagoEm: new Date() },
+  });
+  revalidatePath("/bonificacoes");
+}
+
 export async function pagarTopMes(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
   const referencia = String(formData.get("referencia") ?? "");

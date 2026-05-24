@@ -12,16 +12,27 @@ function medalha(i: number): string {
   return i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}º`;
 }
 
-export default async function RankingPage() {
+export default async function RankingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string }>;
+}) {
+  const { token } = await searchParams;
   const mes = mesAtual();
   const ranking = await rankingDoMes(mes);
   const [ano, m] = mes.split("-");
+  const voltarHref = token ? `/d/${token}` : "/entrar";
 
   return (
     <div className="mx-auto max-w-md">
       <header className="bg-neutral-900 px-5 py-6 text-white">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
+        <div className="mb-3 flex items-center justify-between">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/rwp-logo.svg" alt="RWP" className="h-7 w-auto" />
+          <Link href={voltarHref} className="text-sm font-medium text-orange-100 underline">
+            ← Voltar
+          </Link>
+        </div>
         <h1 className="text-xl font-bold">Ranking de diaristas</h1>
         <p className="mt-1 text-sm capitalize text-orange-100">
           {MESES[Number(m) - 1]} de {ano}
@@ -61,8 +72,8 @@ export default async function RankingPage() {
         )}
 
         <p className="mt-5 text-center text-sm">
-          <Link href="/entrar" className="font-medium text-orange-700 underline">
-            Entrar
+          <Link href={voltarHref} className="font-medium text-orange-700 underline">
+            {token ? "← Voltar para minha agenda" : "Entrar"}
           </Link>
         </p>
       </main>

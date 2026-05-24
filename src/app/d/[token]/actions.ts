@@ -109,21 +109,21 @@ export async function desistirDaDiaria(formData: FormData) {
   redirect(`/d/${token}?desistir=ok`);
 }
 
-export async function uploadFotoDiarista(formData: FormData) {
+export async function uploadFotoDiarista(formData: FormData): Promise<{ ok: boolean }> {
   const token = String(formData.get("token") ?? "");
   const foto = formData.get("foto");
-  if (!token || !(foto instanceof File) || foto.size === 0) return;
+  if (!token || !(foto instanceof File) || foto.size === 0) return { ok: false };
 
   const diarista = await prisma.diarista.findUnique({ where: { token }, select: { id: true } });
-  if (!diarista) return;
+  if (!diarista) return { ok: false };
 
   const ext = (foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
   const url = await uploadImagem(foto, `diaristas/${diarista.id}-${Date.now()}.${ext}`);
-  if (url) {
-    await prisma.diarista.update({ where: { id: diarista.id }, data: { fotoUrl: url } });
-  }
+  if (!url) return { ok: false };
+
+  await prisma.diarista.update({ where: { id: diarista.id }, data: { fotoUrl: url } });
   revalidatePath(`/d/${token}`);
-  redirect(url ? `/d/${token}?foto=ok` : `/d/${token}?foto=erro`);
+  return { ok: true };
 }
 
 export async function enviarMensagemDiarista(formData: FormData) {

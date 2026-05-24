@@ -3,11 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
 import { medalhasDoDiarista } from "@/lib/medalhas";
+import { corDoTurno } from "@/lib/horarios";
+import { DIARIAS_CASHBACK, DIARIAS_CASHBACK_20 } from "@/lib/bonificacoes";
 import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
 import PushToggle from "@/components/PushToggle";
 import MarcaBadge from "@/components/MarcaBadge";
 import Avatar from "@/components/Avatar";
+import FotoUpload from "@/components/FotoUpload";
+import SubmitButton from "@/components/SubmitButton";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import {
   confirmarPresenca,
@@ -16,7 +20,6 @@ import {
   fazerCheckin,
   inscreverNaDiaria,
   responderConvocacao,
-  uploadFotoDiarista,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -38,38 +41,48 @@ export default async function DiaristaLinkPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ checkin?: string; desistir?: string; foto?: string }>;
+  searchParams: Promise<{ checkin?: string; desistir?: string }>;
 }) {
   const { token } = await params;
-  const { checkin, desistir, foto } = await searchParams;
+  const { checkin, desistir } = await searchParams;
   const hoje = hojeISO();
   const desde = addDias(hoje, -14);
+  // Diarista só se candidata a diárias de até 2 dias à frente.
+  const limiteCandidatura = addDias(hoje, 2);
 
-  const diarista = await prisma.diarista.findUnique({
-    where: { token },
-    include: {
-      escalas: {
-        where: { data: { gte: desde } },
-        include: { loja: true, avaliacaoLoja: { select: { id: true } } },
-        orderBy: { data: "asc" },
+  // Busca a diarista e as diárias disponíveis em paralelo (mais rápido).
+  const [diarista, disponiveisRaw] = await Promise.all([
+    prisma.diarista.findUnique({
+      where: { token },
+      include: {
+        escalas: {
+          where: { data: { gte: desde } },
+          include: { loja: true, avaliacaoLoja: { select: { id: true } } },
+          orderBy: { data: "asc" },
+        },
+        inscricoes: { select: { requisicaoId: true } },
+        convidadoEm: { select: { id: true } },
+        lojasPreferidas: { select: { id: true } },
+        bloqueios: {
+          where: { OR: [{ ate: null }, { ate: { gt: new Date() } }] },
+          select: { lojaId: true },
+        },
+        convocacoes: {
+          where: { status: "PENDENTE" },
+          include: { loja: true },
+          orderBy: { data: "asc" },
+        },
+        bonificacoes: { where: { pago: true }, orderBy: { criadoEm: "desc" } },
+        mensagens: { orderBy: { criadoEm: "asc" }, take: 30 },
+        _count: { select: { avaliacoes: true } },
       },
-      inscricoes: { select: { requisicaoId: true } },
-      convidadoEm: { select: { id: true } },
-      lojasPreferidas: { select: { id: true } },
-      bloqueios: {
-        where: { OR: [{ ate: null }, { ate: { gt: new Date() } }] },
-        select: { lojaId: true },
-      },
-      convocacoes: {
-        where: { status: "PENDENTE" },
-        include: { loja: true },
-        orderBy: { data: "asc" },
-      },
-      bonificacoes: { where: { pago: true }, orderBy: { criadoEm: "desc" } },
-      mensagens: { orderBy: { criadoEm: "asc" }, take: 30 },
-      _count: { select: { avaliacoes: true } },
-    },
-  });
+    }),
+    prisma.requisicao.findMany({
+      where: { status: "ABERTA", data: { gte: hoje, lte: limiteCandidatura } },
+      include: { loja: true },
+      orderBy: { data: "asc" },
+    }),
+  ]);
 
   if (!diarista) {
     return (
@@ -92,13 +105,6 @@ export default async function DiaristaLinkPage({
   const ehPreferida = (lojaId: string) => preferidas.has(lojaId) || jaTrabalhou.has(lojaId);
 
   const lojasBloqueadas = new Set(diarista.bloqueios.map((b) => b.lojaId));
-  // Diarista só se candidata a diárias de até 2 dias à frente.
-  const limiteCandidatura = addDias(hoje, 2);
-  const disponiveisRaw = await prisma.requisicao.findMany({
-    where: { status: "ABERTA", data: { gte: hoje, lte: limiteCandidatura } },
-    include: { loja: true },
-    orderBy: { data: "asc" },
-  });
   const disponiveis = disponiveisRaw.filter((r) => !lojasBloqueadas.has(r.lojaId));
   const peso = (r: { id: string; lojaId: string }) =>
     (convidadoEm.has(r.id) ? 2 : 0) + (ehPreferida(r.lojaId) ? 1 : 0);
@@ -147,38 +153,7 @@ export default async function DiaristaLinkPage({
             Já passou do prazo (até 4h antes) para desistir desta diária.
           </div>
         )}
-        {foto === "ok" && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800">
-            Foto atualizada!
-          </div>
-        )}
-        {foto === "erro" && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
-            Não foi possível enviar a foto agora. Tente de novo.
-          </div>
-        )}
-
-        <form
-          action={uploadFotoDiarista}
-          className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3"
-        >
-          <Avatar nome={diarista.nome} fotoUrl={diarista.fotoUrl} className="h-10 w-10" />
-          <input type="hidden" name="token" value={token} />
-          <input
-            type="file"
-            name="foto"
-            accept="image/*"
-            capture="user"
-            required
-            className="block w-full text-sm text-gray-600 file:mr-2 file:rounded-lg file:border-0 file:bg-orange-600 file:px-3 file:py-1.5 file:font-medium file:text-white"
-          />
-          <button
-            type="submit"
-            className="shrink-0 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700"
-          >
-            Enviar
-          </button>
-        </form>
+        <FotoUpload token={token} nome={diarista.nome} fotoUrl={diarista.fotoUrl} />
 
         {medalhas.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -206,6 +181,13 @@ export default async function DiaristaLinkPage({
           </a>
         )}
 
+        <Link
+          href={`/d/${token}/perto`}
+          className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-center text-base font-bold text-white shadow-sm hover:bg-orange-700"
+        >
+          📍 Lojas perto de mim
+        </Link>
+
         <div className="flex gap-3">
           <Link
             href={`/d/${token}/preferencias`}
@@ -214,7 +196,7 @@ export default async function DiaristaLinkPage({
             ⭐ Lojas preferidas
           </Link>
           <Link
-            href="/ranking"
+            href={`/ranking?token=${token}`}
             className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700"
           >
             🏆 Ranking
@@ -222,22 +204,44 @@ export default async function DiaristaLinkPage({
         </div>
 
         {!diarista.bonificacoes.some((b) => b.tipo === "CASHBACK_5") &&
-          diarista._count.avaliacoes < 5 && (
+          diarista._count.avaliacoes < DIARIAS_CASHBACK && (
             <div className="rounded-xl border border-orange-200 bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold text-gray-900">
-                🎁 Bônus de R$ 100 chegando!
-              </p>
+              <p className="text-sm font-semibold text-gray-900">🎁 Bônus de R$ 100 chegando!</p>
               <p className="mt-0.5 text-xs text-gray-500">
-                Faltam {5 - diarista._count.avaliacoes} diária(s) bem avaliada(s) para concorrer.
+                Faltam {DIARIAS_CASHBACK - diarista._count.avaliacoes} diária(s) bem avaliada(s)
+                (média ≥ 9,0) para concorrer.
               </p>
               <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
                 <div
                   className="h-full rounded-full bg-orange-500"
-                  style={{ width: `${(diarista._count.avaliacoes / 5) * 100}%` }}
+                  style={{ width: `${(diarista._count.avaliacoes / DIARIAS_CASHBACK) * 100}%` }}
                 />
               </div>
               <p className="mt-1 text-right text-xs font-medium text-orange-700">
-                {diarista._count.avaliacoes}/5
+                {diarista._count.avaliacoes}/{DIARIAS_CASHBACK}
+              </p>
+            </div>
+          )}
+
+        {diarista._count.avaliacoes >= DIARIAS_CASHBACK &&
+          !diarista.bonificacoes.some((b) => b.tipo === "CASHBACK_20") &&
+          diarista._count.avaliacoes < DIARIAS_CASHBACK_20 && (
+            <div className="rounded-xl border border-orange-200 bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold text-gray-900">
+                🎁 Mais R$ 100 por 20 diárias!
+              </p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Faltam {DIARIAS_CASHBACK_20 - diarista._count.avaliacoes} diária(s) bem avaliada(s)
+                (média ≥ 8,5) para ganhar outro bônus.
+              </p>
+              <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-orange-500"
+                  style={{ width: `${(diarista._count.avaliacoes / DIARIAS_CASHBACK_20) * 100}%` }}
+                />
+              </div>
+              <p className="mt-1 text-right text-xs font-medium text-orange-700">
+                {diarista._count.avaliacoes}/{DIARIAS_CASHBACK_20}
               </p>
             </div>
           )}
@@ -248,8 +252,12 @@ export default async function DiaristaLinkPage({
             <ul className="mt-1 space-y-0.5 text-sm text-green-800">
               {diarista.bonificacoes.map((b) => (
                 <li key={b.id}>
-                  {b.tipo === "CASHBACK_5" ? "Cashback de 5 diárias" : "Top do mês"}:{" "}
-                  <strong>{formatBRL(b.valor)}</strong>
+                  {b.tipo === "CASHBACK_5"
+                    ? "Cashback de 5 diárias"
+                    : b.tipo === "CASHBACK_20"
+                      ? "Cashback de 20 diárias"
+                      : "Top do mês"}
+                  : <strong>{formatBRL(b.valor)}</strong>
                 </li>
               ))}
             </ul>
@@ -303,7 +311,12 @@ export default async function DiaristaLinkPage({
         )}
 
         <section>
-          <h2 className="mb-2 font-semibold text-gray-900">Agende sua diária</h2>
+          <h2 className="mb-1 font-semibold text-gray-900">Agende sua diária</h2>
+          <p className="mb-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
+            <span>🟦 manhã/tarde</span>
+            <span>🟩 tarde</span>
+            <span>🟪 noite</span>
+          </p>
           {disponiveis.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-500">
               Nenhuma diária disponível no momento.
@@ -314,11 +327,12 @@ export default async function DiaristaLinkPage({
                 const inscrito = inscritoEm.has(r.id);
                 const pref = ehPreferida(r.lojaId);
                 const convidado = convidadoEm.has(r.id);
+                const turno = corDoTurno(r.horaInicio);
                 return (
                   <li
                     key={r.id}
-                    className={`rounded-xl border bg-white p-4 shadow-sm ${
-                      convidado ? "border-amber-400" : pref ? "border-orange-300" : "border-gray-200"
+                    className={`rounded-xl border p-4 shadow-sm ${turno.bg} ${
+                      convidado ? "border-amber-400" : pref ? "border-orange-300" : turno.border
                     }`}
                   >
                     {convidado && (
@@ -354,12 +368,12 @@ export default async function DiaristaLinkPage({
                       <form action={inscreverNaDiaria} className="mt-3">
                         <input type="hidden" name="token" value={token} />
                         <input type="hidden" name="requisicaoId" value={r.id} />
-                        <button
-                          type="submit"
+                        <SubmitButton
+                          pendingLabel="Enviando…"
                           className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 py-3 text-base font-bold text-white shadow-sm hover:bg-orange-700"
                         >
                           <span className="text-lg">✓</span> Quero trabalhar aqui!
-                        </button>
+                        </SubmitButton>
                       </form>
                     )}
                   </li>
@@ -380,7 +394,7 @@ export default async function DiaristaLinkPage({
               {proximas.map((e) => (
                 <li
                   key={e.id}
-                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                  className={`rounded-xl border p-4 shadow-sm ${corDoTurno(e.horaInicio).card}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>

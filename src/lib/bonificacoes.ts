@@ -4,6 +4,9 @@ import { ASPECTOS } from "./aspectos";
 export const VALOR_BONUS = 10000; // R$ 100,00 em centavos
 export const MEDIA_MINIMA_CASHBACK = 9.0; // de 0 a 10 (equivale a 4,5 de 5)
 export const DIARIAS_CASHBACK = 5;
+// Segundo bônus: 20 diárias bem avaliadas (média >= 8,5) → mais R$ 100,00.
+export const DIARIAS_CASHBACK_20 = 20;
+export const MEDIA_MINIMA_CASHBACK_20 = 8.5;
 export const MIN_DIARIAS_TOP = 3; // mínimo de diárias avaliadas no mês para entrar no ranking
 
 export function mediaDaAvaliacao(a: Record<string, number>): number {

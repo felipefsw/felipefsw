@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import { formatBRL, formatDate, formatDateWithWeekday } from "@/lib/format";
 import { hojeISO, maxAgendamentoISO, turnoFinalizado } from "@/lib/dates";
+import { corDoTurno } from "@/lib/horarios";
 import { ASPECTOS } from "@/lib/aspectos";
 import Avatar from "@/components/Avatar";
 import { contextoLoja, getSessao } from "@/lib/auth";
@@ -217,7 +218,10 @@ export default async function LojaHome({
             {requisicoes.map((r) => {
               const st = statusLabel(r.status);
               return (
-                <Card key={r.id}>
+                <div
+                  key={r.id}
+                  className={`rounded-xl border p-4 shadow-sm ${corDoTurno(r.horaInicio).card}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm capitalize text-gray-700">
@@ -245,7 +249,7 @@ export default async function LojaHome({
                         : "Ver / decidir"}
                     </Link>
                   )}
-                </Card>
+                </div>
               );
             })}
           </div>

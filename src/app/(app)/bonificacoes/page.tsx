@@ -4,12 +4,14 @@ import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { formatBRL } from "@/lib/format";
 import {
   DIARIAS_CASHBACK,
+  DIARIAS_CASHBACK_20,
   MEDIA_MINIMA_CASHBACK,
+  MEDIA_MINIMA_CASHBACK_20,
   mediaDaAvaliacao,
   mesAtual,
   rankingDoMes,
 } from "@/lib/bonificacoes";
-import { pagarCashback, pagarTopMes } from "./actions";
+import { pagarCashback, pagarCashback20, pagarTopMes } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +21,11 @@ export default async function BonificacoesPage() {
   const [diaristas, ranking, topPagos] = await Promise.all([
     prisma.diarista.findMany({
       include: {
-        avaliacoes: { orderBy: { criadoEm: "asc" }, take: DIARIAS_CASHBACK },
-        bonificacoes: { where: { tipo: "CASHBACK_5" }, select: { id: true } },
+        avaliacoes: { orderBy: { criadoEm: "asc" }, take: DIARIAS_CASHBACK_20 },
+        bonificacoes: {
+          where: { tipo: { in: ["CASHBACK_5", "CASHBACK_20"] } },
+          select: { tipo: true },
+        },
       },
     }),
     rankingDoMes(mes),
@@ -30,18 +35,27 @@ export default async function BonificacoesPage() {
     }),
   ]);
 
+  const mediaDe = (avs: unknown[]): number =>
+    avs.reduce<number>((s, a) => s + mediaDaAvaliacao(a as Record<string, number>), 0) /
+    (avs.length || 1);
+
   // Elegíveis ao cashback: 5 primeiras diárias avaliadas com média >= 9, ainda não pagos.
   const elegiveisCashback = diaristas
     .filter(
       (d) =>
-        d.bonificacoes.length === 0 &&
+        !d.bonificacoes.some((b) => b.tipo === "CASHBACK_5") &&
         d.avaliacoes.length >= DIARIAS_CASHBACK &&
-        d.avaliacoes.reduce(
-          (s, a) => s + mediaDaAvaliacao(a as unknown as Record<string, number>),
-          0,
-        ) /
-          d.avaliacoes.length >=
-          MEDIA_MINIMA_CASHBACK,
+        mediaDe(d.avaliacoes.slice(0, DIARIAS_CASHBACK)) >= MEDIA_MINIMA_CASHBACK,
+    )
+    .map((d) => ({ id: d.id, nome: d.nome }));
+
+  // Segundo bônus: 20 primeiras diárias avaliadas com média >= 8,5, ainda não pagos.
+  const elegiveisCashback20 = diaristas
+    .filter(
+      (d) =>
+        !d.bonificacoes.some((b) => b.tipo === "CASHBACK_20") &&
+        d.avaliacoes.length >= DIARIAS_CASHBACK_20 &&
+        mediaDe(d.avaliacoes.slice(0, DIARIAS_CASHBACK_20)) >= MEDIA_MINIMA_CASHBACK_20,
     )
     .map((d) => ({ id: d.id, nome: d.nome }));
 
@@ -70,6 +84,34 @@ export default async function BonificacoesPage() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium text-gray-900">{d.nome}</span>
                   <form action={pagarCashback}>
+                    <input type="hidden" name="diaristaId" value={d.id} />
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
+                    >
+                      Pagar {formatBRL(10000)}
+                    </button>
+                  </form>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-2 font-semibold text-gray-900">
+          Cashback — 20 diárias com média ≥ {MEDIA_MINIMA_CASHBACK_20.toFixed(1)}
+        </h2>
+        {elegiveisCashback20.length === 0 ? (
+          <EmptyState>Ninguém elegível ao bônus de 20 diárias no momento.</EmptyState>
+        ) : (
+          <div className="space-y-2">
+            {elegiveisCashback20.map((d) => (
+              <Card key={d.id}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-gray-900">{d.nome}</span>
+                  <form action={pagarCashback20}>
                     <input type="hidden" name="diaristaId" value={d.id} />
                     <button
                       type="submit"
