@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { RAIO_CHECKIN_METROS, distanciaMetros } from "@/lib/geo";
-import { podeDesistir } from "@/lib/dates";
+import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
 import { notificarNovaDiaria } from "@/lib/push";
+import { uploadImagem } from "@/lib/storage";
 
 export async function fazerCheckin(formData: FormData) {
   const token = String(formData.get("token") ?? "");
@@ -108,6 +109,23 @@ export async function desistirDaDiaria(formData: FormData) {
   redirect(`/d/${token}?desistir=ok`);
 }
 
+export async function uploadFotoDiarista(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const foto = formData.get("foto");
+  if (!token || !(foto instanceof File) || foto.size === 0) return;
+
+  const diarista = await prisma.diarista.findUnique({ where: { token }, select: { id: true } });
+  if (!diarista) return;
+
+  const ext = (foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const url = await uploadImagem(foto, `diaristas/${diarista.id}-${Date.now()}.${ext}`);
+  if (url) {
+    await prisma.diarista.update({ where: { id: diarista.id }, data: { fotoUrl: url } });
+  }
+  revalidatePath(`/d/${token}`);
+  redirect(url ? `/d/${token}?foto=ok` : `/d/${token}?foto=erro`);
+}
+
 export async function enviarMensagemDiarista(formData: FormData) {
   const token = String(formData.get("token") ?? "");
   const texto = String(formData.get("texto") ?? "").trim();
@@ -203,9 +221,10 @@ export async function inscreverNaDiaria(formData: FormData) {
   const diarista = await prisma.diarista.findUnique({ where: { token } });
   if (!diarista) return;
 
-  // só permite inscrição em requisição ainda aberta
+  // só permite inscrição em requisição aberta e de até 2 dias à frente
   const requisicao = await prisma.requisicao.findUnique({ where: { id: requisicaoId } });
   if (!requisicao || requisicao.status !== "ABERTA") return;
+  if (requisicao.data > addDias(hojeISO(), 2)) return;
 
   // não permite inscrição se a diarista estiver bloqueada nessa loja
   const bloqueio = await prisma.bloqueio.findFirst({

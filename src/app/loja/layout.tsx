@@ -32,6 +32,9 @@ export default async function LojaLayout({
             <span className="truncate">{loja.nome}</span>
           </Link>
           <div className="flex shrink-0 items-center gap-3">
+            <Link href="/loja" className="text-xs font-medium text-orange-100 underline">
+              🏠 Início
+            </Link>
             {podeTrocar && (
               <Link href="/loja/trocar" className="text-xs font-medium text-orange-100 underline">
                 Trocar loja

@@ -16,6 +16,7 @@ import {
   fazerCheckin,
   inscreverNaDiaria,
   responderConvocacao,
+  uploadFotoDiarista,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +38,10 @@ export default async function DiaristaLinkPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ checkin?: string; desistir?: string }>;
+  searchParams: Promise<{ checkin?: string; desistir?: string; foto?: string }>;
 }) {
   const { token } = await params;
-  const { checkin, desistir } = await searchParams;
+  const { checkin, desistir, foto } = await searchParams;
   const hoje = hojeISO();
   const desde = addDias(hoje, -14);
 
@@ -91,8 +92,10 @@ export default async function DiaristaLinkPage({
   const ehPreferida = (lojaId: string) => preferidas.has(lojaId) || jaTrabalhou.has(lojaId);
 
   const lojasBloqueadas = new Set(diarista.bloqueios.map((b) => b.lojaId));
+  // Diarista só se candidata a diárias de até 2 dias à frente.
+  const limiteCandidatura = addDias(hoje, 2);
   const disponiveisRaw = await prisma.requisicao.findMany({
-    where: { status: "ABERTA", data: { gte: hoje } },
+    where: { status: "ABERTA", data: { gte: hoje, lte: limiteCandidatura } },
     include: { loja: true },
     orderBy: { data: "asc" },
   });
@@ -144,6 +147,38 @@ export default async function DiaristaLinkPage({
             Já passou do prazo (até 4h antes) para desistir desta diária.
           </div>
         )}
+        {foto === "ok" && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800">
+            Foto atualizada!
+          </div>
+        )}
+        {foto === "erro" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            Não foi possível enviar a foto agora. Tente de novo.
+          </div>
+        )}
+
+        <form
+          action={uploadFotoDiarista}
+          className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3"
+        >
+          <Avatar nome={diarista.nome} fotoUrl={diarista.fotoUrl} className="h-10 w-10" />
+          <input type="hidden" name="token" value={token} />
+          <input
+            type="file"
+            name="foto"
+            accept="image/*"
+            capture="user"
+            required
+            className="block w-full text-sm text-gray-600 file:mr-2 file:rounded-lg file:border-0 file:bg-orange-600 file:px-3 file:py-1.5 file:font-medium file:text-white"
+          />
+          <button
+            type="submit"
+            className="shrink-0 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700"
+          >
+            Enviar
+          </button>
+        </form>
 
         {medalhas.length > 0 && (
           <div className="flex flex-wrap gap-2">
