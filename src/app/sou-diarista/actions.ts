@@ -1,11 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { cpfValido } from "@/lib/cpf";
 import { isISODate } from "@/lib/dates";
 import { gerarHashSenha, senhaForte } from "@/lib/senha";
 import { entrarDiaristaSessao } from "@/lib/auth";
+import { limitePassou } from "@/lib/rateLimit";
 
 export async function cadastrarDiarista(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
@@ -21,6 +23,11 @@ export async function cadastrarDiarista(formData: FormData) {
 
   const erroUrl = (e: string) =>
     `/sou-diarista${vagaParam ? `?vaga=${vagaParam}&erro=${e}` : `?erro=${e}`}`;
+
+  // Anti-bot: honeypot (campo oculto que só robô preenche) + limite por IP.
+  if (String(formData.get("confirmacao") ?? "").trim()) redirect("/entrar");
+  const ip = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "anon";
+  if (!limitePassou(`diarista:${ip}`, 12, 3_600_000)) redirect(erroUrl("limite"));
 
   // Obrigatórios: nome, sobrenome, CPF, data de nascimento e função.
   if (!nome || !sobrenome || !cpf || !isISODate(dataNascimento) || !funcao) redirect(erroUrl("campos"));

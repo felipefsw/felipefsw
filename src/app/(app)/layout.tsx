@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import TrilhaAprendizado from "@/components/TrilhaAprendizado";
 import { TRILHA_RH, TRILHA_TI } from "@/lib/trilhas";
-import { getSessao } from "@/lib/auth";
+import { getSessao, sessionSecretInseguro } from "@/lib/auth";
 import { sair } from "@/app/entrar/actions";
 
 export default async function AppLayout({
@@ -39,6 +39,13 @@ export default async function AppLayout({
           </div>
         </div>
       </header>
+
+      {sessionSecretInseguro() && (
+        <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs font-medium text-red-700">
+          ⚠️ Segurança: defina a variável <strong>SESSION_SECRET</strong> no Vercel (texto longo
+          aleatório) e faça redeploy. Sem ela, a sessão pode ser forjada.
+        </div>
+      )}
 
       <main className="flex-1 px-4 pb-24 pt-4">{children}</main>
 

@@ -68,6 +68,12 @@ export function contextoLoja(s: Sessao | null): { lojaId: string; gestorId: stri
   return null;
 }
 
+// True quando SESSION_SECRET não está definido (usando o segredo padrão público).
+// Nesse caso a assinatura da sessão é forjável — precisa configurar no Vercel.
+export function sessionSecretInseguro(): boolean {
+  return !process.env.SESSION_SECRET;
+}
+
 // Senhas de gestão: padrão 123456, sobrescrevíveis por variável no Vercel.
 export function senhaGestao(perfil: "rh" | "ti"): string {
   if (perfil === "rh") return process.env.RH_SENHA || "123456";

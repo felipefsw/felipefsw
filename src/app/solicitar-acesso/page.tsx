@@ -54,12 +54,26 @@ export default async function SolicitarAcessoPage({
             Informe seu nome e marque ao menos uma loja.
           </p>
         )}
+        {erro === "limite" && (
+          <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+            Muitas tentativas deste local. Aguarde um pouco e tente de novo.
+          </p>
+        )}
         {lojas.length === 0 ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             Nenhuma loja cadastrada ainda. Fale com o RH/TI.
           </p>
         ) : (
           <form action={solicitarAcesso} className="space-y-4">
+            {/* honeypot anti-bot: invisível para pessoas */}
+            <input
+              type="text"
+              name="confirmacao"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="hidden"
+            />
             <div>
               <label className={labelClass} htmlFor="nome">
                 Seu nome *

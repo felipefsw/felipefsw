@@ -43,8 +43,22 @@ export default async function SouDiaristaPage({
             As senhas não conferem ou têm menos de 6 caracteres.
           </p>
         )}
+        {erro === "limite" && (
+          <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+            Muitas tentativas deste local. Aguarde um pouco e tente de novo.
+          </p>
+        )}
         <form action={cadastrarDiarista} className="space-y-4">
           {vaga ? <input type="hidden" name="vaga" value={vaga} /> : null}
+          {/* honeypot anti-bot: invisível para pessoas */}
+          <input
+            type="text"
+            name="confirmacao"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            className="hidden"
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass} htmlFor="nome">
