@@ -145,6 +145,13 @@ export async function createRequisicao(formData: FormData) {
     return;
   }
 
+  // Evita requisição 100% idêntica em aberto.
+  const duplicada = await prisma.requisicao.findFirst({
+    where: { lojaId, data, horaInicio, horaFim, funcao, status: "ABERTA" },
+    select: { id: true },
+  });
+  if (duplicada) redirect("/requisicoes?erro=duplicada");
+
   const convidados = [1, 2, 3]
     .map((i) => String(formData.get(`convidado${i}`) ?? ""))
     .filter(Boolean);

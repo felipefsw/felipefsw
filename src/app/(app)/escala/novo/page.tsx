@@ -133,6 +133,7 @@ export default async function NovoAgendamentoPage({
               {diaristas.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.nome}
+                  {d.funcao ? ` · ${d.funcao}` : ""}
                 </option>
               ))}
             </select>

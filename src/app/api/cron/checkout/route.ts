@@ -35,5 +35,22 @@ export async function GET(request: Request) {
     fechadas++;
   }
 
-  return NextResponse.json({ ok: true, fechadas });
+  // Marca FALTA: diárias com o turno encerrado, ainda PENDENTE e sem check-in.
+  const semConfirmar = await prisma.escala.findMany({
+    where: { presenca: "PENDENTE", checkinEm: null },
+    select: { id: true, data: true, horaInicio: true, horaFim: true },
+  });
+  const idsFalta = semConfirmar
+    .filter((e) => turnoFinalizado(e.data, e.horaInicio, e.horaFim))
+    .map((e) => e.id);
+  let faltas = 0;
+  if (idsFalta.length > 0) {
+    const r = await prisma.escala.updateMany({
+      where: { id: { in: idsFalta } },
+      data: { presenca: "FALTOU" },
+    });
+    faltas = r.count;
+  }
+
+  return NextResponse.json({ ok: true, fechadas, faltas });
 }

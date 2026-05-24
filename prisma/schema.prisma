@@ -174,8 +174,8 @@ model Escala {
   avaliacao     Avaliacao?
   avaliacaoLoja AvaliacaoLoja?
 
+  @@unique([diaristaId, data]) // 1 diária por diarista por dia (trava o furo de escala)
   @@index([data])
-  @@index([diaristaId])
   @@index([lojaId])
 }
 

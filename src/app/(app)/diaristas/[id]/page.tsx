@@ -11,10 +11,13 @@ import { bloquearPermanente, removerBloqueio, updateDiarista } from "../actions"
 
 export default async function EditarDiaristaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ erro?: string }>;
 }) {
   const { id } = await params;
+  const { erro } = await searchParams;
   const [diarista, lojas] = await Promise.all([
     prisma.diarista.findUnique({
       where: { id },
@@ -68,6 +71,11 @@ export default async function EditarDiaristaPage({
           <p className="text-sm text-gray-500">Editar diarista</p>
         </div>
       </div>
+      {erro === "cpf" && (
+        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          CPF inválido. Confira os números e tente novamente.
+        </p>
+      )}
       <DiaristaForm
         action={updateDiarista}
         diarista={diarista}

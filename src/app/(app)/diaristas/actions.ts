@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { cpfValido } from "@/lib/cpf";
 
 // Lê as lojas preferidas do formulário, remove vazias e duplicadas (máx. 5).
 function lojasPreferidasIds(formData: FormData): { id: string }[] {
@@ -15,6 +16,7 @@ function lojasPreferidasIds(formData: FormData): { id: string }[] {
 export async function createDiarista(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) return;
+  if (!cpfValido(String(formData.get("cpf") ?? ""))) redirect("/diaristas/nova?erro=cpf");
 
   await prisma.diarista.create({
     data: {
@@ -35,6 +37,7 @@ export async function updateDiarista(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const nome = String(formData.get("nome") ?? "").trim();
   if (!id || !nome) return;
+  if (!cpfValido(String(formData.get("cpf") ?? ""))) redirect(`/diaristas/${id}?erro=cpf`);
 
   await prisma.diarista.update({
     where: { id },

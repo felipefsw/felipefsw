@@ -5,7 +5,12 @@ import { createDiarista } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function NovaDiaristaPage() {
+export default async function NovaDiaristaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ erro?: string }>;
+}) {
+  const { erro } = await searchParams;
   const lojas = await prisma.loja.findMany({
     where: { ativo: true },
     orderBy: { nome: "asc" },
@@ -15,6 +20,11 @@ export default async function NovaDiaristaPage() {
   return (
     <div>
       <PageHeader title="Nova diarista" subtitle="Cadastre uma pessoa" />
+      {erro === "cpf" && (
+        <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          CPF inválido. Confira os números e tente novamente.
+        </p>
+      )}
       <DiaristaForm action={createDiarista} lojas={lojas} submitLabel="Salvar diarista" />
     </div>
   );

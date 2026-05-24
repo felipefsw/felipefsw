@@ -10,9 +10,9 @@ const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 export default async function SouDiaristaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vaga?: string }>;
+  searchParams: Promise<{ vaga?: string; erro?: string }>;
 }) {
-  const { vaga } = await searchParams;
+  const { vaga, erro } = await searchParams;
   return (
     <div className="mx-auto max-w-md">
       <header className="bg-neutral-900 px-5 py-6 text-white">
@@ -27,6 +27,11 @@ export default async function SouDiaristaPage({
       </header>
 
       <main className="p-5">
+        {erro === "cpf" && (
+          <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            CPF inválido. Confira os números e tente novamente.
+          </p>
+        )}
         <form action={cadastrarDiarista} className="space-y-4">
           {vaga ? <input type="hidden" name="vaga" value={vaga} /> : null}
           <div>

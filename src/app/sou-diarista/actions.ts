@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { cpfValido } from "@/lib/cpf";
 
 export async function cadastrarDiarista(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
@@ -13,6 +14,10 @@ export async function cadastrarDiarista(formData: FormData) {
 
   // Todos os campos são obrigatórios no auto-cadastro.
   if (!nome || !cpf || !dataNascimento || !funcao || !telefone || !chavePix) return;
+  const vagaParam = String(formData.get("vaga") ?? "").trim();
+  if (!cpfValido(cpf)) {
+    redirect(`/sou-diarista${vagaParam ? `?vaga=${vagaParam}&erro=cpf` : "?erro=cpf"}`);
+  }
 
   const diarista = await prisma.diarista.create({
     data: {

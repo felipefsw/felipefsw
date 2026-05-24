@@ -23,7 +23,7 @@ export default async function NovaRequisicaoPage() {
     prisma.diarista.findMany({
       where: { ativo: true },
       orderBy: { nome: "asc" },
-      select: { id: true, nome: true },
+      select: { id: true, nome: true, funcao: true },
     }),
   ]);
 
@@ -134,6 +134,7 @@ export default async function NovaRequisicaoPage() {
                   {diaristas.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.nome}
+                      {d.funcao ? ` · ${d.funcao}` : ""}
                     </option>
                   ))}
                 </select>

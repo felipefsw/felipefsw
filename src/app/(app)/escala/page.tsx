@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function EscalaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ inicio?: string }>;
+  searchParams: Promise<{ inicio?: string; erro?: string }>;
 }) {
   const sp = await searchParams;
   const hoje = hojeISO();
@@ -46,6 +46,17 @@ export default async function EscalaPage({
           + Agendar
         </Link>
       </div>
+
+      {sp.erro === "conflito" && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          Esse diarista já tem uma diária nesse dia. Não dá pra agendar em duas lojas no mesmo dia.
+        </div>
+      )}
+      {sp.erro === "limite" && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+          Limite de 2 diárias por semana nessa loja atingido. Libere o limite na loja se quiser.
+        </div>
+      )}
 
       <div className="mb-4 flex items-center justify-between gap-2">
         <Link

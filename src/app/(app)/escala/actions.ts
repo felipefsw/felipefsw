@@ -18,6 +18,15 @@ export async function createEscala(formData: FormData) {
 
   if (!diaristaId || !lojaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
 
+  // Conflito: o diarista já tem diária nesse dia (em qualquer loja).
+  const jaNoDia = await prisma.escala.findFirst({
+    where: { diaristaId, data },
+    select: { id: true },
+  });
+  if (jaNoDia) {
+    redirect(`/escala?inicio=${inicioDaSemana(data)}&erro=conflito`);
+  }
+
   // No máximo 2 diárias por semana na mesma loja (salvo liberação da loja/RH).
   if (!(await podeMaisUmaNaSemana(diaristaId, lojaId, data))) {
     redirect(`/escala?inicio=${inicioDaSemana(data)}&erro=limite`);

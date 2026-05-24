@@ -67,6 +67,13 @@ export async function criarRequisicaoLoja(formData: FormData) {
 
   if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
+  // Evita requisição 100% idêntica em aberto (duplicada por engano).
+  const duplicada = await prisma.requisicao.findFirst({
+    where: { lojaId, data, horaInicio, horaFim, funcao, status: "ABERTA" },
+    select: { id: true },
+  });
+  if (duplicada) redirect("/loja?erro=duplicada");
+
   const convidadoIds = [
     ...new Set(
       [1, 2, 3].map((i) => String(formData.get(`convidado${i}`) ?? "")).filter(Boolean),

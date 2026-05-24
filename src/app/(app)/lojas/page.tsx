@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { EmptyState, PageHeader, inputClass } from "@/components/ui";
-import ConfirmSubmit from "@/components/ConfirmSubmit";
+import ConfirmDeleteLoja from "@/components/ConfirmDeleteLoja";
 import MarcaBadge from "@/components/MarcaBadge";
 import ClickMagicoBotao from "@/components/ClickMagicoBotao";
 import { grupoDaLoja } from "@/lib/marcas";
@@ -151,15 +151,12 @@ export default async function LojasPage({
                           {loja.ativo ? "Desativar" : "Reativar"}
                         </button>
                       </form>
-                      <form action={deleteLoja}>
-                        <input type="hidden" name="id" value={loja.id} />
-                        <ConfirmSubmit
-                          className="rounded border border-red-200 bg-white px-2 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50"
-                          message={`Excluir "${loja.nome}"? Os agendamentos dessa loja também serão apagados.`}
-                        >
-                          Excluir
-                        </ConfirmSubmit>
-                      </form>
+                      <ConfirmDeleteLoja
+                        id={loja.id}
+                        nome={loja.nome}
+                        action={deleteLoja}
+                        className="rounded border border-red-200 bg-white px-2 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50"
+                      />
                     </div>
                   </div>
                   );

@@ -27,9 +27,9 @@ function statusBadge(status: string) {
 export default async function RequisicoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; erro?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, erro } = await searchParams;
   const filtro = STATUS.find((s) => s.key === status)?.key ?? "ABERTA";
 
   const requisicoes = await prisma.requisicao.findMany({
@@ -60,6 +60,12 @@ export default async function RequisicoesPage({
         subtitle="Pedidos de diaristas das lojas"
         action={{ href: "/requisicoes/nova", label: "+ Nova" }}
       />
+
+      {erro === "duplicada" && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+          Já existe uma requisição igual em aberto (mesma data, horário e função).
+        </div>
+      )}
 
       <div className="mb-3">
         <ClickMagicoBotao />
