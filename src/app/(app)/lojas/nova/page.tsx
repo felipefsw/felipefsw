@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
+import { getSessao } from "@/lib/auth";
 import LojaForm from "../LojaForm";
 import { createLoja } from "../actions";
 
@@ -11,6 +13,8 @@ export default async function NovaLojaPage({
   searchParams: Promise<{ erro?: string }>;
 }) {
   const { erro } = await searchParams;
+  const sessao = await getSessao();
+  if (!(sessao?.tipo === "gestao" && sessao.perfil === "ti")) redirect("/lojas?erro=ti");
   const gestores = await prisma.gestor.findMany({
     where: { ativo: true },
     orderBy: { nome: "asc" },

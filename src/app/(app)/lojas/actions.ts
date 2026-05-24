@@ -5,6 +5,13 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { cnpjValido } from "@/lib/cnpj";
 import { gerarTokenSenha } from "@/lib/senha";
+import { getSessao } from "@/lib/auth";
+
+// Criar/excluir loja é exclusivo da TI.
+async function ehTI(): Promise<boolean> {
+  const s = await getSessao();
+  return s?.tipo === "gestao" && s.perfil === "ti";
+}
 
 function coord(formData: FormData, campo: string): number | null {
   const n = Number.parseFloat(String(formData.get(campo) ?? ""));
@@ -16,6 +23,7 @@ function gestorIds(formData: FormData): { id: string }[] {
 }
 
 export async function createLoja(formData: FormData) {
+  if (!(await ehTI())) redirect("/lojas?erro=ti");
   const nome = String(formData.get("nome") ?? "").trim();
   const cnpj = String(formData.get("cnpj") ?? "").trim();
   const cidade = String(formData.get("cidade") ?? "").trim();
@@ -91,6 +99,7 @@ export async function toggleLojaAtivo(formData: FormData) {
 }
 
 export async function deleteLoja(formData: FormData) {
+  if (!(await ehTI())) redirect("/lojas?erro=ti");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   await prisma.loja.delete({ where: { id } });

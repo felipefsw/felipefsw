@@ -6,7 +6,7 @@ import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import ClickMagicoBotao from "@/components/ClickMagicoBotao";
 import { grupoDaLoja } from "@/lib/marcas";
 import { corDaFuncao } from "@/lib/funcoesCor";
-import { cancelarRequisicao, deleteRequisicao, reabrirRequisicao } from "./actions";
+import { deleteRequisicao } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -131,40 +131,19 @@ export default async function RequisicoesPage({
                     href={`/requisicoes/${r.id}`}
                     className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
                   >
-                    Fechar
+                    Sugerir alocação
                   </Link>
                 )}
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-                {r.status === "ABERTA" ? (
-                  <form action={cancelarRequisicao}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <button
-                      type="submit"
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      Cancelar
-                    </button>
-                  </form>
-                ) : (
-                  <form action={reabrirRequisicao}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <button
-                      type="submit"
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      Reabrir
-                    </button>
-                  </form>
-                )}
                 <form action={deleteRequisicao}>
                   <input type="hidden" name="id" value={r.id} />
                   <ConfirmSubmit
                     className={btnDanger}
-                    message="Excluir esta requisição? As escalas já criadas não são apagadas."
+                    message="Excluir esta solicitação? As escalas já criadas não são apagadas."
                   >
-                    Excluir
+                    Excluir solicitação
                   </ConfirmSubmit>
                 </form>
               </div>

@@ -5,6 +5,7 @@ import ConfirmDeleteLoja from "@/components/ConfirmDeleteLoja";
 import MarcaBadge from "@/components/MarcaBadge";
 import ClickMagicoBotao from "@/components/ClickMagicoBotao";
 import { grupoDaLoja } from "@/lib/marcas";
+import { getSessao } from "@/lib/auth";
 import { deleteLoja, toggleLojaAtivo } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +15,11 @@ const PAGE_SIZE = 20;
 export default async function LojasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; erro?: string }>;
 }) {
   const sp = await searchParams;
+  const sessao = await getSessao();
+  const ehTI = sessao?.tipo === "gestao" && sessao.perfil === "ti";
   const q = (sp.q ?? "").trim();
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
 
@@ -67,8 +70,14 @@ export default async function LojasPage({
       <PageHeader
         title="Lojas"
         subtitle={`${total} resultado(s)`}
-        action={{ href: "/lojas/nova", label: "+ Nova" }}
+        action={ehTI ? { href: "/lojas/nova", label: "+ Nova" } : undefined}
       />
+
+      {sp.erro === "ti" && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          Apenas a TI pode criar ou excluir lojas.
+        </div>
+      )}
 
       <div className="mb-3">
         <Link href="/gestores" className="text-sm font-medium text-orange-700 hover:underline">
@@ -151,12 +160,14 @@ export default async function LojasPage({
                           {loja.ativo ? "Desativar" : "Reativar"}
                         </button>
                       </form>
-                      <ConfirmDeleteLoja
-                        id={loja.id}
-                        nome={loja.nome}
-                        action={deleteLoja}
-                        className="rounded border border-red-200 bg-white px-2 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50"
-                      />
+                      {ehTI && (
+                        <ConfirmDeleteLoja
+                          id={loja.id}
+                          nome={loja.nome}
+                          action={deleteLoja}
+                          className="rounded border border-red-200 bg-white px-2 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50"
+                        />
+                      )}
                     </div>
                   </div>
                   );
@@ -195,12 +206,14 @@ export default async function LojasPage({
         </div>
       )}
 
-      <Link
-        href="/lojas/nova"
-        className="mt-5 block rounded-xl bg-orange-700 px-4 py-3 text-center font-semibold text-white hover:bg-orange-800"
-      >
-        + Cadastrar nova loja
-      </Link>
+      {ehTI && (
+        <Link
+          href="/lojas/nova"
+          className="mt-5 block rounded-xl bg-orange-700 px-4 py-3 text-center font-semibold text-white hover:bg-orange-800"
+        >
+          + Cadastrar nova loja
+        </Link>
+      )}
     </div>
   );
 }
