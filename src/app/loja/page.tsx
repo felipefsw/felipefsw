@@ -10,7 +10,6 @@ import {
   bloquearDiaristaLoja,
   convocarDiarista,
   desbloquearDiaristaLoja,
-  desfazerAvaliacaoDiarista,
   registrarCheckout,
 } from "./actions";
 
@@ -26,7 +25,12 @@ function statusLabel(s: string) {
   return { txt: "Cancelada", cls: "bg-gray-100 text-gray-500" };
 }
 
-export default async function LojaHome() {
+export default async function LojaHome({
+  searchParams,
+}: {
+  searchParams: Promise<{ erro?: string }>;
+}) {
+  const { erro } = await searchParams;
   const ctx = contextoLoja(await getSessao());
   if (!ctx) redirect("/entrar");
   const lojaId = ctx.lojaId;
@@ -62,6 +66,8 @@ export default async function LojaHome() {
   const aAvaliar = escalas.filter(
     (e) => e.presenca === "PRESENTE" && turnoFinalizado(e.data, e.horaFim),
   );
+  // A loja precisa avaliar antes de abrir novas vagas / convocar.
+  const pendentes = aAvaliar.filter((e) => !e.avaliacao).length;
 
   // Diárias de hoje (para acompanhar check-in e registrar saída).
   const hoje = hojeISO();
@@ -107,10 +113,21 @@ export default async function LojaHome() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Minha loja</h1>
-        <Link href="/loja/requisicao/nova" className={btnPrimary}>
-          + Solicitar diaristas
-        </Link>
+        {pendentes === 0 ? (
+          <Link href="/loja/requisicao/nova" className={btnPrimary}>
+            + Solicitar diaristas
+          </Link>
+        ) : (
+          <span className="text-xs font-medium text-amber-700">Avalie para liberar</span>
+        )}
       </div>
+
+      {(pendentes > 0 || erro === "avalie") && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+          Você tem {pendentes} diária(s) para avaliar. Avalie os diaristas (seção abaixo) antes de
+          abrir novas vagas ou convocar.
+        </div>
+      )}
 
       {hojeEscalas.length > 0 && (
         <section>
@@ -218,16 +235,8 @@ export default async function LojaHome() {
                           : "rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600"
                       }
                     >
-                      {e.avaliacao ? "★ editar" : "★ Avaliar"}
+                      {e.avaliacao ? "★ avaliada" : "★ Avaliar"}
                     </Link>
-                    {e.avaliacao && (
-                      <form action={desfazerAvaliacaoDiarista}>
-                        <input type="hidden" name="escalaId" value={e.id} />
-                        <button type="submit" className="text-xs text-gray-400 underline hover:text-red-600">
-                          desfazer
-                        </button>
-                      </form>
-                    )}
                   </div>
                 </li>
               ))}
@@ -310,27 +319,29 @@ export default async function LojaHome() {
                     </form>
                   )}
 
-                  <form
-                    action={convocarDiarista}
-                    className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2"
-                  >
-                    <input type="hidden" name="diaristaId" value={d.id} />
-                    <input
-                      type="date"
-                      name="data"
-                      required
-                      min={hojeISO()}
-                      max={maxAgendamentoISO()}
-                      defaultValue={hojeISO()}
-                      className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm"
-                    />
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-orange-700 px-3 py-1 text-sm font-medium text-white hover:bg-orange-800"
+                  {pendentes === 0 ? (
+                    <form
+                      action={convocarDiarista}
+                      className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2"
                     >
-                      Convocar
-                    </button>
-                  </form>
+                      <input type="hidden" name="diaristaId" value={d.id} />
+                      <input
+                        type="date"
+                        name="data"
+                        required
+                        min={hojeISO()}
+                        max={maxAgendamentoISO()}
+                        defaultValue={hojeISO()}
+                        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm"
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-orange-700 px-3 py-1 text-sm font-medium text-white hover:bg-orange-800"
+                      >
+                        Convocar
+                      </button>
+                    </form>
+                  ) : null}
                 </Card>
               );
             })}

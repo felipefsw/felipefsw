@@ -4,6 +4,7 @@ import { Card, EmptyState, PageHeader, btnDanger, inputClass } from "@/component
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { formatBRL } from "@/lib/format";
 import { FUNCOES } from "@/lib/funcoes";
+import { mediaDaAvaliacao } from "@/lib/bonificacoes";
 import { deleteDiarista, toggleDiaristaAtivo } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -32,9 +33,26 @@ export default async function DiaristasPage({
       orderBy: [{ ativo: "desc" }, { nome: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
+      include: {
+        avaliacoes: { orderBy: { criadoEm: "desc" }, take: 5 },
+        _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
+      },
     }),
   ]);
   const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Nota (média das 5 últimas avaliações) só aparece após 5 avaliações.
+  const resumo = (d: (typeof diaristas)[number]) => {
+    const diarias = d._count.escalas;
+    const nota =
+      d.avaliacoes.length >= 5
+        ? d.avaliacoes.reduce(
+            (s, a) => s + mediaDaAvaliacao(a as unknown as Record<string, number>),
+            0,
+          ) / d.avaliacoes.length
+        : null;
+    return { diarias, nota };
+  };
 
   // Preserva filtros nos links.
   const qs = (extra: Record<string, string | number>) => {
@@ -129,6 +147,17 @@ export default async function DiaristasPage({
                     )}
                   </div>
                   {d.telefone && <p className="text-sm text-gray-500">{d.telefone}</p>}
+                  {(() => {
+                    const { diarias, nota } = resumo(d);
+                    return (
+                      <p className="mt-0.5 text-sm text-gray-600">
+                        {nota !== null && (
+                          <span className="font-medium text-orange-700">★ {nota.toFixed(1)} · </span>
+                        )}
+                        {diarias} diária(s) na rede
+                      </p>
+                    );
+                  })()}
                   <p className="mt-1 text-sm text-gray-600">
                     Diária: <strong>{formatBRL(d.valorDiaria)}</strong>
                   </p>

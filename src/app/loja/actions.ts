@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { contextoLoja, getSessao, setSessao } from "@/lib/auth";
-import { dentroDaJanelaAgendamento, isHHMM, isISODate } from "@/lib/dates";
+import { dentroDaJanelaAgendamento, isHHMM, isISODate, turnoFinalizado } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
 import { valorProporcional } from "@/lib/geo";
 import { notificarNovaDiaria } from "@/lib/push";
@@ -14,6 +14,15 @@ async function lojaSessaoId(): Promise<string> {
   const ctx = contextoLoja(await getSessao());
   if (!ctx) redirect("/entrar");
   return ctx.lojaId;
+}
+
+// A loja precisa avaliar as diárias já encerradas antes de abrir vaga/convocar.
+async function temPendenteAvaliacao(lojaId: string): Promise<boolean> {
+  const escalas = await prisma.escala.findMany({
+    where: { lojaId, presenca: "PRESENTE" },
+    select: { data: true, horaFim: true, avaliacao: { select: { id: true } } },
+  });
+  return escalas.some((e) => !e.avaliacao && turnoFinalizado(e.data, e.horaFim));
 }
 
 function nota(formData: FormData, campo: string): number {
@@ -58,6 +67,8 @@ export async function criarRequisicaoLoja(formData: FormData) {
   ) {
     return;
   }
+
+  if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
   const convidadoIds = [
     ...new Set(
@@ -235,6 +246,7 @@ export async function convocarDiarista(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
   const data = String(formData.get("data") ?? "");
   if (!diaristaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
+  if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
   await prisma.convocacao.create({
     data: { lojaId, diaristaId, data },

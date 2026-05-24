@@ -10,6 +10,7 @@ import {
   labelClass,
 } from "@/components/ui";
 import { hojeISO, isISODate, maxAgendamentoISO } from "@/lib/dates";
+import { VALORES_DIARIA } from "@/lib/valoresDiaria";
 import { createEscala } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -102,15 +103,16 @@ export default async function NovoAgendamentoPage({
             </div>
             <div>
               <label className={labelClass} htmlFor="valor">
-                Valor da diária (R$)
+                Valor da diária
               </label>
-              <input
-                id="valor"
-                name="valor"
-                inputMode="decimal"
-                placeholder="usa o valor padrão da diarista"
-                className={inputClass}
-              />
+              <select id="valor" name="valor" defaultValue="" className={inputClass}>
+                <option value="">Usar valor padrão da diarista</option>
+                {VALORES_DIARIA.map((v) => (
+                  <option key={v.value} value={v.value}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
