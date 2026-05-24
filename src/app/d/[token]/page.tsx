@@ -7,6 +7,7 @@ import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
 import PushToggle from "@/components/PushToggle";
 import MarcaBadge from "@/components/MarcaBadge";
+import Avatar from "@/components/Avatar";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import {
   confirmarPresenca,
@@ -112,8 +113,13 @@ export default async function DiaristaLinkPage({
             Sair
           </a>
         </div>
-        <p className="text-sm text-orange-100">Olá,</p>
-        <h1 className="text-2xl font-bold">{diarista.nome}</h1>
+        <div className="mt-1 flex items-center gap-3">
+          <Avatar nome={diarista.nome} fotoUrl={diarista.fotoUrl} className="h-12 w-12" />
+          <div>
+            <p className="text-sm text-orange-100">Olá,</p>
+            <h1 className="text-2xl font-bold leading-tight">{diarista.nome}</h1>
+          </div>
+        </div>
         <p className="mt-1 text-sm text-orange-100">Sua agenda de trabalho</p>
       </header>
 

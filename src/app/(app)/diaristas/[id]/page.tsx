@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Card, PageHeader } from "@/components/ui";
+import { Card } from "@/components/ui";
 import CopyLink from "@/components/CopyLink";
-import { formatDate } from "@/lib/format";
+import Avatar from "@/components/Avatar";
+import { formatBRL, formatDate } from "@/lib/format";
 import { ASPECTOS } from "@/lib/aspectos";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import DiaristaForm from "../DiaristaForm";
@@ -40,7 +41,7 @@ export default async function EditarDiaristaPage({
     }),
     prisma.escala.findMany({
       where: { diaristaId: id },
-      include: { loja: { select: { nome: true } } },
+      include: { loja: { select: { nome: true } }, avaliacao: true },
       orderBy: { data: "desc" },
       take: 50,
     }),
@@ -65,7 +66,13 @@ export default async function EditarDiaristaPage({
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Editar diarista" subtitle={diarista.nome} />
+      <div className="mb-4 flex items-center gap-3">
+        <Avatar nome={diarista.nome} fotoUrl={diarista.fotoUrl} className="h-12 w-12" />
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">{diarista.nome}</h1>
+          <p className="text-sm text-gray-500">Editar diarista</p>
+        </div>
+      </div>
       <DiaristaForm
         action={updateDiarista}
         diarista={diarista}
@@ -154,23 +161,36 @@ export default async function EditarDiaristaPage({
           <p className="mt-2 text-sm text-gray-500">Sem diárias registradas ainda.</p>
         ) : (
           <ul className="mt-3 divide-y divide-gray-100">
-            {historico.map((e) => (
-              <li key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span className="min-w-0">
-                  <span className="text-gray-700">{formatDate(e.data)}</span>{" "}
-                  <span className="text-gray-500">· {e.loja.nome}</span>
-                </span>
-                <span className="shrink-0">
-                  {e.presenca === "PRESENTE" ? (
-                    <span className="text-green-600">presente</span>
-                  ) : e.presenca === "FALTOU" ? (
-                    <span className="text-red-500">faltou</span>
-                  ) : (
-                    <span className="text-gray-400">pendente</span>
-                  )}
-                </span>
-              </li>
-            ))}
+            {historico.map((e) => {
+              const notaDia = e.avaliacao
+                ? ASPECTOS.reduce(
+                    (s, a) => s + (e.avaliacao as unknown as Record<string, number>)[a.key],
+                    0,
+                  ) / ASPECTOS.length
+                : null;
+              return (
+                <li key={e.id} className="flex items-start justify-between gap-3 py-2 text-sm">
+                  <span className="min-w-0">
+                    <span className="text-gray-700">{formatDate(e.data)}</span>{" "}
+                    <span className="text-gray-500">· {e.loja.nome}</span>
+                    <span className="block text-xs text-gray-400">
+                      {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim} · ` : ""}
+                      {formatBRL(e.valorPago ?? e.valor)}
+                      {notaDia !== null ? ` · ★ ${notaDia.toFixed(1)}` : ""}
+                    </span>
+                  </span>
+                  <span className="shrink-0">
+                    {e.presenca === "PRESENTE" ? (
+                      <span className="text-green-600">presente</span>
+                    ) : e.presenca === "FALTOU" ? (
+                      <span className="text-red-500">faltou</span>
+                    ) : (
+                      <span className="text-gray-400">pendente</span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </Card>

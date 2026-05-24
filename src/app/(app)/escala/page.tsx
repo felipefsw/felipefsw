@@ -146,16 +146,18 @@ export default async function EscalaPage({
                                 pago
                               </span>
                             )}
-                            <form action={marcarPresenca}>
-                              <input type="hidden" name="id" value={e.id} />
-                              <input type="hidden" name="presenca" value="PENDENTE" />
-                              <button
-                                type="submit"
-                                className="text-xs text-gray-400 underline hover:text-gray-600"
-                              >
-                                desfazer
-                              </button>
-                            </form>
+                            {e.data >= hoje && (
+                              <form action={marcarPresenca}>
+                                <input type="hidden" name="id" value={e.id} />
+                                <input type="hidden" name="presenca" value="PENDENTE" />
+                                <button
+                                  type="submit"
+                                  className="text-xs text-gray-400 underline hover:text-gray-600"
+                                >
+                                  desfazer
+                                </button>
+                              </form>
+                            )}
                           </div>
                         )}
 

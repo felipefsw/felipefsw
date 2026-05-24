@@ -5,6 +5,7 @@ import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import { formatBRL, formatDate, formatDateWithWeekday } from "@/lib/format";
 import { hojeISO, maxAgendamentoISO, turnoFinalizado } from "@/lib/dates";
 import { ASPECTOS } from "@/lib/aspectos";
+import Avatar from "@/components/Avatar";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   bloquearDiaristaLoja,
@@ -46,7 +47,7 @@ export default async function LojaHome({
     prisma.escala.findMany({
       where: { lojaId },
       include: {
-        diarista: { select: { id: true, nome: true, funcao: true } },
+        diarista: { select: { id: true, nome: true, funcao: true, fotoUrl: true } },
         avaliacao: true,
       },
       orderBy: { data: "desc" },
@@ -83,6 +84,7 @@ export default async function LojaHome({
   type Info = {
     nome: string;
     funcao: string | null;
+    fotoUrl: string | null;
     datas: string[];
     somaNotas: number;
     qtdNotas: number;
@@ -91,7 +93,14 @@ export default async function LojaHome({
   for (const e of escalas) {
     const cur =
       vistos.get(e.diarista.id) ??
-      { nome: e.diarista.nome, funcao: e.diarista.funcao, datas: [], somaNotas: 0, qtdNotas: 0 };
+      {
+        nome: e.diarista.nome,
+        funcao: e.diarista.funcao,
+        fotoUrl: e.diarista.fotoUrl,
+        datas: [],
+        somaNotas: 0,
+        qtdNotas: 0,
+      };
     cur.datas.push(e.data);
     if (e.avaliacao) {
       const m =
@@ -109,6 +118,7 @@ export default async function LojaHome({
       id,
       nome: v.nome,
       funcao: v.funcao,
+      fotoUrl: v.fotoUrl,
       vezes: v.datas.length,
       datas: v.datas,
       nota: v.qtdNotas ? v.somaNotas / v.qtdNotas : null,
@@ -283,13 +293,16 @@ export default async function LojaHome({
               return (
                 <Card key={d.id}>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-gray-900">{d.nome}</span>
-                      {d.funcao && (
-                        <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
-                          {d.funcao}
-                        </span>
-                      )}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-8 w-8" />
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-gray-900">{d.nome}</span>
+                        {d.funcao && (
+                          <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
+                            {d.funcao}
+                          </span>
+                        )}
+                      </span>
                     </span>
                     <span className="shrink-0 text-sm text-gray-500">{d.vezes}× aqui</span>
                   </div>
@@ -335,7 +348,7 @@ export default async function LojaHome({
                       >
                         <option value="7">7 dias</option>
                         <option value="14">14 dias</option>
-                        <option value="30">1 mês</option>
+                        <option value="21">21 dias</option>
                       </select>
                       <button
                         type="submit"

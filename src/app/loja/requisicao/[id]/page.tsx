@@ -12,6 +12,7 @@ import {
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import { medalhasDoDiarista } from "@/lib/medalhas";
+import Avatar from "@/components/Avatar";
 import { decidirRequisicao } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,9 @@ export default async function DecidirRequisicaoPage({
   const requisicao = await prisma.requisicao.findUnique({
     where: { id },
     include: {
-      inscricoes: { include: { diarista: { select: { id: true, nome: true, funcao: true } } } },
+      inscricoes: {
+        include: { diarista: { select: { id: true, nome: true, funcao: true, fotoUrl: true } } },
+      },
       convidados: { select: { id: true } },
     },
   });
@@ -107,6 +110,7 @@ export default async function DecidirRequisicaoPage({
                         defaultChecked={cabemTodos}
                         className="h-5 w-5 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
                       />
+                      <Avatar nome={c.diarista.nome} fotoUrl={c.diarista.fotoUrl} className="h-8 w-8" />
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-gray-900">{c.diarista.nome}</span>
                         {c.diarista.funcao && (

@@ -258,7 +258,7 @@ export async function bloquearDiaristaLoja(formData: FormData) {
   const lojaId = await lojaSessaoId();
   const diaristaId = String(formData.get("diaristaId") ?? "");
   const dias = Number.parseInt(String(formData.get("dias") ?? ""), 10);
-  if (!diaristaId || ![7, 14, 30].includes(dias)) return;
+  if (!diaristaId || ![7, 14, 21].includes(dias)) return;
 
   const ate = new Date(Date.now() + dias * 24 * 60 * 60 * 1000);
   await prisma.bloqueio.create({

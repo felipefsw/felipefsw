@@ -61,6 +61,7 @@ model Diarista {
   nome        String
   cpf         String?
   dataNascimento String? // "AAAA-MM-DD"
+  fotoUrl     String?
   funcao      String? // Atendente | Pizzaiolo | Aux. pizzaiolo | Motoqueiro
   telefone    String?
   chavePix    String?

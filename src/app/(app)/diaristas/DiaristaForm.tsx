@@ -7,6 +7,7 @@ type DiaristaDefaults = {
   nome?: string;
   cpf?: string | null;
   dataNascimento?: string | null;
+  fotoUrl?: string | null;
   funcao?: string | null;
   telefone?: string | null;
   chavePix?: string | null;
@@ -127,6 +128,19 @@ export default function DiaristaForm({
               className={inputClass}
             />
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="fotoUrl">
+            Foto (link da imagem)
+          </label>
+          <input
+            id="fotoUrl"
+            name="fotoUrl"
+            defaultValue={diarista?.fotoUrl ?? ""}
+            placeholder="https://… (deixe vazio para usar avatar)"
+            className={inputClass}
+          />
         </div>
 
         <div>

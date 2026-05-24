@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, btnDanger, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
+import Avatar from "@/components/Avatar";
 import { formatBRL } from "@/lib/format";
 import { FUNCOES } from "@/lib/funcoes";
 import { mediaDaAvaliacao } from "@/lib/bonificacoes";
@@ -132,7 +133,9 @@ export default async function DiaristasPage({
           {diaristas.map((d) => (
             <Card key={d.id}>
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="flex min-w-0 gap-3">
+                  <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-10 w-10" />
+                  <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-900">{d.nome}</span>
                     {d.funcao && (
@@ -161,10 +164,11 @@ export default async function DiaristasPage({
                   <p className="mt-1 text-sm text-gray-600">
                     Diária: <strong>{formatBRL(d.valorDiaria)}</strong>
                   </p>
+                  </div>
                 </div>
                 <Link
                   href={`/diaristas/${d.id}`}
-                  className="text-sm font-medium text-orange-700 hover:underline"
+                  className="shrink-0 text-sm font-medium text-orange-700 hover:underline"
                 >
                   Editar
                 </Link>
