@@ -94,7 +94,7 @@ export default function ListaDiarias({ token, itens }: { token: string; itens: D
       if (db == null) return -1;
       return da - db;
     });
-  else ordenados.sort((a, b) => a.marcaOrdem - b.marcaOrdem || a.lojaNome.localeCompare(b.lojaNome));
+  else ordenados.sort((a, b) => a.marcaOrdem - b.marcaOrdem);
 
   function distLabel(m: number): string {
     return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`;

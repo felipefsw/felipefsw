@@ -180,6 +180,12 @@ export async function responderConvocacao(formData: FormData) {
     if (!(await podeMaisUmaNaSemana(convocacao.diaristaId, convocacao.lojaId, convocacao.data))) {
       return;
     }
+    // Não pode aceitar se já tem uma diária nesse mesmo dia.
+    const escalaNoDia = await prisma.escala.findFirst({
+      where: { diaristaId: convocacao.diaristaId, data: convocacao.data },
+      select: { id: true },
+    });
+    if (escalaNoDia) return;
     await prisma.$transaction([
       prisma.convocacao.update({ where: { id: convocacaoId }, data: { status: "ACEITA" } }),
       prisma.escala.create({
@@ -247,6 +253,33 @@ export async function inscreverNaDiaria(formData: FormData) {
 
   // No máximo 2 diárias por semana na mesma loja (salvo liberação da loja/RH).
   if (!(await podeMaisUmaNaSemana(diarista.id, requisicao.lojaId, requisicao.data))) return;
+
+  // Não pode pegar 2 vagas no mesmo dia, nem 2 na mesma loja/dia, nem se já foi
+  // convocado para essa loja/dia (responde pelo convite, não pela lista).
+  const [escalaNoDia, convocadoLojaDia, jaInscritoLojaDia] = await Promise.all([
+    prisma.escala.findFirst({
+      where: { diaristaId: diarista.id, data: requisicao.data },
+      select: { id: true },
+    }),
+    prisma.convocacao.findFirst({
+      where: {
+        diaristaId: diarista.id,
+        lojaId: requisicao.lojaId,
+        data: requisicao.data,
+        status: "PENDENTE",
+      },
+      select: { id: true },
+    }),
+    prisma.inscricao.findFirst({
+      where: {
+        diaristaId: diarista.id,
+        requisicaoId: { not: requisicaoId },
+        requisicao: { lojaId: requisicao.lojaId, data: requisicao.data, status: "ABERTA" },
+      },
+      select: { id: true },
+    }),
+  ]);
+  if (escalaNoDia || convocadoLojaDia || jaInscritoLojaDia) return;
 
   await prisma.inscricao.upsert({
     where: { requisicaoId_diaristaId: { requisicaoId, diaristaId: diarista.id } },

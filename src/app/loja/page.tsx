@@ -78,7 +78,7 @@ export default async function LojaHome({
           },
         },
       },
-      orderBy: [{ data: "asc" }, { criadoEm: "desc" }],
+      orderBy: { criadoEm: "desc" },
     }),
     prisma.escala.findMany({
       where: { lojaId },

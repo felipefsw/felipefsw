@@ -35,7 +35,7 @@ export default async function RequisicoesPage({
   const requisicoes = await prisma.requisicao.findMany({
     where: { status: filtro },
     include: { loja: true, _count: { select: { escalas: true } } },
-    orderBy: [{ data: "asc" }, { criadoEm: "desc" }],
+    orderBy: { criadoEm: "desc" },
   });
 
   // Agrupa por marca (quadrantes).

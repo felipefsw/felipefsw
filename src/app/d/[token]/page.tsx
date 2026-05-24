@@ -81,7 +81,7 @@ export default async function DiaristaLinkPage({
     prisma.requisicao.findMany({
       where: { status: "ABERTA", data: { gte: hoje, lte: limiteCandidatura } },
       include: { loja: true },
-      orderBy: { data: "asc" },
+      orderBy: { criadoEm: "desc" },
     }),
   ]);
 
@@ -101,15 +101,21 @@ export default async function DiaristaLinkPage({
 
   const inscritoEm = new Set(diarista.inscricoes.map((i) => i.requisicaoId));
   const convidadoEm = new Set(diarista.convidadoEm.map((r) => r.id));
-  const preferidas = new Set(diarista.lojasPreferidas.map((l) => l.id));
-  const jaTrabalhou = new Set(diarista.escalas.map((e) => e.lojaId));
-  const ehPreferida = (lojaId: string) => preferidas.has(lojaId) || jaTrabalhou.has(lojaId);
 
   const lojasBloqueadas = new Set(diarista.bloqueios.map((b) => b.lojaId));
-  const disponiveis = disponiveisRaw.filter((r) => !lojasBloqueadas.has(r.lojaId));
-  const peso = (r: { id: string; lojaId: string }) =>
-    (convidadoEm.has(r.id) ? 2 : 0) + (ehPreferida(r.lojaId) ? 1 : 0);
-  disponiveis.sort((a, b) => peso(b) - peso(a));
+  // Dias em que a diarista já tem diária e lojas/dias em que já foi convocada.
+  const datasComEscala = new Set(diarista.escalas.map((e) => e.data));
+  const convocadoLojaData = new Set(
+    diarista.convocacoes.map((c) => `${c.lojaId}|${c.data}`),
+  );
+  // Vagas (mais novas primeiro): tira loja bloqueada, dias que já trabalha e
+  // vagas da loja/dia em que já foi convocada (responde pelo convite).
+  const disponiveis = disponiveisRaw.filter(
+    (r) =>
+      !lojasBloqueadas.has(r.lojaId) &&
+      !datasComEscala.has(r.data) &&
+      !convocadoLojaData.has(`${r.lojaId}|${r.data}`),
+  );
 
   // Nota das lojas (avaliação dos diaristas), para o filtro "nota".
   const lojaIdsDisp = [...new Set(disponiveis.map((r) => r.lojaId))];
