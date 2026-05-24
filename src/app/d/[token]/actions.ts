@@ -4,10 +4,19 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { RAIO_CHECKIN_METROS, distanciaMetros } from "@/lib/geo";
-import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
+import { addDias, hojeISO, podeDesistir, turnoFinalizado } from "@/lib/dates";
 import { notificarNovaDiaria } from "@/lib/push";
 import { uploadImagemResultado } from "@/lib/storage";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
+
+// O diarista precisa avaliar as diárias já encerradas antes de pegar/aceitar novas.
+async function temAvaliacaoPendente(diaristaId: string): Promise<boolean> {
+  const escalas = await prisma.escala.findMany({
+    where: { diaristaId, presenca: "PRESENTE", avaliacaoLoja: null },
+    select: { data: true, horaInicio: true, horaFim: true },
+  });
+  return escalas.some((e) => turnoFinalizado(e.data, e.horaInicio, e.horaFim));
+}
 
 export async function fazerCheckin(formData: FormData) {
   const token = String(formData.get("token") ?? "");
@@ -176,6 +185,8 @@ export async function responderConvocacao(formData: FormData) {
   if (!convocacao || convocacao.diarista.token !== token || convocacao.status !== "PENDENTE") return;
 
   if (resposta === "ACEITA") {
+    // Só aceita convocação se já tiver avaliado as diárias encerradas.
+    if (await temAvaliacaoPendente(convocacao.diaristaId)) return;
     // Respeita o limite de 2 diárias por semana na mesma loja (salvo liberação).
     if (!(await podeMaisUmaNaSemana(convocacao.diaristaId, convocacao.lojaId, convocacao.data))) {
       return;
@@ -235,6 +246,9 @@ export async function inscreverNaDiaria(formData: FormData) {
 
   const diarista = await prisma.diarista.findUnique({ where: { token } });
   if (!diarista) return;
+
+  // Precisa avaliar as diárias encerradas antes de pegar novas vagas.
+  if (await temAvaliacaoPendente(diarista.id)) return;
 
   // só permite inscrição em requisição aberta e de até 2 dias à frente
   const requisicao = await prisma.requisicao.findUnique({ where: { id: requisicaoId } });

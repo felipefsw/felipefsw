@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
-import { addDias, hojeISO, podeDesistir } from "@/lib/dates";
+import { addDias, hojeISO, podeDesistir, turnoFinalizado } from "@/lib/dates";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import { corDoTurno } from "@/lib/horarios";
 import { bairroCidade, ruaDaLoja } from "@/lib/loja";
@@ -15,10 +15,10 @@ import Avatar from "@/components/Avatar";
 import FotoUpload from "@/components/FotoUpload";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import ListaDiarias, { type DiariaItem } from "@/components/ListaDiarias";
+import ChatRH from "@/components/ChatRH";
 import {
   confirmarPresenca,
   desistirDaDiaria,
-  enviarMensagemDiarista,
   fazerCheckin,
   responderConvocacao,
 } from "./actions";
@@ -98,6 +98,15 @@ export default async function DiaristaLinkPage({
 
   const proximas = diarista.escalas.filter((e) => e.data >= hoje);
   const recentes = diarista.escalas.filter((e) => e.data < hoje).reverse();
+
+  // Diárias encerradas que ainda faltam o diarista avaliar (trava novas vagas).
+  const pendentesAvaliacao = diarista.escalas.filter(
+    (e) =>
+      e.presenca === "PRESENTE" &&
+      !e.avaliacaoLoja &&
+      turnoFinalizado(e.data, e.horaInicio, e.horaFim),
+  );
+  const bloqueado = pendentesAvaliacao.length > 0;
 
   const inscritoEm = new Set(diarista.inscricoes.map((i) => i.requisicaoId));
   const convidadoEm = new Set(diarista.convidadoEm.map((r) => r.id));
@@ -205,9 +214,6 @@ export default async function DiaristaLinkPage({
         >
           📖 Guia
         </Link>
-        <a href="#falar-rh" className="whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
-          💬 RH
-        </a>
       </nav>
 
       <main className="space-y-6 p-5">
@@ -231,6 +237,87 @@ export default async function DiaristaLinkPage({
             Já passou do prazo (até 4h antes) para desistir desta diária.
           </div>
         )}
+
+        {/* Convocações no topo: escolha a loja e confirme */}
+        {diarista.convocacoes.length > 0 && (
+          <section>
+            <h2 className="mb-2 font-semibold text-gray-900">📣 Você foi convocado!</h2>
+            <ul className="space-y-3">
+              {diarista.convocacoes.map((c) => (
+                <li key={c.id} className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+                  <p className="font-medium text-gray-900">{c.loja.nome}</p>
+                  {enderecoCompleto(c.loja) && (
+                    <p className="text-sm text-gray-500">{enderecoCompleto(c.loja)}</p>
+                  )}
+                  <p className="mt-1 text-sm capitalize text-gray-700">
+                    {formatDateWithWeekday(c.data)}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    {bloqueado ? (
+                      <span className="flex-1 rounded-lg bg-amber-100 py-2 text-center text-xs font-medium text-amber-800">
+                        Avalie sua última diária para poder aceitar
+                      </span>
+                    ) : (
+                      <form action={responderConvocacao} className="flex-1">
+                        <input type="hidden" name="token" value={token} />
+                        <input type="hidden" name="convocacaoId" value={c.id} />
+                        <input type="hidden" name="resposta" value="ACEITA" />
+                        <button
+                          type="submit"
+                          className="w-full rounded-lg bg-green-600 py-2 font-medium text-white hover:bg-green-700"
+                        >
+                          Aceitar
+                        </button>
+                      </form>
+                    )}
+                    <form action={responderConvocacao} className="flex-1">
+                      <input type="hidden" name="token" value={token} />
+                      <input type="hidden" name="convocacaoId" value={c.id} />
+                      <input type="hidden" name="resposta" value="RECUSADA" />
+                      <button
+                        type="submit"
+                        className="w-full rounded-lg border border-gray-300 bg-white py-2 font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Recusar
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Avaliação pendente trava novas vagas */}
+        {bloqueado && (
+          <section>
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <p className="text-sm font-semibold text-amber-800">
+                ⭐ Avalie sua última diária para liberar novas vagas
+              </p>
+              <ul className="mt-2 space-y-2">
+                {pendentesAvaliacao.map((e) => (
+                  <li
+                    key={e.id}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-white p-2"
+                  >
+                    <span className="min-w-0 text-sm">
+                      <span className="block truncate font-medium text-gray-900">{e.loja.nome}</span>
+                      <span className="text-xs text-gray-500">{formatDateWithWeekday(e.data)}</span>
+                    </span>
+                    <Link
+                      href={`/d/${token}/avaliar-loja/${e.id}`}
+                      className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-800"
+                    >
+                      Avaliar
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+
         {medalhas.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {medalhas.map((m) => (
@@ -329,55 +416,15 @@ export default async function DiaristaLinkPage({
           </div>
         )}
 
-        {diarista.convocacoes.length > 0 && (
-          <section>
-            <h2 className="mb-2 font-semibold text-gray-900">Convocações</h2>
-            <ul className="space-y-3">
-              {diarista.convocacoes.map((c) => (
-                <li key={c.id} className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-                  <p className="font-medium text-gray-900">{c.loja.nome}</p>
-                  {enderecoCompleto(c.loja) && (
-                    <p className="text-sm text-gray-500">{enderecoCompleto(c.loja)}</p>
-                  )}
-                  <p className="mt-1 text-sm capitalize text-gray-700">
-                    {formatDateWithWeekday(c.data)}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-600">
-                    Esta loja convocou você para esta diária.
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <form action={responderConvocacao} className="flex-1">
-                      <input type="hidden" name="token" value={token} />
-                      <input type="hidden" name="convocacaoId" value={c.id} />
-                      <input type="hidden" name="resposta" value="ACEITA" />
-                      <button
-                        type="submit"
-                        className="w-full rounded-lg bg-green-600 py-2 font-medium text-white hover:bg-green-700"
-                      >
-                        Aceitar
-                      </button>
-                    </form>
-                    <form action={responderConvocacao} className="flex-1">
-                      <input type="hidden" name="token" value={token} />
-                      <input type="hidden" name="convocacaoId" value={c.id} />
-                      <input type="hidden" name="resposta" value="RECUSADA" />
-                      <button
-                        type="submit"
-                        className="w-full rounded-lg border border-gray-300 bg-white py-2 font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Recusar
-                      </button>
-                    </form>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
         <section id="vagas" className="scroll-mt-14">
           <h2 className="mb-2 font-semibold text-gray-900">Agende sua diária</h2>
-          <ListaDiarias token={token} itens={itensDiarias} />
+          {bloqueado ? (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+              🔒 Avalie sua(s) última(s) diária(s) acima para liberar novas vagas.
+            </div>
+          ) : (
+            <ListaDiarias token={token} itens={itensDiarias} />
+          )}
         </section>
 
         <section id="proximas" className="scroll-mt-14">
@@ -537,62 +584,12 @@ export default async function DiaristaLinkPage({
           </section>
         )}
 
-        <section id="falar-rh" className="scroll-mt-4">
-          <h2 className="mb-1 font-semibold text-gray-900">Falar com o RH</h2>
-          <p className="mb-2 text-xs text-gray-400">
-            Avise atraso, imprevisto ou tire dúvidas. Isso não muda sua nota nem sua presença.
-          </p>
-          <div className="space-y-2">
-            {diarista.mensagens.length === 0 ? (
-              <p className="text-sm text-gray-400">Nenhuma mensagem ainda.</p>
-            ) : (
-              diarista.mensagens.map((m) => (
-                <div
-                  key={m.id}
-                  className={
-                    m.autor === "DIARISTA"
-                      ? "ml-6 rounded-xl bg-orange-50 p-2 text-sm text-gray-800"
-                      : "mr-6 rounded-xl bg-gray-100 p-2 text-sm text-gray-800"
-                  }
-                >
-                  <span className="block text-[10px] font-medium text-gray-400">
-                    {m.autor === "DIARISTA" ? "Você" : "RH"}
-                  </span>
-                  {m.texto}
-                </div>
-              ))
-            )}
-          </div>
-          <form action={enviarMensagemDiarista} className="mt-3 space-y-2">
-            <input type="hidden" name="token" value={token} />
-            <textarea
-              name="texto"
-              required
-              rows={2}
-              placeholder="Escreva sua mensagem…"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
-            />
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-orange-600 py-2 font-medium text-white hover:bg-orange-700"
-            >
-              Enviar
-            </button>
-          </form>
-        </section>
-
         <p className="pb-6 text-center text-xs text-gray-400">
-          Em caso de dúvida, fale com o responsável.
+          Em caso de dúvida, fale com o RH no botão de chat.
         </p>
       </main>
 
-      <a
-        href="#falar-rh"
-        aria-label="Falar com o RH"
-        className="fixed bottom-4 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg ring-4 ring-orange-600/20 hover:bg-orange-700"
-      >
-        💬
-      </a>
+      <ChatRH token={token} mensagens={diarista.mensagens} />
     </div>
   );
 }
