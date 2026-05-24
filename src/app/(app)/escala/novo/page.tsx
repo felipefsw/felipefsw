@@ -120,67 +120,11 @@ export default async function NovoAgendamentoPage({
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Agendar" subtitle="Escale nas vagas abertas com 1 toque" />
+      <PageHeader title="Agendar" subtitle="Escolha o diarista ou use as vagas abertas" />
 
-      {gruposOrdenados.length === 0 ? (
-        <EmptyState>Nenhuma vaga aberta. Use o agendamento manual abaixo.</EmptyState>
-      ) : (
-        gruposOrdenados.map((g) => (
-          <section key={g.label}>
-            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
-              {g.label}
-            </h2>
-            <div className="space-y-2">
-              {g.itens.map(({ r, faltam, sugeridos }) => (
-                <Card key={r.id}>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-gray-900">{r.loja.nome}</p>
-                    <span className="text-xs text-gray-400">{formatDateShort(r.data)}</span>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    {r.funcao ?? "qualquer função"} · {r.horaInicio}–{r.horaFim} ·{" "}
-                    {formatBRL(r.valorDiaria)} · faltam {faltam}
-                  </p>
-                  <div className="mt-2 space-y-1.5">
-                    {sugeridos.length === 0 ? (
-                      <p className="text-xs text-gray-400">Sem sugestões livres neste dia.</p>
-                    ) : (
-                      sugeridos.map((d) => (
-                        <div key={d.id} className="flex items-center justify-between gap-2">
-                          <span className="flex min-w-0 items-center gap-2">
-                            <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-7 w-7" />
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm text-gray-800">{d.nome}</span>
-                              <span className="block text-[11px] text-gray-400">
-                                {d.freq.get(r.lojaId) ?? 0}× nesta loja
-                                {d.funcao ? ` · ${d.funcao}` : ""}
-                              </span>
-                            </span>
-                          </span>
-                          <form action={escalarNaVaga.bind(null, r.id, d.id)}>
-                            <SubmitButton
-                              pendingLabel="…"
-                              className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-800"
-                            >
-                              Escalar
-                            </SubmitButton>
-                          </form>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
-        ))
-      )}
-
-      <details className="rounded-xl border border-gray-200 bg-white p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-gray-900">
-          Agendar manualmente (escolher diarista e valor)
-        </summary>
-        <form action={createEscala} className="mt-3 space-y-4">
+      <Card>
+        <h2 className="mb-3 font-semibold text-gray-900">Agendar manualmente</h2>
+        <form action={createEscala} className="space-y-4">
           <div>
             <label className={labelClass} htmlFor="diaristaId">
               Diarista *
@@ -256,7 +200,68 @@ export default async function NovoAgendamentoPage({
             </Link>
           </div>
         </form>
-      </details>
+      </Card>
+
+      {gruposOrdenados.length > 0 && (
+        <details className="space-y-4">
+          <summary className="cursor-pointer text-sm font-bold uppercase tracking-wide text-gray-500">
+            Ou escale nas vagas abertas (sugestões em 1 toque)
+          </summary>
+          <div className="mt-3 space-y-4">
+            {gruposOrdenados.map((g) => (
+              <section key={g.label}>
+                <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
+                  {g.label}
+                </h2>
+                <div className="space-y-2">
+                  {g.itens.map(({ r, faltam, sugeridos }) => (
+                    <Card key={r.id}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-gray-900">{r.loja.nome}</p>
+                        <span className="text-xs text-gray-400">{formatDateShort(r.data)}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {r.funcao ?? "qualquer função"} · {r.horaInicio}–{r.horaFim} ·{" "}
+                        {formatBRL(r.valorDiaria)} · faltam {faltam}
+                      </p>
+                      <div className="mt-2 space-y-1.5">
+                        {sugeridos.length === 0 ? (
+                          <p className="text-xs text-gray-400">Sem sugestões livres neste dia.</p>
+                        ) : (
+                          sugeridos.map((d) => (
+                            <div key={d.id} className="flex items-center justify-between gap-2">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-7 w-7" />
+                                <span className="min-w-0">
+                                  <span className="block truncate text-sm text-gray-800">
+                                    {d.nome}
+                                  </span>
+                                  <span className="block text-[11px] text-gray-400">
+                                    {d.freq.get(r.lojaId) ?? 0}× nesta loja
+                                    {d.funcao ? ` · ${d.funcao}` : ""}
+                                  </span>
+                                </span>
+                              </span>
+                              <form action={escalarNaVaga.bind(null, r.id, d.id)}>
+                                <SubmitButton
+                                  pendingLabel="…"
+                                  className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-800"
+                                >
+                                  Escalar
+                                </SubmitButton>
+                              </form>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }
