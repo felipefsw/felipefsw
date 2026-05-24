@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, btnDanger, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
+import MarcaBadge from "@/components/MarcaBadge";
 import { deleteLoja, toggleLojaAtivo } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -87,8 +88,7 @@ export default async function LojasPage({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/icon.svg" alt="RWP" className="h-5 w-5 shrink-0 rounded" />
+                    <MarcaBadge nome={loja.nome} className="h-6 w-6 shrink-0 rounded" />
                     <span className="font-semibold text-gray-900">{loja.nome}</span>
                     {!loja.ativo && (
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">

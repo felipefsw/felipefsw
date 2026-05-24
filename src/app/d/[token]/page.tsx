@@ -6,6 +6,7 @@ import { medalhasDoDiarista } from "@/lib/medalhas";
 import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
 import PushToggle from "@/components/PushToggle";
+import MarcaBadge from "@/components/MarcaBadge";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import {
   confirmarPresenca,
@@ -283,6 +284,7 @@ export default async function DiaristaLinkPage({
                       </p>
                     )}
                     <div className="flex items-center gap-2">
+                      <MarcaBadge nome={r.loja.nome} className="h-7 w-7 shrink-0 rounded" />
                       <p className="font-medium text-gray-900">{r.loja.nome}</p>
                       {pref && (
                         <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
@@ -347,7 +349,10 @@ export default async function DiaristaLinkPage({
                           </span>
                         )}
                       </p>
-                      <p className="text-sm text-gray-500">{e.loja.nome}</p>
+                      <p className="flex items-center gap-1.5 text-sm text-gray-500">
+                        <MarcaBadge nome={e.loja.nome} className="h-5 w-5 shrink-0 rounded" />
+                        {e.loja.nome}
+                      </p>
                       {enderecoCompleto(e.loja) && (
                         <p className="text-xs text-gray-400">{enderecoCompleto(e.loja)}</p>
                       )}

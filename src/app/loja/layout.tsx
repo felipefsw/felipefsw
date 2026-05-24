@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { contextoLoja, getSessao } from "@/lib/auth";
+import MarcaBadge from "@/components/MarcaBadge";
 import { sair } from "@/app/entrar/actions";
 
 export default async function LojaLayout({
@@ -27,8 +28,7 @@ export default async function LojaLayout({
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-neutral-900 text-white">
         <div className="flex items-center justify-between gap-2 px-4 py-3">
           <Link href="/loja" className="flex min-w-0 items-center gap-2 font-semibold">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/rwp-logo.svg" alt="RWP" className="h-7 w-auto shrink-0" />
+            <MarcaBadge nome={loja.nome} className="h-7 w-7 shrink-0 rounded" />
             <span className="truncate">{loja.nome}</span>
           </Link>
           <div className="flex shrink-0 items-center gap-3">

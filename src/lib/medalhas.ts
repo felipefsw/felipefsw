@@ -37,8 +37,8 @@ export async function medalhasDoDiarista(diaristaId: string): Promise<Medalha[]>
   }
 
   const m: Medalha[] = [];
-  if (presentes >= 20) m.push({ emoji: "🏅", nome: "Veterano" });
-  else if (presentes >= 10) m.push({ emoji: "🎖️", nome: "Experiente" });
+  if (presentes >= 50) m.push({ emoji: "🏅", nome: "Veterano" });
+  else if (presentes >= 30) m.push({ emoji: "🎖️", nome: "Experiente" });
   if (media !== null && media >= 9) m.push({ emoji: "⭐", nome: "Super bem avaliado" });
   if (total >= 10 && faltas / total <= 0.05) m.push({ emoji: "✅", nome: "Presença certa" });
   if (diarista?.funcao === "Pizzaiolo" && presentes >= 10 && (media ?? 0) >= 9)
