@@ -181,7 +181,7 @@ export default async function EntrarPage({
                       className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left hover:border-orange-300"
                     >
                       <span className="font-medium text-gray-900">🛠️ {m.nome}</span>
-                      <span className="text-xs text-gray-400">{m.papel}</span>
+                      {m.papel && <span className="text-xs text-gray-400">{m.papel}</span>}
                     </button>
                   </form>
                 ))}

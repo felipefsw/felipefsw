@@ -7,13 +7,16 @@ export type MembroEquipe = {
 };
 
 export const EQUIPE: MembroEquipe[] = [
-  { id: "lynn", nome: "Lynn", perfil: "rh", papel: "Coordenadora" },
-  { id: "fran", nome: "Fran", perfil: "rh", papel: "Estagiária" },
-  { id: "sydnare", nome: "Sydnare", perfil: "ti", papel: "Analista de TI" },
-  { id: "ana-carolina", nome: "Ana Carolina", perfil: "ti", papel: "Analista de TI" },
-  { id: "daniel", nome: "Daniel", perfil: "ti", papel: "TI" },
-  { id: "jefferson", nome: "Jefferson", perfil: "ti", papel: "TI" },
-  { id: "marcelo", nome: "Marcelo", perfil: "ti", papel: "TI" },
+  // RH
+  { id: "aline-goncalves", nome: "Aline Gonçalves", perfil: "rh", papel: "Coordenadora" },
+  { id: "sidnaria", nome: "Sidnaria", perfil: "rh", papel: "Analista de RH" },
+  { id: "fran", nome: "Fran", perfil: "rh", papel: "Analista de RH" },
+  { id: "carol", nome: "Carol", perfil: "rh", papel: "Analista de RH" },
+  { id: "estagiaria-rh", nome: "Estagiária", perfil: "rh", papel: "Estagiária (sem nome)" },
+  // TI
+  { id: "daniel-nogueira", nome: "Daniel Nogueira", perfil: "ti", papel: "" },
+  { id: "marcelo", nome: "Marcelo", perfil: "ti", papel: "" },
+  { id: "jefferson", nome: "Jefferson", perfil: "ti", papel: "" },
 ];
 
 export function membroEquipe(id: string): MembroEquipe | undefined {
