@@ -119,13 +119,17 @@ export default async function EntrarPage({
   }
 
   const lojas =
-    sel === "lojista"
+    sel === "lojista" && !id
       ? await prisma.loja.findMany({
           where: { ativo: true },
           orderBy: { nome: "asc" },
           select: { id: true, nome: true, bairro: true, cidade: true },
         })
       : [];
+  const lojaSel =
+    sel === "lojista" && id
+      ? await prisma.loja.findUnique({ where: { id }, select: { id: true, nome: true, senha: true } })
+      : null;
   const gestores =
     sel === "gestor" && !id
       ? await prisma.gestor.findMany({
@@ -180,15 +184,23 @@ export default async function EntrarPage({
         </Card>
       )}
 
-      {sel === "lojista" && (
-        <Card>
-          <h2 className="font-semibold text-gray-900">Entrar como loja</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">Toque na sua loja para entrar.</p>
-          <div className="max-h-[60vh] space-y-1 overflow-y-auto">
-            {lojas.map((l) => (
-              <form key={l.id} action={entrarComoLoja.bind(null, l.id)}>
-                <button
-                  type="submit"
+      {sel === "lojista" &&
+        (lojaSel ? (
+          <CartaoSenha
+            action={entrarComoLoja}
+            alvo={lojaSel}
+            voltarHref="/entrar?perfil=lojista"
+            erro={erro}
+          />
+        ) : (
+          <Card>
+            <h2 className="font-semibold text-gray-900">Entrar como loja</h2>
+            <p className="mb-3 mt-1 text-sm text-gray-500">Toque na sua loja para entrar.</p>
+            <div className="max-h-[60vh] space-y-1 overflow-y-auto">
+              {lojas.map((l) => (
+                <Link
+                  key={l.id}
+                  href={`/entrar?perfil=lojista&id=${l.id}`}
                   className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left hover:border-orange-300"
                 >
                   <MarcaBadge nome={l.nome} className="h-6 w-6 shrink-0 rounded" />
@@ -200,12 +212,11 @@ export default async function EntrarPage({
                       </span>
                     )}
                   </span>
-                </button>
-              </form>
-            ))}
-          </div>
-        </Card>
-      )}
+                </Link>
+              ))}
+            </div>
+          </Card>
+        ))}
 
       {sel === "gestor" &&
         (gestorSel ? (

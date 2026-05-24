@@ -156,6 +156,13 @@ export default async function InicioPage() {
         </Link>
       </div>
 
+      <Link
+        href="/usuarios"
+        className="block rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+      >
+        👥 Criar usuário (lojista, gestor, RH, TI, diarista)
+      </Link>
+
       <section>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Escalados hoje ({escalasHoje.length})</h2>

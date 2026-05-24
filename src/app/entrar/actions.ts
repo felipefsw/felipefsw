@@ -35,10 +35,22 @@ export async function entrarComoGestao(formData: FormData) {
   redirect("/");
 }
 
-export async function entrarComoLoja(lojaId: string) {
-  if (!lojaId) redirect("/entrar?perfil=lojista");
-  const loja = await prisma.loja.findUnique({ where: { id: lojaId }, select: { id: true } });
+// Loja (lojista): clica na loja e, no primeiro acesso, cria a senha; depois confere.
+export async function entrarComoLoja(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const senha = String(formData.get("senha") ?? "");
+  const confirmar = String(formData.get("confirmarSenha") ?? "");
+  const loja = await prisma.loja.findUnique({ where: { id }, select: { id: true, senha: true } });
   if (!loja) redirect("/entrar?perfil=lojista");
+
+  if (precisaDefinirSenha(loja.senha)) {
+    if (!senhaForte(senha) || senha !== confirmar)
+      redirect(`/entrar?perfil=lojista&id=${id}&erro=senha`);
+    await prisma.loja.update({ where: { id }, data: { senha: gerarHashSenha(senha) } });
+  } else if (!conferirSenha(senha, loja.senha)) {
+    redirect(`/entrar?perfil=lojista&id=${id}&erro=login`);
+  }
+
   await setSessao({ tipo: "loja", lojaId: loja.id });
   redirect("/loja");
 }
