@@ -11,7 +11,7 @@ import {
   isISODate,
 } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
-import { notificarNovaDiaria } from "@/lib/push";
+import { notificarNovaDiaria, notificarVagaPreenchida } from "@/lib/push";
 
 // "Click mágico": convoca automaticamente os diaristas que mais trabalham em
 // cada loja para preencher as vagas abertas, sem repetir ninguém em duas lojas.
@@ -194,6 +194,8 @@ export async function fecharRequisicao(formData: FormData) {
       data: { status: "ACEITA" },
     }),
   ]);
+
+  await notificarVagaPreenchida(id);
 
   revalidatePath("/requisicoes");
   revalidatePath("/escala");

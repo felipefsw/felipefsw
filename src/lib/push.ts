@@ -100,6 +100,35 @@ export async function notificarPagamentoDaEscala(escalaId: string): Promise<void
   });
 }
 
+// Avisa os candidatos NÃO escolhidos que a vaga foi preenchida por outro.
+export async function notificarVagaPreenchida(requisicaoId: string): Promise<void> {
+  const req = await prisma.requisicao.findUnique({
+    where: { id: requisicaoId },
+    include: {
+      loja: { select: { nome: true } },
+      escalas: { select: { diaristaId: true } },
+      inscricoes: { select: { diaristaId: true } },
+    },
+  });
+  if (!req) return;
+  const escalados = new Set(req.escalas.map((e) => e.diaristaId));
+  const perdedores = [...new Set(req.inscricoes.map((i) => i.diaristaId))].filter(
+    (id) => !escalados.has(id),
+  );
+  if (perdedores.length === 0) return;
+
+  const msg = `${req.loja.nome} • ${formatDate(req.data)}: outro diarista foi selecionado desta vez.`;
+  await enviarPushParaDiaristas(perdedores, { title: "Vaga preenchida", body: msg, url: "/" });
+
+  const comTelegram = await prisma.diarista.findMany({
+    where: { id: { in: perdedores }, telegramChatId: { not: null } },
+    select: { telegramChatId: true },
+  });
+  await Promise.allSettled(
+    comTelegram.map((d) => enviarTelegram(d.telegramChatId as string, `⚠️ Vaga preenchida\n${msg}`)),
+  );
+}
+
 // Notifica diaristas sobre uma nova diária: quem tem a loja como preferida ou foi convidado.
 export async function notificarNovaDiaria(
   lojaId: string,

@@ -60,6 +60,7 @@ export default async function LojaHome({
       where: { lojaId },
       include: {
         _count: { select: { escalas: true, inscricoes: true } },
+        loja: { select: { nome: true } },
         escalas: { include: { diarista: { select: { id: true, nome: true, fotoUrl: true } } } },
         inscricoes: {
           include: {
@@ -70,6 +71,7 @@ export default async function LojaHome({
                 funcao: true,
                 fotoUrl: true,
                 avaliacoes: { select: { estrelas: true }, orderBy: { criadoEm: "desc" }, take: 5 },
+                escalas: { where: { presenca: "PRESENTE" }, select: { loja: { select: { nome: true } } } },
                 _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
               },
             },
@@ -399,6 +401,7 @@ export default async function LojaHome({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
+                      <p className="text-sm font-semibold text-gray-900">{r.loja.nome}</p>
                       <p className="text-sm capitalize text-gray-700">
                         {formatDateWithWeekday(r.data)} ·{" "}
                         <span className={`rounded px-1.5 py-0.5 font-medium ${turno.chip}`}>
@@ -471,6 +474,13 @@ export default async function LojaHome({
                           {r.inscricoes.map((insc) => {
                             const d = insc.diarista;
                             const nota = notaDe(d.avaliacoes);
+                            const diarias = d._count.escalas;
+                            const cont = new Map<string, number>();
+                            for (const e of d.escalas)
+                              cont.set(e.loja.nome, (cont.get(e.loja.nome) ?? 0) + 1);
+                            const topLoja = [...cont.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+                            const destaque = nota !== null && nota > 4.5 && diarias > 10;
+                            const resumo = `${diarias} diária(s)${topLoja ? ` · mais em ${topLoja}` : ""}${nota !== null ? ` · nota ${nota.toFixed(1)}` : ""}`;
                             return (
                               <div
                                 key={insc.id}
@@ -485,17 +495,19 @@ export default async function LojaHome({
                                   <span className="min-w-0">
                                     <Link
                                       href={`/loja/candidato/${d.id}`}
+                                      title={resumo}
                                       className="block text-[11px] font-medium text-orange-700 underline"
                                     >
                                       saber mais
                                     </Link>
                                     <span className="block truncate text-sm font-medium text-gray-900">
                                       {d.nome}
+                                      {destaque && <span title="Destaque: nota alta e experiente"> ⭐</span>}
                                     </span>
                                     <span className="block text-[11px] text-gray-500">
                                       {nota !== null ? `★ ${nota.toFixed(1)} · ` : ""}
-                                      {d._count.escalas} diária(s)
-                                      {d.funcao ? ` · ${d.funcao}` : ""}
+                                      {diarias} diária(s)
+                                      {topLoja ? ` · ${topLoja}` : ""}
                                     </span>
                                   </span>
                                 </span>

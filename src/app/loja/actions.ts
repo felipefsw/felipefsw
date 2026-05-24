@@ -7,7 +7,7 @@ import { contextoLoja, getSessao, setSessao } from "@/lib/auth";
 import { dentroDaJanelaAgendamento, isHHMM, isISODate, turnoFinalizado } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
 import { valorProporcional } from "@/lib/geo";
-import { notificarNovaDiaria, notificarPagamentoDaEscala } from "@/lib/push";
+import { notificarNovaDiaria, notificarPagamentoDaEscala, notificarVagaPreenchida } from "@/lib/push";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
 import { uploadImagemResultado } from "@/lib/storage";
 
@@ -175,6 +175,7 @@ export async function aprovarCandidato(requisicaoId: string, diaristaId: string)
 
   if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
     await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });
+    await notificarVagaPreenchida(requisicaoId);
   }
 
   revalidatePath("/loja");

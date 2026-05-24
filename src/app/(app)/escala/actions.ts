@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { parseBRLToCents } from "@/lib/format";
 import { dentroDaJanelaAgendamento, hojeISO, inicioDaSemana, isISODate } from "@/lib/dates";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
+import { notificarVagaPreenchida } from "@/lib/push";
 
 export async function createEscala(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
@@ -74,6 +75,7 @@ export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
 
   if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
     await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });
+    await notificarVagaPreenchida(requisicaoId);
   }
 
   revalidatePath("/escala/novo");
