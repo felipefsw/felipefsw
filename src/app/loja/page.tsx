@@ -55,7 +55,8 @@ export default async function LojaHome({
   const lojaId = ctx.lojaId;
 
   const agora = new Date();
-  const [requisicoes, escalas, bloqueios, loja, convocacoesPend] = await Promise.all([
+  const hoje = hojeISO();
+  const [requisicoes, escalas, bloqueios, loja, convocacoesPend, escalasHoje] = await Promise.all([
     prisma.requisicao.findMany({
       where: { lojaId },
       include: {
@@ -98,6 +99,18 @@ export default async function LojaHome({
     prisma.convocacao.findMany({
       where: { lojaId, status: "PENDENTE" },
       select: { diaristaId: true, data: true },
+    }),
+    // Resumo do dia: gestor vê todas as suas lojas; loja vê só a sua.
+    prisma.escala.findMany({
+      where: {
+        data: hoje,
+        loja: ctx.gestorId ? { gestores: { some: { id: ctx.gestorId } } } : { id: lojaId },
+      },
+      include: {
+        diarista: { select: { id: true, nome: true, funcao: true, chavePix: true } },
+        loja: { select: { nome: true } },
+      },
+      orderBy: [{ loja: { nome: "asc" } }, { horaInicio: "asc" }],
     }),
   ]);
 
@@ -143,14 +156,35 @@ export default async function LojaHome({
   // A loja precisa avaliar antes de abrir novas vagas / convocar.
   const pendentes = aAvaliar.filter((e) => !e.avaliacao).length;
 
-  // Diárias de hoje (para acompanhar check-in e registrar saída).
-  const hoje = hojeISO();
-  const hojeEscalas = escalas.filter((e) => e.data === hoje);
+  // Resumo do dia: agrupa as diárias de hoje por loja (gestor vê várias).
+  const hojePorLoja = new Map<string, typeof escalasHoje>();
+  for (const e of escalasHoje) {
+    const arr = hojePorLoja.get(e.loja.nome) ?? [];
+    arr.push(e);
+    hojePorLoja.set(e.loja.nome, arr);
+  }
+  const variasLojas = hojePorLoja.size > 1;
+
   // Texto com todos os Pix de hoje, para copiar e colar no WhatsApp.
-  const pixHoje = hojeEscalas
+  const pixHoje = escalasHoje
     .filter((e) => e.diarista.chavePix)
     .map((e) => `${e.diarista.nome}: ${e.diarista.chavePix}`)
     .join("\n");
+
+  // Lista do dia pronta para colar no grupo (nome · função · horário · valor).
+  const linhasDia: string[] = [`📋 *Diaristas de hoje* — ${formatDate(hoje)}`, ""];
+  for (const [nomeLoja, lista] of hojePorLoja) {
+    if (variasLojas) linhasDia.push(`*${nomeLoja}*`);
+    for (const e of lista) {
+      const partes = [e.diarista.nome];
+      if (e.diarista.funcao) partes.push(e.diarista.funcao);
+      if (e.horaInicio && e.horaFim) partes.push(`${e.horaInicio}–${e.horaFim}`);
+      partes.push(formatBRL(e.valor));
+      linhasDia.push(`• ${partes.join(" · ")}`);
+    }
+    if (variasLojas) linhasDia.push("");
+  }
+  const textoDia = escalasHoje.length > 0 ? linhasDia.join("\n").trim() : "";
 
   // Atalho "pedir de novo": usa a requisição mais recente como modelo.
   const ultima = requisicoes.length
@@ -302,90 +336,112 @@ export default async function LojaHome({
         </form>
       )}
 
-      {hojeEscalas.length > 0 && (
+      {escalasHoje.length > 0 && (
         <section>
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-gray-900">Diárias de hoje</h2>
-            {pixHoje && (
+            <h2 className="font-semibold text-gray-900">Resumo de hoje</h2>
+            <div className="flex shrink-0 gap-1.5">
               <CopyButton
-                text={pixHoje}
-                label="Copiar todos os Pix"
-                className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+                text={textoDia}
+                label="📋 Copiar lista"
+                className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100"
               />
-            )}
+              {pixHoje && (
+                <CopyButton
+                  text={pixHoje}
+                  label="Copiar Pix"
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+                />
+              )}
+            </div>
           </div>
-          <Card>
-            <ul className="divide-y divide-gray-100">
-              {hojeEscalas.map((e) => (
-                <li key={e.id} className="py-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-gray-900">{e.diarista.nome}</p>
-                      <p className="text-xs text-gray-500">
-                        {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim}` : ""}
-                        {e.checkinEm
-                          ? ` · check-in ${horaDe(e.checkinEm)}`
-                          : " · aguardando check-in"}
-                      </p>
-                    </div>
-                    <div className="shrink-0">
-                      {e.checkoutEm ? (
-                        <span className="text-xs text-gray-500">
-                          saída {horaDe(e.checkoutEm)} · {formatBRL(e.valorPago ?? e.valor)}
-                        </span>
-                      ) : e.checkinEm ? (
-                        <form action={registrarCheckout}>
-                          <input type="hidden" name="escalaId" value={e.id} />
-                          <button
-                            type="submit"
-                            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                          >
-                            Registrar saída
-                          </button>
-                        </form>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
-                    </div>
-                  </div>
+          <div className="space-y-3">
+            {[...hojePorLoja.entries()].map(([nomeLoja, lista]) => (
+              <div key={nomeLoja}>
+                {variasLojas && (
+                  <h3 className="mb-1 text-sm font-semibold text-gray-600">{nomeLoja}</h3>
+                )}
+                <Card>
+                  <ul className="divide-y divide-gray-100">
+                    {lista.map((e) => (
+                      <li key={e.id} className="py-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-gray-900">{e.diarista.nome}</p>
+                            <p className="text-xs text-gray-600">
+                              {e.diarista.funcao ? `${e.diarista.funcao} · ` : ""}
+                              {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim} · ` : ""}
+                              <span className="font-semibold text-gray-800">{formatBRL(e.valor)}</span>
+                            </p>
+                            <p className="text-[11px] text-gray-400">
+                              {e.checkinEm
+                                ? `check-in ${horaDe(e.checkinEm)}`
+                                : "aguardando check-in"}
+                            </p>
+                          </div>
+                          <div className="shrink-0">
+                            {e.checkoutEm ? (
+                              <span className="text-xs text-gray-500">
+                                saída {horaDe(e.checkoutEm)} · {formatBRL(e.valorPago ?? e.valor)}
+                              </span>
+                            ) : e.checkinEm ? (
+                              <form action={registrarCheckout}>
+                                <input type="hidden" name="escalaId" value={e.id} />
+                                <button
+                                  type="submit"
+                                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                >
+                                  Registrar saída
+                                </button>
+                              </form>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </div>
+                        </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {e.diarista.chavePix ? (
-                      <span className="flex items-center gap-1 text-xs text-gray-600">
-                        <span className="max-w-[11rem] truncate">Pix: {e.diarista.chavePix}</span>
-                        <CopyButton
-                          text={e.diarista.chavePix}
-                          label="copiar"
-                          className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-700"
-                        />
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">sem Pix cadastrado</span>
-                    )}
-                    {e.pago ? (
-                      <form action={marcarPagoDiaria.bind(null, e.id, false)}>
-                        <SubmitButton
-                          pendingLabel="…"
-                          className="rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700"
-                        >
-                          ✓ Pago (desfazer)
-                        </SubmitButton>
-                      </form>
-                    ) : (
-                      <form action={marcarPagoDiaria.bind(null, e.id, true)}>
-                        <SubmitButton
-                          pendingLabel="…"
-                          className="rounded-lg bg-orange-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-orange-800"
-                        >
-                          Marcar pago
-                        </SubmitButton>
-                      </form>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Card>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {e.diarista.chavePix ? (
+                            <span className="flex items-center gap-1 text-xs text-gray-600">
+                              <span className="max-w-[11rem] truncate">
+                                Pix: {e.diarista.chavePix}
+                              </span>
+                              <CopyButton
+                                text={e.diarista.chavePix}
+                                label="copiar"
+                                className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-700"
+                              />
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">sem Pix cadastrado</span>
+                          )}
+                          {e.pago ? (
+                            <form action={marcarPagoDiaria.bind(null, e.id, false)}>
+                              <SubmitButton
+                                pendingLabel="…"
+                                className="rounded-lg bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700"
+                              >
+                                ✓ Pago (desfazer)
+                              </SubmitButton>
+                            </form>
+                          ) : (
+                            <form action={marcarPagoDiaria.bind(null, e.id, true)}>
+                              <SubmitButton
+                                pendingLabel="…"
+                                className="rounded-lg bg-orange-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-orange-800"
+                              >
+                                Marcar pago
+                              </SubmitButton>
+                            </form>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
