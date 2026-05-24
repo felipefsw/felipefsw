@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 export default async function NovoAgendamentoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ data?: string }>;
+  searchParams: Promise<{ data?: string; diarista?: string }>;
 }) {
   const sp = await searchParams;
   const hoje = hojeISO();
@@ -49,6 +49,9 @@ export default async function NovoAgendamentoPage({
       orderBy: { data: "asc" },
     }),
   ]);
+
+  // "Alocar" (vindo do menu Diaristas): vem com um diarista pré-selecionado.
+  const diaristaInicial = diaristas.some((d) => d.id === sp.diarista) ? sp.diarista : undefined;
 
   if (diaristas.length === 0 || lojas.length === 0) {
     return (
@@ -129,7 +132,13 @@ export default async function NovoAgendamentoPage({
             <label className={labelClass} htmlFor="diaristaId">
               Diarista *
             </label>
-            <select id="diaristaId" name="diaristaId" required className={inputClass}>
+            <select
+              id="diaristaId"
+              name="diaristaId"
+              required
+              defaultValue={diaristaInicial}
+              className={inputClass}
+            >
               {diaristas.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.nome}

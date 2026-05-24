@@ -32,6 +32,7 @@ export default async function InicioPage() {
     requisicoesAbertas,
     faltasHoje,
     mensagensNaoLidas,
+    solicitacoesPendentes,
   ] = await Promise.all([
     prisma.escala.findMany({
       where: { data: hoje },
@@ -56,6 +57,7 @@ export default async function InicioPage() {
     }),
     prisma.escala.count({ where: { data: hoje, presenca: "FALTOU" } }),
     prisma.mensagem.count({ where: { autor: "DIARISTA", lida: false } }),
+    prisma.inscricao.count({ where: { status: "PENDENTE" } }),
   ]);
 
   const totalAPagar = aPagar.reduce((s, e) => s + e.valor, 0);
@@ -117,6 +119,25 @@ export default async function InicioPage() {
           Ir para pagamentos →
         </Link>
       </Card>
+
+      <Link
+        href="/sugestoes"
+        className="relative flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 shadow-sm hover:bg-orange-100"
+      >
+        <span>
+          <span className="block text-sm font-semibold text-orange-800">
+            💡 Sugestões e Solicitações
+          </span>
+          <span className="block text-xs text-orange-700">
+            Quem indicar por loja e quem já pediu para trabalhar
+          </span>
+        </span>
+        {solicitacoesPendentes > 0 && (
+          <span className="shrink-0 rounded-full bg-orange-600 px-2 py-0.5 text-xs font-bold text-white">
+            {solicitacoesPendentes}
+          </span>
+        )}
+      </Link>
 
       <div className="grid grid-cols-3 gap-3 text-center">
         <Link href="/escala/novo">

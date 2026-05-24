@@ -94,6 +94,8 @@ export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
   revalidatePath("/escala/novo");
   revalidatePath("/escala");
   revalidatePath("/requisicoes");
+  revalidatePath("/sugestoes");
+  revalidatePath("/");
 }
 
 // Avaliação por estrelas direto na lista da escala (RH), 1 toque.

@@ -23,15 +23,30 @@ export default async function EscalaPage({
     sp.inicio && isISODate(sp.inicio) ? inicioDaSemana(sp.inicio) : inicioDaSemana(hoje);
   const dias = semana(inicio);
 
-  const escalas = await prisma.escala.findMany({
-    where: { data: { gte: dias[0], lte: dias[6] } },
-    include: { diarista: true, loja: true, avaliacao: { select: { id: true, estrelas: true } } },
-    orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
-  });
+  const [escalas, requisicoesSemana] = await Promise.all([
+    prisma.escala.findMany({
+      where: { data: { gte: dias[0], lte: dias[6] } },
+      include: { diarista: true, loja: true, avaliacao: { select: { id: true, estrelas: true } } },
+      orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
+    }),
+    prisma.requisicao.findMany({
+      where: { status: "ABERTA", data: { gte: dias[0], lte: dias[6] } },
+      select: { quantidade: true, _count: { select: { escalas: true } } },
+    }),
+  ]);
 
   const porDia = new Map<string, typeof escalas>();
   for (const dia of dias) porDia.set(dia, []);
   for (const e of escalas) porDia.get(e.data)?.push(e);
+
+  // Resumo da semana: confirmadas (diarista confirmou = PRESENTE),
+  // a confirmar (agendadas mas ainda PENDENTE) e a alocar (vagas em aberto sem diarista).
+  const confirmadas = escalas.filter((e) => e.presenca === "PRESENTE").length;
+  const aConfirmar = escalas.filter((e) => e.presenca === "PENDENTE").length;
+  const aAlocar = requisicoesSemana.reduce(
+    (s, r) => s + Math.max(0, r.quantidade - r._count.escalas),
+    0,
+  );
 
   return (
     <div>
@@ -44,6 +59,24 @@ export default async function EscalaPage({
         </div>
         <Link href="/escala/novo" className={btnPrimary}>
           + Agendar
+        </Link>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-green-200 bg-green-50 p-3">
+          <p className="text-2xl font-bold text-green-800">{confirmadas}</p>
+          <p className="text-sm font-medium text-green-800">Confirmadas</p>
+          <p className="text-xs text-green-700">diaristas que confirmaram a diária</p>
+        </div>
+        <Link
+          href="/escala/novo"
+          className="rounded-xl border border-amber-200 bg-amber-50 p-3 hover:bg-amber-100"
+        >
+          <p className="text-2xl font-bold text-amber-800">{aConfirmar + aAlocar}</p>
+          <p className="text-sm font-medium text-amber-800">A confirmar / a alocar</p>
+          <p className="text-xs text-amber-700">
+            {aConfirmar} a confirmar · {aAlocar} vaga(s) a alocar
+          </p>
         </Link>
       </div>
 

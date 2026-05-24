@@ -184,6 +184,14 @@ export default async function DiaristasPage({
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+                {d.ativo && (
+                  <Link
+                    href={`/escala/novo?diarista=${d.id}`}
+                    className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
+                  >
+                    Alocar
+                  </Link>
+                )}
                 {d.chavePix && (
                   <CopyButton
                     text={d.chavePix}
