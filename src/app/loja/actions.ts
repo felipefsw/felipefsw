@@ -323,11 +323,12 @@ export async function convocarDiarista(formData: FormData) {
   const lojaId = await lojaSessaoId();
   const diaristaId = String(formData.get("diaristaId") ?? "");
   const data = String(formData.get("data") ?? "");
+  const requisicaoId = String(formData.get("requisicaoId") ?? "") || null;
   if (!diaristaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
   if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
   // Garante que o diarista existe, não está já convocado, sem diária nesse dia e sem bloqueio global.
-  const [diarista, jaConvocado, jaNoDia, bloqGlobal] = await Promise.all([
+  const [diarista, jaConvocado, jaNoDia, bloqGlobal, requisicao] = await Promise.all([
     prisma.diarista.findUnique({ where: { id: diaristaId }, select: { id: true } }),
     prisma.convocacao.findFirst({
       where: { lojaId, diaristaId, data, status: "PENDENTE" },
@@ -335,13 +336,30 @@ export async function convocarDiarista(formData: FormData) {
     }),
     prisma.escala.findFirst({ where: { diaristaId, data }, select: { id: true } }),
     temBloqueioGlobal(diaristaId),
+    requisicaoId
+      ? prisma.requisicao.findFirst({
+          where: { id: requisicaoId, lojaId },
+          select: { id: true, horaInicio: true, horaFim: true, valorDiaria: true },
+        })
+      : Promise.resolve(null),
   ]);
   if (!diarista || jaConvocado || jaNoDia || bloqGlobal) {
     revalidatePath("/loja");
     return;
   }
 
-  const convocacao = await prisma.convocacao.create({ data: { lojaId, diaristaId, data } });
+  // Quando a convocação vem de uma requisição, leva o horário/valor dela (e a vincula).
+  const convocacao = await prisma.convocacao.create({
+    data: {
+      lojaId,
+      diaristaId,
+      data,
+      requisicaoId: requisicao?.id ?? null,
+      horaInicio: requisicao?.horaInicio ?? null,
+      horaFim: requisicao?.horaFim ?? null,
+      valor: requisicao?.valorDiaria ?? null,
+    },
+  });
   await notificarConvite(convocacao.id);
   revalidatePath("/loja");
 }

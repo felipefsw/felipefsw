@@ -64,7 +64,7 @@ export default async function LojaHome({
   const diaSel = dia && isISODate(dia) ? dia : null;
   const rangeIni = diaSel ?? inicioDaSemana(hoje);
   const rangeFim = diaSel ?? addDias(inicioDaSemana(hoje), 6);
-  const [requisicoes, escalas, bloqueios, loja, convocacoesPend, escalasPeriodo] = await Promise.all([
+  const [requisicoes, escalas, bloqueios, loja, convocacoes, escalasPeriodo] = await Promise.all([
     prisma.requisicao.findMany({
       where: { lojaId },
       include: {
@@ -105,8 +105,9 @@ export default async function LojaHome({
       select: { permiteMais2Semana: true, fotos: true, vantagens: true },
     }),
     prisma.convocacao.findMany({
-      where: { lojaId, status: "PENDENTE" },
-      select: { diaristaId: true, data: true },
+      where: { lojaId, data: { gte: addDias(hoje, -7) } },
+      include: { diarista: { select: { id: true, nome: true, funcao: true, fotoUrl: true } } },
+      orderBy: [{ data: "asc" }, { criadoEm: "desc" }],
     }),
     // Resumo do dia: gestor vê todas as suas lojas; loja vê só a sua.
     prisma.escala.findMany({
@@ -123,8 +124,21 @@ export default async function LojaHome({
   ]);
 
   // Convocações pendentes (para mostrar "✓ convocado").
-  const convocadoData = new Set(convocacoesPend.map((c) => `${c.diaristaId}|${c.data}`));
-  const convocadoDiarista = new Set(convocacoesPend.map((c) => c.diaristaId));
+  const convocacoesPendentes = convocacoes.filter((c) => c.status === "PENDENTE");
+  const convocadoData = new Set(convocacoesPendentes.map((c) => `${c.diaristaId}|${c.data}`));
+  const convocadoDiarista = new Set(convocacoesPendentes.map((c) => c.diaristaId));
+
+  // Convocações enviadas por requisição (vinculadas ou do mesmo dia da vaga).
+  const convocadosDaReq = (reqId: string, dataReq: string) =>
+    convocacoes.filter(
+      (c) => c.requisicaoId === reqId || (c.requisicaoId == null && c.data === dataReq),
+    );
+  const statusConvocacao = (s: string) =>
+    s === "ACEITA"
+      ? { txt: "aceitou ✓", cls: "bg-green-100 text-green-700" }
+      : s === "RECUSADA"
+        ? { txt: "recusou", cls: "bg-gray-200 text-gray-600" }
+        : { txt: "aguardando", cls: "bg-amber-100 text-amber-700" };
 
   // Gestor: visão das vagas abertas em TODAS as suas lojas.
   const gestorLojas = ctx.gestorId
@@ -568,6 +582,34 @@ export default async function LojaHome({
                           </ul>
                         </div>
                       )}
+                      {convocadosDaReq(r.id, r.data).filter((c) => c.status !== "ACEITA").length >
+                        0 && (
+                        <div className="mt-1.5">
+                          <p className="text-[11px] font-medium text-gray-500">Convocados:</p>
+                          <ul className="mt-0.5 space-y-0.5">
+                            {convocadosDaReq(r.id, r.data)
+                              .filter((c) => c.status !== "ACEITA")
+                              .map((c) => {
+                                const sc = statusConvocacao(c.status);
+                                return (
+                                  <li key={c.id} className="flex items-center gap-1.5">
+                                    <Avatar
+                                      nome={c.diarista.nome}
+                                      fotoUrl={c.diarista.fotoUrl}
+                                      className="h-5 w-5"
+                                    />
+                                    <span className="text-xs text-gray-700">{c.diarista.nome}</span>
+                                    <span
+                                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${sc.cls}`}
+                                    >
+                                      {sc.txt}
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>
                       {st.txt}
@@ -684,6 +726,7 @@ export default async function LojaHome({
                                 <form action={convocarDiarista}>
                                   <input type="hidden" name="diaristaId" value={d.id} />
                                   <input type="hidden" name="data" value={r.data} />
+                                  <input type="hidden" name="requisicaoId" value={r.id} />
                                   <SubmitButton
                                     pendingLabel="…"
                                     className="shrink-0 rounded-lg border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100"
