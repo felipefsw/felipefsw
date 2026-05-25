@@ -90,6 +90,26 @@ export async function bloquearPermanente(formData: FormData) {
   revalidatePath(`/diaristas/${diaristaId}`);
 }
 
+// Bloqueia a diarista em VÁRIAS lojas de uma vez (permanente, origem RH).
+export async function bloquearEmLojas(formData: FormData) {
+  const diaristaId = String(formData.get("diaristaId") ?? "");
+  const lojaIds = [...new Set(formData.getAll("lojaIds").map(String).filter(Boolean))];
+  if (!diaristaId || lojaIds.length === 0) return;
+
+  const existentes = await prisma.bloqueio.findMany({
+    where: { diaristaId, origem: "RH", lojaId: { in: lojaIds } },
+    select: { lojaId: true },
+  });
+  const jaBloqueadas = new Set(existentes.map((b) => b.lojaId));
+  const novas = lojaIds.filter((id) => !jaBloqueadas.has(id));
+  if (novas.length > 0) {
+    await prisma.bloqueio.createMany({
+      data: novas.map((lojaId) => ({ diaristaId, lojaId, origem: "RH", ate: null })),
+    });
+  }
+  revalidatePath(`/diaristas/${diaristaId}`);
+}
+
 export async function removerBloqueio(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const diaristaId = String(formData.get("diaristaId") ?? "");
