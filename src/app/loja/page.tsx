@@ -127,6 +127,8 @@ export default async function LojaHome({
   const convocacoesPendentes = convocacoes.filter((c) => c.status === "PENDENTE");
   const convocadoData = new Set(convocacoesPendentes.map((c) => `${c.diaristaId}|${c.data}`));
   const convocadoDiarista = new Set(convocacoesPendentes.map((c) => c.diaristaId));
+  // Quem já tem diária (confirmada) num dia, para mostrar "confirmado".
+  const escalaDiaristaData = new Set(escalas.map((e) => `${e.diaristaId}|${e.data}`));
 
   // Convocações enviadas por requisição (vinculadas ou do mesmo dia da vaga).
   const convocadosDaReq = (reqId: string, dataReq: string) =>
@@ -523,7 +525,11 @@ export default async function LojaHome({
             {requisicoes.map((r) => {
               const st = statusLabel(r.status);
               const turno = corDoTurno(r.horaInicio);
-              const faltam = r.quantidade - r._count.escalas;
+              // Confirmados desta vaga: escalas vinculadas a ela ou do mesmo dia (vínculos antigos).
+              const confirmados = escalas.filter(
+                (e) => e.requisicaoId === r.id || (e.requisicaoId == null && e.data === r.data),
+              );
+              const faltam = r.quantidade - confirmados.length;
               return (
                 <div
                   key={r.id}
@@ -543,42 +549,55 @@ export default async function LojaHome({
                         {r.funcao ? <> · {r.funcao}</> : null} · {formatBRL(r.valorDiaria)}
                       </p>
                       <p className="mt-1 text-xs text-gray-500">
-                        {r._count.escalas} escalado(s) · {r._count.inscricoes} candidato(s)
+                        {confirmados.length} confirmado(s) · {r._count.inscricoes} candidato(s)
                       </p>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {Array.from({ length: r.quantidade }).map((_, i) => (
                           <span
                             key={i}
                             className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
-                              i < r._count.escalas
+                              i < confirmados.length
                                 ? "bg-green-600 text-white"
                                 : "border border-dashed border-gray-400 text-gray-400"
                             }`}
                           >
-                            {i < r._count.escalas ? "✓" : i + 1}
+                            {i < confirmados.length ? "✓" : i + 1}
                           </span>
                         ))}
                       </div>
-                      {r.escalas.length > 0 && (
+                      {confirmados.length > 0 && (
                         <div className="mt-1.5">
-                          <p className="text-[11px] font-medium text-gray-500">Escalados:</p>
+                          <p className="text-[11px] font-medium text-gray-500">Confirmados:</p>
                           <ul className="mt-0.5 space-y-0.5">
-                            {r.escalas.map((es) => (
-                              <li key={es.id} className="flex items-center gap-1.5">
-                                <Avatar
-                                  nome={es.diarista.nome}
-                                  fotoUrl={es.diarista.fotoUrl}
-                                  className="h-5 w-5"
-                                />
-                                <span className="text-xs text-gray-700">{es.diarista.nome}</span>
-                                <Link
-                                  href={`/loja/candidato/${es.diarista.id}`}
-                                  className="text-[10px] font-medium text-orange-700 underline"
-                                >
-                                  saber mais
-                                </Link>
-                              </li>
-                            ))}
+                            {confirmados.map((es) => {
+                              const stt =
+                                es.presenca === "PRESENTE"
+                                  ? { t: "presente", c: "bg-green-100 text-green-700" }
+                                  : es.presenca === "FALTOU"
+                                    ? { t: "faltou", c: "bg-red-100 text-red-700" }
+                                    : { t: "confirmado", c: "bg-green-100 text-green-700" };
+                              return (
+                                <li key={es.id} className="flex items-center gap-1.5">
+                                  <Avatar
+                                    nome={es.diarista.nome}
+                                    fotoUrl={es.diarista.fotoUrl}
+                                    className="h-5 w-5"
+                                  />
+                                  <span className="text-xs text-gray-700">{es.diarista.nome}</span>
+                                  <span
+                                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${stt.c}`}
+                                  >
+                                    {stt.t}
+                                  </span>
+                                  <Link
+                                    href={`/loja/candidato/${es.diarista.id}`}
+                                    className="text-[10px] font-medium text-orange-700 underline"
+                                  >
+                                    saber mais
+                                  </Link>
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       )}
@@ -718,9 +737,13 @@ export default async function LojaHome({
                                   </span>
                                 )}
                               </span>
-                              {convocadoData.has(`${d.id}|${r.data}`) ? (
+                              {escalaDiaristaData.has(`${d.id}|${r.data}`) ? (
                                 <span className="shrink-0 rounded-lg bg-green-100 px-2.5 py-1.5 text-xs font-semibold text-green-700">
-                                  ✓ convocado
+                                  ✓ confirmado
+                                </span>
+                              ) : convocadoData.has(`${d.id}|${r.data}`) ? (
+                                <span className="shrink-0 rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-semibold text-amber-700">
+                                  ⏳ aguardando
                                 </span>
                               ) : (
                                 <form action={convocarDiarista}>
