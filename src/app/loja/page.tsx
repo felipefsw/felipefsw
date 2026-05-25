@@ -18,10 +18,12 @@ import { TRILHA_GESTOR, TRILHA_LOJA } from "@/lib/trilhas";
 import PushToggleLoja from "@/components/PushToggleLoja";
 import FotosLojaUpload from "@/components/FotosLojaUpload";
 import BotaoBloquear from "@/components/BotaoBloquear";
+import ConfirmSubmit from "@/components/ConfirmSubmit";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   alternarLimiteSemana,
   aprovarCandidato,
+  cancelarRequisicaoLoja,
   convocarDiarista,
   criarRequisicaoLoja,
   desbloquearDiaristaLoja,
@@ -226,9 +228,11 @@ export default async function LojaHome({
 
   // Pedidos atuais/futuros ficam em "Minhas requisições"; os de dias passados
   // viram "Diárias realizadas".
-  const requisicoesAtivas = requisicoes.filter((r) => r.data >= hoje);
+  const requisicoesAtivas = requisicoes.filter(
+    (r) => r.data >= hoje && r.status !== "CANCELADA",
+  );
   const requisicoesRealizadas = requisicoes
-    .filter((r) => r.data < hoje)
+    .filter((r) => r.data < hoje && r.status !== "CANCELADA")
     .sort((a, b) => (a.data < b.data ? 1 : -1));
 
   // Diaristas distintos que já vieram, com datas e notas dadas por esta loja.
@@ -819,6 +823,20 @@ export default async function LojaHome({
                         </p>
                         <CopyLink path={`/sou-diarista?vaga=${r.id}`} />
                       </div>
+                    </div>
+                  )}
+
+                  {r.status === "ABERTA" && (
+                    <div className="mt-2 border-t border-black/5 pt-2 text-right">
+                      <form action={cancelarRequisicaoLoja}>
+                        <input type="hidden" name="requisicaoId" value={r.id} />
+                        <ConfirmSubmit
+                          className="text-xs font-medium text-red-600 underline"
+                          message="Cancelar este pedido? Ele sai da lista. Quem já confirmou mantém a diária."
+                        >
+                          Cancelar pedido
+                        </ConfirmSubmit>
+                      </form>
                     </div>
                   )}
                 </div>
