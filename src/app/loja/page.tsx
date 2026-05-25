@@ -928,7 +928,14 @@ export default async function LojaHome({
                     </div>
                   ) : (
                     <div className="mt-2 flex justify-end border-t border-gray-100 pt-2">
-                      <BotaoBloquear diaristaId={d.id} />
+                      <BotaoBloquear
+                        diaristaId={d.id}
+                        lojas={
+                          ctx.gestorId
+                            ? gestorLojas.map((l) => ({ id: l.id, nome: l.nome }))
+                            : undefined
+                        }
+                      />
                     </div>
                   )}
 
