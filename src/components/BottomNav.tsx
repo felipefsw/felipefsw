@@ -76,9 +76,21 @@ const items: Item[] = [
       </>
     ),
   },
+  {
+    href: "/mensagens",
+    label: "Mensagens",
+    tour: "nav-mensagens",
+    icon: (
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    ),
+  },
 ];
 
-export default function BottomNav() {
+export default function BottomNav({
+  mensagensNaoLidas = 0,
+}: {
+  mensagensNaoLidas?: number;
+}) {
   const pathname = usePathname();
 
   return (
@@ -89,26 +101,34 @@ export default function BottomNav() {
             item.href === "/"
               ? pathname === "/"
               : pathname.startsWith(item.href);
+          const naoLidas = item.href === "/mensagens" ? mensagensNaoLidas : 0;
           return (
             <Link
               key={item.href}
               href={item.href}
               data-tour={item.tour}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
+              className={`flex flex-1 flex-col items-center gap-0.5 px-0.5 py-2 text-[10px] font-medium leading-tight transition-colors ${
                 active ? "text-orange-700" : "text-gray-500"
               }`}
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-6 w-6"
-              >
-                {item.icon}
-              </svg>
+              <span className="relative">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-6 w-6"
+                >
+                  {item.icon}
+                </svg>
+                {naoLidas > 0 && (
+                  <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-red-500 px-1 py-0.5 text-[10px] font-bold leading-none text-white">
+                    {naoLidas > 99 ? "99+" : naoLidas}
+                  </span>
+                )}
+              </span>
               {item.label}
             </Link>
           );

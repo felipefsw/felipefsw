@@ -36,7 +36,7 @@ export default function ChatRH({ token, mensagens }: { token: string; mensagens:
         onClick={() => setAberto(true)}
         aria-label="Falar com o RH"
         data-tour="diarista-chat"
-        className="fixed bottom-4 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg ring-4 ring-orange-600/20 hover:bg-orange-700"
+        className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg ring-4 ring-orange-600/20 hover:bg-orange-700"
       >
         💬
         {mensagens.some((m) => m.autor === "GESTAO") && (
@@ -47,7 +47,7 @@ export default function ChatRH({ token, mensagens }: { token: string; mensagens:
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-30 flex max-h-[70vh] w-[92vw] max-w-sm flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+    <div className="fixed bottom-20 right-4 z-30 flex max-h-[70vh] w-[92vw] max-w-sm flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
       <div className="flex items-center justify-between bg-neutral-900 px-4 py-2 text-white">
         <span className="text-sm font-semibold">Falar com o RH</span>
         <div className="flex items-center gap-1">

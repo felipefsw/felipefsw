@@ -33,22 +33,19 @@ export default async function AvaliarLojaPage({
   const atual = escala.avaliacaoLoja as Record<string, number> | null;
 
   return (
-    <div className="mx-auto max-w-md">
-      <header className="bg-neutral-900 px-5 py-6 text-white">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
-        <h1 className="text-xl font-bold">Avaliar a loja</h1>
-        <p className="mt-1 text-sm text-orange-100">
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Avaliar a loja</h1>
+        <p className="text-sm text-gray-500">
           {escala.loja.nome} · <span className="capitalize">{formatDateWithWeekday(escala.data)}</span>
         </p>
-      </header>
+      </div>
 
-      <main className="p-5">
-        <p className="mb-4 text-sm text-gray-500">
-          Sua opinião é confidencial e ajuda a melhorar as lojas. Notas de 0 a 10.
-        </p>
+      <p className="text-sm text-gray-500">
+        Sua opinião é confidencial e ajuda a melhorar as lojas. Notas de 0 a 10.
+      </p>
 
-        <form action={salvarAvaliacaoLoja} className="space-y-4">
+      <form action={salvarAvaliacaoLoja} className="space-y-4">
           <input type="hidden" name="escalaId" value={escala.id} />
           <input type="hidden" name="token" value={token} />
 
@@ -104,7 +101,6 @@ export default async function AvaliarLojaPage({
             </Link>
           </div>
         </form>
-      </main>
     </div>
   );
 }

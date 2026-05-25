@@ -2,7 +2,16 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, btnPrimary, inputClass } from "@/components/ui";
 import MarcaBadge from "@/components/MarcaBadge";
-import { entrarComoGestao, entrarComoGestor, entrarComoLoja, entrarConfiguracao, entrarDiarista } from "./actions";
+import { acessoSemSenha } from "@/lib/auth";
+import {
+  entrarComoGestao,
+  entrarComoGestor,
+  entrarComoLoja,
+  entrarConfiguracao,
+  entrarDiarista,
+  entrarDiaristaPorId,
+  entrarGestaoTeste,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +39,13 @@ function CartaoSenha({
   alvo,
   voltarHref,
   erro,
+  livre,
 }: {
   action: (formData: FormData) => void;
   alvo: { id: string; nome: string; senha: string | null };
   voltarHref: string;
   erro?: string;
+  livre?: boolean;
 }) {
   const primeiro = precisaDefinir(alvo.senha);
   return (
@@ -43,7 +54,15 @@ function CartaoSenha({
         ← escolher outro nome
       </Link>
       <h2 className="font-semibold text-gray-900">{alvo.nome}</h2>
-      {primeiro ? (
+      {livre ? (
+        <form action={action} className="mt-3 space-y-2">
+          <input type="hidden" name="id" value={alvo.id} />
+          <button type="submit" className={`${btnPrimary} w-full`}>
+            Entrar (sem senha)
+          </button>
+          <p className="text-center text-xs text-gray-400">Modo de teste: senha dispensada.</p>
+        </form>
+      ) : primeiro ? (
         <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           Primeiro acesso ainda não liberado. Peça ao RH o seu <strong>link de acesso</strong> (enviado
           no WhatsApp) para criar a sua senha.
@@ -78,6 +97,7 @@ export default async function EntrarPage({
 }) {
   const { erro, perfil, id } = await searchParams;
   const sel = (PERFIS as readonly string[]).includes(perfil ?? "") ? (perfil as Perfil) : null;
+  const livre = acessoSemSenha();
 
   if (!sel) {
     const opcoes: { perfil: Perfil; titulo: string; desc: string; emoji: string }[] = [
@@ -89,6 +109,12 @@ export default async function EntrarPage({
     return (
       <div className="mx-auto max-w-md px-5 py-8">
         <Cabecalho />
+        {livre && (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-xs font-medium text-amber-800">
+            ⚠️ Modo de teste: dá pra entrar em qualquer perfil <strong>sem senha</strong>. Antes de
+            usar pra valer, defina <strong>ACESSO_SEM_SENHA=0</strong> no Vercel.
+          </p>
+        )}
         <div className="space-y-3">
           {opcoes.map((o) => (
             <Link
@@ -124,9 +150,17 @@ export default async function EntrarPage({
   const gestores =
     sel === "gestor" && !id
       ? await prisma.gestor.findMany({
-          where: { ativo: true, aprovado: true },
+          where: livre ? { ativo: true } : { ativo: true, aprovado: true },
           orderBy: { nome: "asc" },
           select: { id: true, nome: true },
+        })
+      : [];
+  const diaristasTeste =
+    sel === "diarista" && livre
+      ? await prisma.diarista.findMany({
+          orderBy: { nome: "asc" },
+          select: { id: true, nome: true },
+          take: 300,
         })
       : [];
   const membros =
@@ -180,6 +214,30 @@ export default async function EntrarPage({
         </Card>
       )}
 
+      {sel === "diarista" && livre && (
+        <Card className="mt-3">
+          <h2 className="font-semibold text-gray-900">Teste: entrar como diarista</h2>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Toque num nome para entrar sem senha.</p>
+          {diaristasTeste.length === 0 ? (
+            <p className="text-sm text-gray-500">Nenhum diarista cadastrado ainda.</p>
+          ) : (
+            <div className="max-h-[60vh] space-y-1 overflow-y-auto">
+              {diaristasTeste.map((d) => (
+                <form key={d.id} action={entrarDiaristaPorId}>
+                  <input type="hidden" name="id" value={d.id} />
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left font-medium text-gray-900 hover:border-orange-300"
+                  >
+                    🧑‍🍳 {d.nome}
+                  </button>
+                </form>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
       {sel === "lojista" &&
         (lojaSel ? (
           <CartaoSenha
@@ -187,6 +245,7 @@ export default async function EntrarPage({
             alvo={lojaSel}
             voltarHref="/entrar?perfil=lojista"
             erro={erro}
+            livre={livre}
           />
         ) : (
           <Card>
@@ -227,6 +286,7 @@ export default async function EntrarPage({
             alvo={gestorSel}
             voltarHref="/entrar?perfil=gestor"
             erro={erro}
+            livre={livre}
           />
         ) : (
           <Card>
@@ -263,20 +323,46 @@ export default async function EntrarPage({
             alvo={membroSel}
             voltarHref="/entrar?perfil=gestao"
             erro={erro}
+            livre={livre}
           />
         ) : (
           <Card>
             <h2 className="font-semibold text-gray-900">RH / TI (gestão)</h2>
-            <form action={entrarConfiguracao} className="mt-3">
-              <button
-                type="submit"
-                className="w-full rounded-lg bg-orange-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-orange-800"
-              >
-                🔧 Entrar para configurar (sem senha)
-              </button>
-            </form>
+            {livre ? (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <form action={entrarGestaoTeste}>
+                  <input type="hidden" name="perfil" value="rh" />
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg bg-orange-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-orange-800"
+                  >
+                    🛠️ Entrar como RH
+                  </button>
+                </form>
+                <form action={entrarGestaoTeste}>
+                  <input type="hidden" name="perfil" value="ti" />
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg bg-neutral-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-neutral-900"
+                  >
+                    🛠️ Entrar como TI
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <form action={entrarConfiguracao} className="mt-3">
+                <button
+                  type="submit"
+                  className="w-full rounded-lg bg-orange-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-orange-800"
+                >
+                  🔧 Entrar para configurar (sem senha)
+                </button>
+              </form>
+            )}
             <p className="mb-3 mt-1 text-xs text-amber-700">
-              Acesso temporário só para a configuração inicial.
+              {livre
+                ? "Modo de teste: entra sem senha como RH ou TI."
+                : "Acesso temporário só para a configuração inicial."}
             </p>
             <p className="mb-3 mt-1 text-sm text-gray-500">Ou toque no seu nome para entrar.</p>
             {(["rh", "ti"] as const).map((p) => {

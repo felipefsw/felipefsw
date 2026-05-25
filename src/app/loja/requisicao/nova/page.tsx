@@ -37,6 +37,13 @@ export default async function NovaRequisicaoLojaPage() {
     },
   });
 
+  // Convocações pendentes desta loja, para mostrar "✓ convocado".
+  const convocacoesPend = await prisma.convocacao.findMany({
+    where: { lojaId: ctx.lojaId, status: "PENDENTE" },
+    select: { diaristaId: true },
+  });
+  const convocadoDiarista = new Set(convocacoesPend.map((c) => c.diaristaId));
+
   // Sugestões: top 5 diaristas de cada função (quem mais trabalhou).
   const sugestoesPorFuncao = FUNCOES.map((f) => ({
     funcao: f,
@@ -88,6 +95,11 @@ export default async function NovaRequisicaoLojaPage() {
                           <span className="block text-[11px] text-gray-500">
                             {d._count.escalas} diária(s)
                           </span>
+                          {convocadoDiarista.has(d.id) && (
+                            <span className="block text-[11px] font-medium text-green-700">
+                              ✓ convocado (aguardando resposta)
+                            </span>
+                          )}
                         </span>
                       </span>
                       <form action={convocarDiarista} className="flex shrink-0 items-center gap-1">

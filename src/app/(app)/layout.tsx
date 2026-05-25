@@ -4,6 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import TrilhaAprendizado from "@/components/TrilhaAprendizado";
 import { TRILHA_RH, TRILHA_TI } from "@/lib/trilhas";
 import { getSessao, sessionSecretInseguro } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { sair } from "@/app/entrar/actions";
 
 export default async function AppLayout({
@@ -11,6 +12,10 @@ export default async function AppLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const sessao = await getSessao();
   if (!sessao || sessao.tipo !== "gestao") redirect("/entrar");
+
+  const mensagensNaoLidas = await prisma.mensagem.count({
+    where: { autor: "DIARISTA", lida: false },
+  });
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col">
@@ -56,7 +61,7 @@ export default async function AppLayout({
         posicao="acimaMenu"
       />
 
-      <BottomNav />
+      <BottomNav mensagensNaoLidas={mensagensNaoLidas} />
     </div>
   );
 }

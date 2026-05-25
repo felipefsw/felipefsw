@@ -1,17 +1,10 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { addDias, hojeISO } from "@/lib/dates";
+import { enderecoCompleto } from "@/lib/loja";
+import { exigirDiarista } from "@/lib/diaristaSessao";
 import PertoDeMim, { type ItemPerto } from "@/components/PertoDeMim";
 
 export const dynamic = "force-dynamic";
-
-function enderecoCompleto(l: {
-  endereco: string | null;
-  bairro: string | null;
-  cidade: string | null;
-}): string {
-  return [l.endereco, l.bairro, l.cidade].filter(Boolean).join(", ");
-}
 
 export default async function PertoPage({
   params,
@@ -19,6 +12,7 @@ export default async function PertoPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  await exigirDiarista(token);
   const hoje = hojeISO();
   const limite = addDias(hoje, 2);
 
@@ -33,13 +27,7 @@ export default async function PertoPage({
     },
   });
 
-  if (!diarista) {
-    return (
-      <div className="mx-auto max-w-md p-6 text-center">
-        <h1 className="mt-10 text-xl font-bold text-gray-900">Link inválido</h1>
-      </div>
-    );
-  }
+  if (!diarista) return null;
 
   const bloqueadas = new Set(diarista.bloqueios.map((b) => b.lojaId));
   const inscritoEm = new Set(diarista.inscricoes.map((i) => i.requisicaoId));
@@ -68,20 +56,14 @@ export default async function PertoPage({
     }));
 
   return (
-    <div className="mx-auto max-w-md">
-      <header className="bg-neutral-900 px-5 py-6 text-white">
-        <Link href={`/d/${token}`} className="text-sm font-medium text-orange-100 underline">
-          ← Voltar
-        </Link>
-        <h1 className="mt-2 text-xl font-bold">Encontrar diárias perto de mim</h1>
-        <p className="mt-1 text-sm text-orange-100">
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Perto de mim</h1>
+        <p className="text-sm text-gray-500">
           As diárias mais próximas de onde você está, da mais perto para a mais longe.
         </p>
-      </header>
-
-      <main className="p-5">
-        <PertoDeMim token={token} itens={itens} />
-      </main>
+      </div>
+      <PertoDeMim token={token} itens={itens} />
     </div>
   );
 }

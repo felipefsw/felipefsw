@@ -1,21 +1,26 @@
 import { prisma } from "./prisma";
 
-export const VALOR_BONUS = 10000; // R$ 100,00 em centavos
-export const MEDIA_MINIMA_CASHBACK = 4.5; // de 1 a 5 estrelas
-export const DIARIAS_CASHBACK = 5;
-// Segundo bônus: 20 diárias bem avaliadas (média >= 4,5) → mais R$ 100,00.
-export const DIARIAS_CASHBACK_20 = 20;
-export const MEDIA_MINIMA_CASHBACK_20 = 4.5;
-// Bônus por marco de diárias realizadas (independe da nota).
-export const VALOR_BONUS_30 = 20000; // R$ 200,00
-export const DIARIAS_MILESTONE_30 = 30;
-export const VALOR_BONUS_50 = 30000; // R$ 300,00
-export const DIARIAS_MILESTONE_50 = 50;
-export const MIN_DIARIAS_TOP = 3; // mínimo de diárias avaliadas no mês para entrar no ranking
+// Regra de bônus: a cada marco de diárias realizadas, mantendo a média acima
+// do mínimo, o diarista ganha R$ 100,00. Marcos em 5, 10, 20 e 50 diárias.
+export const VALOR_BONUS = 10000; // R$ 100,00 em centavos (vale para todo marco)
+export const MEDIA_MINIMA = 4.5; // média (1 a 5 estrelas) mínima para ganhar o marco
+export const MARCOS_DIARIAS = [5, 10, 20, 50] as const;
+export const MIN_DIARIAS_TOP = 3; // mínimo de diárias avaliadas no mês p/ entrar no ranking
+
+// Tipo guardado na bonificação para cada marco (ex.: "MARCO_5").
+export function tipoMarco(n: number): string {
+  return `MARCO_${n}`;
+}
 
 // A nota de cada diária é a quantidade de estrelas (1 a 5).
 export function mediaDaAvaliacao(a: { estrelas: number }): number {
   return a.estrelas;
+}
+
+// Média geral das avaliações (0 quando não há avaliações).
+export function mediaGeral(avs: { estrelas: number }[]): number {
+  if (avs.length === 0) return 0;
+  return avs.reduce((s, a) => s + a.estrelas, 0) / avs.length;
 }
 
 export function mesAtual(): string {
