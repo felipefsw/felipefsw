@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { exigirDiarista } from "@/lib/diaristaSessao";
 
 export const dynamic = "force-dynamic";
 
@@ -34,31 +34,16 @@ export default async function GuiaPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const diarista = await prisma.diarista.findUnique({
-    where: { token },
-    select: { id: true },
-  });
-
-  if (!diarista) {
-    return (
-      <div className="mx-auto max-w-md p-6 text-center">
-        <h1 className="mt-10 text-xl font-bold text-gray-900">Link inválido</h1>
-      </div>
-    );
-  }
+  await exigirDiarista(token);
 
   return (
-    <div className="mx-auto max-w-md">
-      <header className="bg-neutral-900 px-5 py-6 text-white">
-        <Link href={`/d/${token}`} className="text-sm font-medium text-orange-100 underline">
-          ← Voltar
-        </Link>
-        <h1 className="mt-2 text-xl font-bold">Sabores e orientações importantes</h1>
-        <p className="mt-1 text-sm text-orange-100">Guia rápido do diarista</p>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Sabores e orientações</h1>
+        <p className="text-sm text-gray-500">Guia rápido do diarista</p>
+      </div>
 
-      <main className="space-y-6 p-5">
-        <section>
+      <section>
           <h2 className="mb-2 font-semibold text-gray-900">Orientações importantes</h2>
           <ul className="space-y-2">
             {ORIENTACOES.map((o, i) => (
@@ -96,7 +81,6 @@ export default async function GuiaPage({
         >
           Voltar para minha agenda
         </Link>
-      </main>
     </div>
   );
 }

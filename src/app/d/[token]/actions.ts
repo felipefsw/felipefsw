@@ -9,7 +9,7 @@ import { notificarNovaDiaria } from "@/lib/push";
 import { uploadImagemResultado } from "@/lib/storage";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
 import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
-import { gerarHashSenha, senhaForte } from "@/lib/senha";
+import { conferirSenha, gerarHashSenha, senhaForte } from "@/lib/senha";
 import { entrarDiaristaSessao } from "@/lib/auth";
 
 // Primeiro acesso do diarista: define a senha e inicia a sessão.
@@ -18,7 +18,7 @@ export async function definirSenhaDiarista(formData: FormData) {
   const senha = String(formData.get("senha") ?? "");
   const confirmar = String(formData.get("confirmarSenha") ?? "");
   if (!token) redirect("/entrar");
-  if (!senhaForte(senha) || senha !== confirmar) redirect(`/d/${token}?erro=senha`);
+  if (!senhaForte(senha) || senha !== confirmar) redirect(`/d/${token}/criar-senha?erro=senha`);
 
   const d = await prisma.diarista.findUnique({
     where: { token },
@@ -241,26 +241,67 @@ export async function responderConvocacao(formData: FormData) {
   revalidatePath("/loja");
 }
 
-export async function salvarPreferencias(formData: FormData) {
+// Liga/desliga uma loja como favorita do diarista (máximo 5; a mesma lista
+// também é usada para os avisos de novas vagas).
+export async function alternarFavorita(formData: FormData) {
   const token = String(formData.get("token") ?? "");
-  if (!token) return;
+  const lojaId = String(formData.get("lojaId") ?? "");
+  if (!token || !lojaId) return;
+
   const diarista = await prisma.diarista.findUnique({
     where: { token },
-    select: { id: true },
+    select: { id: true, lojasPreferidas: { select: { id: true } } },
   });
   if (!diarista) return;
 
-  const ids = [...new Set(formData.getAll("lojaIds").map(String).filter(Boolean))]
-    .slice(0, 5)
-    .map((id) => ({ id }));
+  const atual = new Set(diarista.lojasPreferidas.map((l) => l.id));
+  if (atual.has(lojaId)) {
+    atual.delete(lojaId);
+  } else {
+    if (atual.size >= 5) {
+      // Atingiu o limite de 5 favoritas: não adiciona.
+      return;
+    }
+    atual.add(lojaId);
+  }
 
   await prisma.diarista.update({
     where: { id: diarista.id },
-    data: { lojasPreferidas: { set: ids } },
+    data: { lojasPreferidas: { set: [...atual].map((id) => ({ id })) } },
   });
 
   revalidatePath(`/d/${token}`);
-  redirect(`/d/${token}`);
+  revalidatePath(`/d/${token}/vagas`);
+  revalidatePath(`/d/${token}/lojas`);
+}
+
+// Troca de senha pela tela de Perfil (já logado). Confere a senha atual quando
+// houver; no modo de teste sem senha, permite definir direto.
+export async function mudarSenhaDiarista(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const atual = String(formData.get("senhaAtual") ?? "");
+  const nova = String(formData.get("senha") ?? "");
+  const confirmar = String(formData.get("confirmarSenha") ?? "");
+  if (!token) redirect("/entrar");
+
+  const d = await prisma.diarista.findUnique({
+    where: { token },
+    select: { id: true, senha: true },
+  });
+  if (!d) redirect("/entrar");
+
+  if (!senhaForte(nova) || nova !== confirmar) {
+    redirect(`/d/${token}/perfil?senha=invalida`);
+  }
+  if (d.senha && !conferirSenha(atual, d.senha)) {
+    redirect(`/d/${token}/perfil?senha=atual`);
+  }
+
+  await prisma.diarista.update({
+    where: { id: d.id },
+    data: { senha: gerarHashSenha(nova) },
+  });
+  redirect(`/d/${token}/perfil?senha=ok`);
 }
 
 export async function inscreverNaDiaria(formData: FormData) {

@@ -8,7 +8,7 @@ import { corDaFuncao } from "@/lib/funcoesCor";
 import MarcaBadge from "./MarcaBadge";
 import CopyButton from "./CopyButton";
 import SubmitButton from "./SubmitButton";
-import { inscreverNaDiaria } from "@/app/d/[token]/actions";
+import { alternarFavorita, inscreverNaDiaria } from "@/app/d/[token]/actions";
 
 export type DiariaItem = {
   id: string;
@@ -29,12 +29,16 @@ export type DiariaItem = {
   inscrito: boolean;
   convidado: boolean;
   nota: number | null;
+  freq: number;
+  favorita: boolean;
 };
 
-type Ordem = "marca" | "valor" | "distancia" | "horas" | "horario" | "nota";
+type Ordem = "marca" | "favoritas" | "frequencia" | "valor" | "distancia" | "horas" | "horario" | "nota";
 
 const FILTROS: { key: Ordem; label: string }[] = [
   { key: "marca", label: "Marca" },
+  { key: "favoritas", label: "❤️ Favoritas" },
+  { key: "frequencia", label: "Frequência" },
   { key: "valor", label: "Valor" },
   { key: "distancia", label: "Distância" },
   { key: "horas", label: "Horas" },
@@ -81,6 +85,12 @@ export default function ListaDiarias({ token, itens }: { token: string; itens: D
 
   const ordenados = [...itens];
   if (ordem === "valor") ordenados.sort((a, b) => b.valor - a.valor);
+  else if (ordem === "favoritas")
+    ordenados.sort(
+      (a, b) => Number(b.favorita) - Number(a.favorita) || a.marcaOrdem - b.marcaOrdem,
+    );
+  else if (ordem === "frequencia")
+    ordenados.sort((a, b) => b.freq - a.freq || a.marcaOrdem - b.marcaOrdem);
   else if (ordem === "horario") ordenados.sort((a, b) => minutos(a.horaInicio) - minutos(b.horaInicio));
   else if (ordem === "horas")
     ordenados.sort((a, b) => duracaoMin(b.horaInicio, b.horaFim) - duracaoMin(a.horaInicio, a.horaFim));
@@ -117,6 +127,11 @@ export default function ListaDiarias({ token, itens }: { token: string; itens: D
               <MarcaBadge nome={it.lojaNome} className="h-5 w-5 shrink-0 rounded" />
               <span className="truncate text-sm font-semibold text-gray-900">{it.lojaNome}</span>
               {it.convidado && <span title="Você foi convidado">⭐</span>}
+              {it.freq > 0 && (
+                <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                  {it.freq}× aqui
+                </span>
+              )}
             </div>
             {(it.bairroCidade || it.rua) && (
               <p className="truncate text-[11px] text-gray-500">
@@ -133,11 +148,25 @@ export default function ListaDiarias({ token, itens }: { token: string; itens: D
               {it.nota != null ? ` · ★ ${it.nota.toFixed(1)}` : ""}
             </p>
           </div>
-          {mostrarDist && d != null && (
-            <span className="shrink-0 rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
-              {distLabel(d)}
-            </span>
-          )}
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <form action={alternarFavorita}>
+              <input type="hidden" name="token" value={token} />
+              <input type="hidden" name="lojaId" value={it.lojaId} />
+              <button
+                type="submit"
+                title={it.favorita ? "Remover dos favoritos" : "Favoritar loja"}
+                aria-label={it.favorita ? "Remover dos favoritos" : "Favoritar loja"}
+                className="text-lg leading-none"
+              >
+                {it.favorita ? "❤️" : "🤍"}
+              </button>
+            </form>
+            {mostrarDist && d != null && (
+              <span className="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
+                {distLabel(d)}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="mt-1.5 flex items-center gap-1.5">
