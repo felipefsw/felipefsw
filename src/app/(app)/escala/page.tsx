@@ -10,6 +10,7 @@ import { formatBRL, formatDateShort, formatDateWithWeekday } from "@/lib/format"
 import { addDias, hojeISO, inicioDaSemana, isISODate, semana, turnoComecou } from "@/lib/dates";
 import { grupoDaLoja } from "@/lib/marcas";
 import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
+import SubmitButton from "@/components/SubmitButton";
 import { avaliarEstrelasRH, deleteEscala, gerarLinkConfirmacao, marcarPresenca } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -264,22 +265,16 @@ export default async function EscalaPage({
                                   <form action={marcarPresenca}>
                                     <input type="hidden" name="id" value={e.id} />
                                     <input type="hidden" name="presenca" value="PRESENTE" />
-                                    <button
-                                      type="submit"
-                                      className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
-                                    >
+                                    <SubmitButton className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700">
                                       Presente
-                                    </button>
+                                    </SubmitButton>
                                   </form>
                                   <form action={marcarPresenca}>
                                     <input type="hidden" name="id" value={e.id} />
                                     <input type="hidden" name="presenca" value="FALTOU" />
-                                    <button
-                                      type="submit"
-                                      className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                                    >
+                                    <SubmitButton className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50">
                                       Faltou
-                                    </button>
+                                    </SubmitButton>
                                   </form>
                                 </div>
                               ) : (

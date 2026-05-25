@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState } from "@/components/ui";
 import CopyButton from "@/components/CopyButton";
+import SubmitButton from "@/components/SubmitButton";
 import { formatBRL, formatDateShort } from "@/lib/format";
 import { togglePago } from "./actions";
 
@@ -84,8 +85,7 @@ export default async function PagamentosPage() {
                       </div>
                       <form action={togglePago} className="shrink-0">
                         <input type="hidden" name="id" value={e.id} />
-                        <button
-                          type="submit"
+                        <SubmitButton
                           className={
                             e.pago
                               ? "rounded-lg bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
@@ -93,7 +93,7 @@ export default async function PagamentosPage() {
                           }
                         >
                           {e.pago ? "✓ Pago" : "Marcar pago"}
-                        </button>
+                        </SubmitButton>
                       </form>
                     </li>
                   ))}
