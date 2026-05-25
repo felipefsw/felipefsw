@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui";
+import { Card, EmptyState } from "@/components/ui";
 import { formatBRL, formatDateShort } from "@/lib/format";
-import { hojeISO } from "@/lib/dates";
+import { addDias, hojeISO, inicioDaSemana, isISODate } from "@/lib/dates";
 import { grupoDaLoja } from "@/lib/marcas";
+import BarraDia from "@/components/BarraDia";
 
 export const dynamic = "force-dynamic";
 
@@ -20,17 +21,24 @@ function agruparPorMarca<T extends ComLoja>(itens: T[]) {
   return [...m.values()].sort((a, b) => a.ordem - b.ordem);
 }
 
-export default async function InicioPage() {
+export default async function InicioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dia?: string }>;
+}) {
+  const { dia } = await searchParams;
   const hoje = hojeISO();
+  // Período do resumo por loja: um dia (?dia=) ou a semana toda (padrão).
+  const diaSel = dia && isISODate(dia) ? dia : null;
+  const rIni = diaSel ?? inicioDaSemana(hoje);
+  const rFim = diaSel ?? addDias(inicioDaSemana(hoje), 6);
 
   const [
     escalasHoje,
     pendentes,
-    aPagar,
     diaristasAtivas,
     lojasAtivas,
     requisicoesAbertas,
-    faltasHoje,
     mensagensNaoLidas,
     solicitacoesPendentes,
     lojasResumo,
@@ -49,10 +57,6 @@ export default async function InicioPage() {
       include: { diarista: { select: { nome: true } }, loja: { select: { nome: true } } },
       orderBy: { data: "asc" },
     }),
-    prisma.escala.findMany({
-      where: { presenca: "PRESENTE", pago: false },
-      select: { valor: true, loja: { select: { nome: true } } },
-    }),
     prisma.diarista.count({ where: { ativo: true } }),
     prisma.loja.count({ where: { ativo: true } }),
     prisma.requisicao.findMany({
@@ -60,50 +64,40 @@ export default async function InicioPage() {
       include: { loja: { select: { nome: true } } },
       orderBy: { data: "asc" },
     }),
-    prisma.escala.count({ where: { data: hoje, presenca: "FALTOU" } }),
     prisma.mensagem.count({ where: { autor: "DIARISTA", lida: false } }),
     prisma.inscricao.count({ where: { status: "PENDENTE" } }),
     prisma.loja.findMany({ where: { ativo: true }, select: { id: true, nome: true } }),
-    // Confirmadas: escalas aceitas/agendadas que ainda vão acontecer.
+    // Confirmadas no período: escalas aceitas/agendadas que ainda vão acontecer.
     prisma.escala.groupBy({
       by: ["lojaId"],
-      where: { presenca: "PENDENTE", data: { gte: hoje } },
+      where: { presenca: "PENDENTE", data: { gte: rIni, lte: rFim } },
       _count: { _all: true },
     }),
-    // A confirmar: convites enviados aguardando a diarista aceitar.
+    // A confirmar no período: convites aguardando a diarista aceitar.
     prisma.convocacao.groupBy({
       by: ["lojaId"],
-      where: { status: "PENDENTE" },
+      where: { status: "PENDENTE", data: { gte: rIni, lte: rFim } },
       _count: { _all: true },
     }),
-    // A pagar: diárias realizadas ainda não pagas.
+    // A pagar no período: diárias realizadas ainda não pagas.
     prisma.escala.groupBy({
       by: ["lojaId"],
-      where: { presenca: "PRESENTE", pago: false },
+      where: { presenca: "PRESENTE", pago: false, data: { gte: rIni, lte: rFim } },
       _sum: { valor: true },
     }),
-    // Pago: diárias realizadas já pagas.
+    // Pago no período: diárias realizadas já pagas.
     prisma.escala.groupBy({
       by: ["lojaId"],
-      where: { presenca: "PRESENTE", pago: true },
+      where: { presenca: "PRESENTE", pago: true, data: { gte: rIni, lte: rFim } },
       _sum: { valor: true },
     }),
   ]);
-
-  const totalAPagar = aPagar.reduce((s, e) => s + e.valor, 0);
-  const vagasAbertasHoje = requisicoesAbertas.filter((r) => r.data === hoje).length;
-
-  const pagarPorLoja = new Map<string, number>();
-  for (const e of aPagar) {
-    pagarPorLoja.set(e.loja.nome, (pagarPorLoja.get(e.loja.nome) ?? 0) + e.valor);
-  }
-  const pagarLista = [...pagarPorLoja.entries()].sort((a, b) => b[1] - a[1]);
 
   const escalasPorMarca = agruparPorMarca(escalasHoje);
   const pendentesPorMarca = agruparPorMarca(pendentes);
   const requisicoesPorMarca = agruparPorMarca(requisicoesAbertas);
 
-  // Resumo por loja: a confirmar, confirmadas, a pagar e pago.
+  // Resumo por loja (período selecionado): a confirmar, confirmadas, a pagar e pago.
   const countPorLoja = (gb: { lojaId: string; _count: { _all: number } }[]) =>
     new Map(gb.map((g) => [g.lojaId, g._count._all]));
   const somaPorLoja = (gb: { lojaId: string; _sum: { valor: number | null } }[]) =>
@@ -125,13 +119,6 @@ export default async function InicioPage() {
     .filter((l) => l.conf > 0 || l.conv > 0 || l.aPagar > 0 || l.pago > 0)
     .sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
 
-  const semaforo =
-    vagasAbertasHoje > 0
-      ? { cls: "border-red-300 bg-red-50 text-red-800", txt: `🔴 ${vagasAbertasHoje} vaga(s) em aberto para hoje` }
-      : faltasHoje > 0
-        ? { cls: "border-amber-300 bg-amber-50 text-amber-800", txt: `🟡 ${faltasHoje} falta(s) hoje` }
-        : { cls: "border-green-300 bg-green-50 text-green-800", txt: "🟢 Tudo certo para hoje" };
-
   const badge = (presenca: string) =>
     presenca === "PRESENTE"
       ? "bg-green-100 text-green-700"
@@ -146,35 +133,63 @@ export default async function InicioPage() {
         <p className="text-sm text-gray-500">Resumo de hoje</p>
       </div>
 
-      <Link href={vagasAbertasHoje > 0 ? "/requisicoes" : "/escala"}>
-        <div className={`rounded-xl border p-3 text-sm font-semibold ${semaforo.cls}`}>
-          {semaforo.txt}
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Vagas em aberto ({requisicoesAbertas.length})
+          </h2>
+          <Link href="/requisicoes" className="text-sm font-medium text-orange-700 hover:underline">
+            Ver pedidos
+          </Link>
         </div>
-      </Link>
-
-      <Card className="border-orange-200 bg-orange-50">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-orange-800">Total a pagar</p>
-          <p className="text-2xl font-bold text-orange-800">{formatBRL(totalAPagar)}</p>
-        </div>
-        {pagarLista.length > 0 && (
-          <ul className="mt-2 divide-y divide-orange-100 border-t border-orange-100">
-            {pagarLista.map(([nome, valor]) => (
-              <li key={nome} className="flex items-center justify-between py-1 text-sm">
-                <span className="truncate text-orange-900">{nome}</span>
-                <span className="font-semibold text-orange-800">{formatBRL(valor)}</span>
-              </li>
+        {requisicoesAbertas.length === 0 ? (
+          <EmptyState>Nenhuma vaga em aberto. 🎉</EmptyState>
+        ) : (
+          <Card className="p-2">
+            {requisicoesPorMarca.map((g) => (
+              <div key={g.label} className="mb-2 last:mb-0">
+                <p className="px-1 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                  {g.label}
+                </p>
+                <ul className="divide-y divide-gray-100">
+                  {g.itens.map((r) => (
+                    <li key={r.id} className="flex items-center justify-between gap-2 py-1.5">
+                      <span className="min-w-0 text-sm">
+                        <span className="font-medium text-gray-900">{r.loja.nome}</span>
+                        <span className="block text-xs text-gray-500">
+                          {r.funcao ?? "qualquer"} · {formatBRL(r.valorDiaria)} ·{" "}
+                          {formatDateShort(r.data)}
+                          {r.quantidade > 1 ? ` · ${r.quantidade} vagas` : ""}
+                        </span>
+                      </span>
+                      <Link
+                        href={`/requisicoes/${r.id}`}
+                        className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-800"
+                      >
+                        Convocar
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </Card>
         )}
-        <Link href="/pagamentos" className="mt-2 inline-block text-xs font-medium text-orange-700 underline">
-          Ir para pagamentos →
-        </Link>
-      </Card>
+      </section>
 
-      {resumoLojas.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-lg font-semibold text-gray-900">Resumo por loja</h2>
+      <section>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-gray-900">Resumo por loja</h2>
+          <span className="text-xs text-gray-500">
+            {diaSel ? formatDateShort(diaSel) : `${formatDateShort(rIni)}–${formatDateShort(rFim)}`}
+          </span>
+        </div>
+        <div className="mb-2">
+          <BarraDia basePath="/" diaSel={diaSel} />
+        </div>
+        {resumoLojas.length === 0 ? (
+          <EmptyState>Sem movimento {diaSel ? "nesse dia" : "nesta semana"}.</EmptyState>
+        ) : (
           <Card className="p-2">
             <p className="mb-1 px-1 text-[11px] text-gray-400">
               ⏳ a confirmar · ✓ confirmadas · 🔴 a pagar · 🟢 pago
@@ -214,8 +229,8 @@ export default async function InicioPage() {
               ))}
             </ul>
           </Card>
-        </section>
-      )}
+        )}
+      </section>
 
       <Link
         href="/sugestoes"
@@ -341,42 +356,6 @@ export default async function InicioPage() {
           </Card>
         </section>
       )}
-
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Requisições abertas ({requisicoesAbertas.length})</h2>
-          <Link href="/requisicoes" className="text-sm font-medium text-orange-700 hover:underline">
-            Ver todas
-          </Link>
-        </div>
-        {requisicoesAbertas.length === 0 ? (
-          <Card>
-            <p className="text-sm text-gray-500">Nenhuma requisição aberta.</p>
-          </Card>
-        ) : (
-          <Card>
-            {requisicoesPorMarca.map((g) => (
-              <div key={g.label} className="mb-2 last:mb-0">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{g.label}</p>
-                <ul className="divide-y divide-gray-100">
-                  {g.itens.map((r) => (
-                    <li key={r.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
-                      <span className="min-w-0 truncate text-gray-700">
-                        {r.loja.nome}
-                        <span className="text-gray-400">
-                          {" · "}
-                          {r.funcao ?? "qualquer"} ({r.quantidade})
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-xs text-gray-400">{formatDateShort(r.data)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </Card>
-        )}
-      </section>
 
       <p className="text-center text-xs text-gray-400">
         {diaristasAtivas} diarista(s) e {lojasAtivas} loja(s) ativas.

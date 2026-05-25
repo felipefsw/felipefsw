@@ -60,6 +60,11 @@ export default async function ConvidarRequisicaoPage({
       include: {
         avaliacoes: { select: { estrelas: true }, orderBy: { criadoEm: "desc" }, take: 5 },
         _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
+        lojasPreferidas: { where: { id: requisicao.lojaId }, select: { id: true } },
+        escalas: {
+          where: { lojaId: requisicao.lojaId, presenca: "PRESENTE" },
+          select: { id: true },
+        },
       },
     }),
     prisma.escala.findMany({
@@ -86,7 +91,20 @@ export default async function ConvidarRequisicaoPage({
   const jaConvidados = new Set(convites.map((c) => c.diaristaId));
 
   const inscritos = new Set(inscricoes.map((i) => i.diaristaId));
-  diaristas.sort((a, b) => Number(inscritos.has(b.id)) - Number(inscritos.has(a.id)));
+  // Ordem: quem já se candidatou primeiro, depois os preferenciais da loja
+  // (prefere a loja ou já trabalhou lá, por frequência), e o resto em ordem alfabética.
+  const freqLoja = (d: (typeof diaristas)[number]) => d.escalas.length;
+  const prefereLoja = (d: (typeof diaristas)[number]) =>
+    d.lojasPreferidas.length > 0 || d.escalas.length > 0;
+  const rank = (d: (typeof diaristas)[number]) =>
+    inscritos.has(d.id) ? 0 : prefereLoja(d) ? 1 : 2;
+  diaristas.sort((a, b) => {
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    if (ra <= 1 && freqLoja(b) !== freqLoja(a)) return freqLoja(b) - freqLoja(a);
+    return a.nome.localeCompare(b.nome);
+  });
 
   return (
     <div className="space-y-4">
@@ -179,6 +197,10 @@ export default async function ConvidarRequisicaoPage({
                             inscritos.has(d.id) ? (
                               <span className="text-[11px] font-medium text-amber-700">
                                 já se candidatou
+                              </span>
+                            ) : prefereLoja(d) ? (
+                              <span className="text-[11px] font-medium text-orange-600">
+                                preferencial da loja
                               </span>
                             ) : undefined
                           }
