@@ -62,10 +62,18 @@ export default async function EscalaPage({
   for (const dia of dias) porDia.set(dia, []);
   for (const e of escalas) porDia.get(e.data)?.push(e);
 
-  // 4 indicadores da semana.
-  const realizadas = escalas.filter((e) => e.presenca === "PRESENTE").length;
-  const faltas = escalas.filter((e) => e.presenca === "FALTOU").length;
-  const confirmadas = escalas.filter((e) => e.presenca === "PENDENTE").length;
+  // 4 indicadores do período. "Realizada"/"Falta" só valem depois do turno começar;
+  // antes disso, mesmo marcada, conta como confirmada (ainda vai acontecer).
+  const realizadas = escalas.filter(
+    (e) => turnoComecou(e.data, e.horaInicio) && e.presenca === "PRESENTE",
+  ).length;
+  const faltas = escalas.filter(
+    (e) => turnoComecou(e.data, e.horaInicio) && e.presenca === "FALTOU",
+  ).length;
+  const confirmadas = escalas.filter((e) => {
+    const c = turnoComecou(e.data, e.horaInicio);
+    return !(c && (e.presenca === "PRESENTE" || e.presenca === "FALTOU"));
+  }).length;
   const programadas = convitesPendentes; // convites enviados, aguardando aceite
 
   const indicadores = [
@@ -195,6 +203,8 @@ export default async function EscalaPage({
                     const prevLabel =
                       idx > 0 ? grupoDaLoja(ordenada[idx - 1].loja.nome).label : null;
                     const comecou = turnoComecou(e.data, e.horaInicio);
+                    const realizada = comecou && e.presenca === "PRESENTE";
+                    const falta = comecou && e.presenca === "FALTOU";
                     return (
                       <Fragment key={e.id}>
                         {marcaLabel !== prevLabel && (
@@ -222,44 +232,9 @@ export default async function EscalaPage({
                             />
 
                             <div className="flex shrink-0 flex-col items-end gap-1.5">
-                              {e.presenca === "PENDENTE" ? (
-                                comecou ? (
-                                  <div className="flex gap-1.5">
-                                    <form action={marcarPresenca}>
-                                      <input type="hidden" name="id" value={e.id} />
-                                      <input type="hidden" name="presenca" value="PRESENTE" />
-                                      <button
-                                        type="submit"
-                                        className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
-                                      >
-                                        Presente
-                                      </button>
-                                    </form>
-                                    <form action={marcarPresenca}>
-                                      <input type="hidden" name="id" value={e.id} />
-                                      <input type="hidden" name="presenca" value="FALTOU" />
-                                      <button
-                                        type="submit"
-                                        className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                                      >
-                                        Faltou
-                                      </button>
-                                    </form>
-                                  </div>
-                                ) : (
-                                  <span
-                                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                      e.confirmadaEm
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-amber-100 text-amber-700"
-                                    }`}
-                                  >
-                                    {e.confirmadaEm ? "✓ confirmou" : "aguardando o dia"}
-                                  </span>
-                                )
-                              ) : (
+                              {realizada || falta ? (
                                 <div className="flex items-center gap-1.5">
-                                  {e.presenca === "PRESENTE" ? (
+                                  {realizada ? (
                                     <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                                       Realizada
                                     </span>
@@ -273,22 +248,53 @@ export default async function EscalaPage({
                                       pago
                                     </span>
                                   )}
-                                  {e.data >= hoje && (
-                                    <form action={marcarPresenca}>
-                                      <input type="hidden" name="id" value={e.id} />
-                                      <input type="hidden" name="presenca" value="PENDENTE" />
-                                      <button
-                                        type="submit"
-                                        className="text-xs text-gray-400 underline hover:text-gray-600"
-                                      >
-                                        desfazer
-                                      </button>
-                                    </form>
-                                  )}
+                                  <form action={marcarPresenca}>
+                                    <input type="hidden" name="id" value={e.id} />
+                                    <input type="hidden" name="presenca" value="PENDENTE" />
+                                    <button
+                                      type="submit"
+                                      className="text-xs text-gray-400 underline hover:text-gray-600"
+                                    >
+                                      desfazer
+                                    </button>
+                                  </form>
                                 </div>
+                              ) : comecou ? (
+                                <div className="flex gap-1.5">
+                                  <form action={marcarPresenca}>
+                                    <input type="hidden" name="id" value={e.id} />
+                                    <input type="hidden" name="presenca" value="PRESENTE" />
+                                    <button
+                                      type="submit"
+                                      className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
+                                    >
+                                      Presente
+                                    </button>
+                                  </form>
+                                  <form action={marcarPresenca}>
+                                    <input type="hidden" name="id" value={e.id} />
+                                    <input type="hidden" name="presenca" value="FALTOU" />
+                                    <button
+                                      type="submit"
+                                      className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                                    >
+                                      Faltou
+                                    </button>
+                                  </form>
+                                </div>
+                              ) : (
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                    e.confirmadaEm
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-amber-100 text-amber-700"
+                                  }`}
+                                >
+                                  {e.confirmadaEm ? "✓ confirmou" : "aguardando o dia"}
+                                </span>
                               )}
 
-                              {e.presenca === "PRESENTE" && (
+                              {realizada && (
                                 <EstrelasAvaliacao
                                   escalaId={e.id}
                                   valorInicial={e.avaliacao?.estrelas ?? 0}
@@ -296,7 +302,7 @@ export default async function EscalaPage({
                                 />
                               )}
 
-                              {e.data >= hoje && e.presenca === "PENDENTE" && (
+                              {e.data >= hoje && !realizada && !falta && (
                                 <form action={deleteEscala}>
                                   <input type="hidden" name="id" value={e.id} />
                                   <ConfirmSubmit
@@ -310,7 +316,7 @@ export default async function EscalaPage({
                             </div>
                           </div>
 
-                          {e.presenca === "PENDENTE" && !comecou && (
+                          {!realizada && !falta && !comecou && (
                             <div className="mt-2">
                               {e.tokenConfirmacao ? (
                                 <>
