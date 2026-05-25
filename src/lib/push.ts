@@ -100,6 +100,19 @@ export async function notificarPagamentoDaEscala(escalaId: string): Promise<void
   });
 }
 
+// Avisa a loja/gestor de que um diarista ACEITOU o convite (confirmou a diária).
+export async function notificarConviteAceito(params: {
+  lojaId: string;
+  diaristaNome: string;
+  data: string;
+}): Promise<void> {
+  await enviarPushParaLoja(params.lojaId, {
+    title: "Diária confirmada ✅",
+    body: `${params.diaristaNome} aceitou a diária de ${formatDate(params.data)}.`,
+    url: "/loja",
+  });
+}
+
 // Avisa os candidatos NÃO escolhidos que a vaga foi preenchida por outro.
 export async function notificarVagaPreenchida(requisicaoId: string): Promise<void> {
   const req = await prisma.requisicao.findUnique({

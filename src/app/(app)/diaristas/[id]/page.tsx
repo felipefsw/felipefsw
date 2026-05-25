@@ -3,11 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui";
 import CopyLink from "@/components/CopyLink";
 import CopyButton from "@/components/CopyButton";
+import ConfirmSubmit from "@/components/ConfirmSubmit";
 import Avatar from "@/components/Avatar";
 import { formatBRL, formatDate } from "@/lib/format";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import DiaristaForm from "../DiaristaForm";
-import { bloquearPermanente, removerBloqueio, updateDiarista } from "../actions";
+import {
+  bloquearPermanente,
+  redefinirSenhaDiarista,
+  removerBloqueio,
+  updateDiarista,
+} from "../actions";
 
 export default async function EditarDiaristaPage({
   params,
@@ -95,6 +101,15 @@ export default async function EditarDiaristaPage({
           própria escala e confirma presença — sem precisar de senha.
         </p>
         <CopyLink path={`/d/${diarista.token}`} />
+        <form action={redefinirSenhaDiarista} className="mt-3">
+          <input type="hidden" name="id" value={diarista.id} />
+          <ConfirmSubmit
+            className="text-sm font-medium text-orange-700 underline"
+            message="Redefinir a senha desta diarista? A senha atual é apagada e ela cria uma nova no próximo acesso (quando o login por senha estiver ativo)."
+          >
+            🔑 Redefinir senha
+          </ConfirmSubmit>
+        </form>
       </Card>
 
       <Card>

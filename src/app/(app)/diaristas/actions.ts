@@ -118,6 +118,15 @@ export async function bloquearGlobal(formData: FormData) {
   revalidatePath(`/diaristas/${id}`);
 }
 
+// Redefine a senha da diarista: limpa a senha atual. No próximo acesso (quando o
+// login por senha estiver ativo) ela cria uma nova. Em modo sem senha, não afeta o acesso.
+export async function redefinirSenhaDiarista(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.diarista.update({ where: { id }, data: { senha: null } });
+  revalidatePath(`/diaristas/${id}`);
+}
+
 export async function desbloquearGlobal(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
