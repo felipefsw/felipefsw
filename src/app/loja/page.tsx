@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import { formatBRL, formatDate, formatDateWithWeekday } from "@/lib/format";
-import { hojeISO, maxAgendamentoISO, turnoFinalizado } from "@/lib/dates";
+import { addDias, hojeISO, inicioDaSemana, isISODate, maxAgendamentoISO, turnoFinalizado } from "@/lib/dates";
 import { corDoTurno } from "@/lib/horarios";
+import BarraDia from "@/components/BarraDia";
 import { corDaFuncao } from "@/lib/funcoesCor";
 import Avatar from "@/components/Avatar";
 import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
@@ -50,16 +51,20 @@ function statusLabel(s: string) {
 export default async function LojaHome({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<{ erro?: string; dia?: string }>;
 }) {
-  const { erro } = await searchParams;
+  const { erro, dia } = await searchParams;
   const ctx = contextoLoja(await getSessao());
   if (!ctx) redirect("/entrar");
   const lojaId = ctx.lojaId;
 
   const agora = new Date();
   const hoje = hojeISO();
-  const [requisicoes, escalas, bloqueios, loja, convocacoesPend, escalasHoje] = await Promise.all([
+  // Vista por dia (?dia=) ou pela semana inteira (padrão).
+  const diaSel = dia && isISODate(dia) ? dia : null;
+  const rangeIni = diaSel ?? inicioDaSemana(hoje);
+  const rangeFim = diaSel ?? addDias(inicioDaSemana(hoje), 6);
+  const [requisicoes, escalas, bloqueios, loja, convocacoesPend, escalasPeriodo] = await Promise.all([
     prisma.requisicao.findMany({
       where: { lojaId },
       include: {
@@ -106,14 +111,14 @@ export default async function LojaHome({
     // Resumo do dia: gestor vê todas as suas lojas; loja vê só a sua.
     prisma.escala.findMany({
       where: {
-        data: hoje,
+        data: { gte: rangeIni, lte: rangeFim },
         loja: ctx.gestorId ? { gestores: { some: { id: ctx.gestorId } } } : { id: lojaId },
       },
       include: {
         diarista: { select: { id: true, nome: true, funcao: true, chavePix: true } },
         loja: { select: { nome: true } },
       },
-      orderBy: [{ loja: { nome: "asc" } }, { horaInicio: "asc" }],
+      orderBy: [{ data: "asc" }, { loja: { nome: "asc" } }, { horaInicio: "asc" }],
     }),
   ]);
 
@@ -159,35 +164,42 @@ export default async function LojaHome({
   // A loja precisa avaliar antes de abrir novas vagas / convocar.
   const pendentes = aAvaliar.filter((e) => !e.avaliacao).length;
 
-  // Resumo do dia: agrupa as diárias de hoje por loja (gestor vê várias).
-  const hojePorLoja = new Map<string, typeof escalasHoje>();
-  for (const e of escalasHoje) {
-    const arr = hojePorLoja.get(e.loja.nome) ?? [];
+  // Resumo do período: agrupa as diárias por dia (gestor vê várias lojas).
+  const escalasPorDia = new Map<string, typeof escalasPeriodo>();
+  for (const e of escalasPeriodo) {
+    const arr = escalasPorDia.get(e.data) ?? [];
     arr.push(e);
-    hojePorLoja.set(e.loja.nome, arr);
+    escalasPorDia.set(e.data, arr);
   }
-  const variasLojas = hojePorLoja.size > 1;
+  const diasComEscala = [...escalasPorDia.keys()].sort();
 
-  // Texto com todos os Pix de hoje, para copiar e colar no WhatsApp.
-  const pixHoje = escalasHoje
+  // Texto com todos os Pix do período, para copiar e colar no WhatsApp.
+  const pixHoje = escalasPeriodo
     .filter((e) => e.diarista.chavePix)
     .map((e) => `${e.diarista.nome}: ${e.diarista.chavePix}`)
     .join("\n");
 
-  // Lista do dia pronta para colar no grupo (nome · função · horário · valor).
-  const linhasDia: string[] = [`📋 *Diaristas de hoje* — ${formatDate(hoje)}`, ""];
-  for (const [nomeLoja, lista] of hojePorLoja) {
-    if (variasLojas) linhasDia.push(`*${nomeLoja}*`);
+  // Lista pronta para colar no grupo, agrupada por dia (e por loja, p/ gestor).
+  const linhasDia: string[] = [];
+  for (const d of diasComEscala) {
+    const lista = escalasPorDia.get(d)!;
+    const variasLojasNoDia = new Set(lista.map((e) => e.loja.nome)).size > 1;
+    linhasDia.push(`📋 *${formatDate(d)}*`);
+    let lojaAtual = "";
     for (const e of lista) {
+      if (variasLojasNoDia && e.loja.nome !== lojaAtual) {
+        lojaAtual = e.loja.nome;
+        linhasDia.push(`*${lojaAtual}*`);
+      }
       const partes = [e.diarista.nome];
       if (e.diarista.funcao) partes.push(e.diarista.funcao);
       if (e.horaInicio && e.horaFim) partes.push(`${e.horaInicio}–${e.horaFim}`);
       partes.push(formatBRL(e.valor));
       linhasDia.push(`• ${partes.join(" · ")}`);
     }
-    if (variasLojas) linhasDia.push("");
+    linhasDia.push("");
   }
-  const textoDia = escalasHoje.length > 0 ? linhasDia.join("\n").trim() : "";
+  const textoDia = escalasPeriodo.length > 0 ? linhasDia.join("\n").trim() : "";
 
   // Atalho "pedir de novo": usa a requisição mais recente como modelo.
   const ultima = requisicoes.length
@@ -342,10 +354,12 @@ export default async function LojaHome({
         </form>
       )}
 
-      {escalasHoje.length > 0 && (
-        <section data-tour="loja-resumo">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-gray-900">Resumo de hoje</h2>
+      <section data-tour="loja-resumo">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="font-semibold text-gray-900">
+            Resumo {diaSel ? "do dia" : "da semana"}
+          </h2>
+          {escalasPeriodo.length > 0 && (
             <div className="flex shrink-0 gap-1.5">
               <CopyButton
                 text={textoDia}
@@ -360,16 +374,43 @@ export default async function LojaHome({
                 />
               )}
             </div>
-          </div>
-          <div className="space-y-3">
-            {[...hojePorLoja.entries()].map(([nomeLoja, lista]) => (
-              <div key={nomeLoja}>
-                {variasLojas && (
-                  <h3 className="mb-1 text-sm font-semibold text-gray-600">{nomeLoja}</h3>
-                )}
-                <Card>
-                  <ul className="divide-y divide-gray-100">
-                    {lista.map((e) => (
+          )}
+        </div>
+        <div className="mb-3">
+          <BarraDia basePath="/loja" diaSel={diaSel} />
+        </div>
+        {escalasPeriodo.length === 0 ? (
+          <EmptyState>Nenhuma diária {diaSel ? "nesse dia" : "nesta semana"}.</EmptyState>
+        ) : (
+          <div className="space-y-4">
+            {diasComEscala.map((dataDia) => {
+              const listaDia = escalasPorDia.get(dataDia)!;
+              const porLojaDia = new Map<string, typeof listaDia>();
+              for (const e of listaDia) {
+                const arr = porLojaDia.get(e.loja.nome) ?? [];
+                arr.push(e);
+                porLojaDia.set(e.loja.nome, arr);
+              }
+              const variasLojasNoDia = porLojaDia.size > 1;
+              return (
+                <div key={dataDia}>
+                  <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-gray-500">
+                    <span className="capitalize">{formatDateWithWeekday(dataDia)}</span>
+                    {dataDia === hoje && (
+                      <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700">
+                        hoje
+                      </span>
+                    )}
+                  </h3>
+                  <div className="space-y-3">
+                    {[...porLojaDia.entries()].map(([nomeLoja, lista]) => (
+                      <div key={nomeLoja}>
+                        {variasLojasNoDia && (
+                          <h4 className="mb-1 text-sm font-semibold text-gray-600">{nomeLoja}</h4>
+                        )}
+                        <Card>
+                          <ul className="divide-y divide-gray-100">
+                            {lista.map((e) => (
                       <li key={e.id} className="py-2">
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
@@ -444,14 +485,18 @@ export default async function LojaHome({
                           </div>
                         )}
                       </li>
+                            ))}
+                          </ul>
+                        </Card>
+                      </div>
                     ))}
-                  </ul>
-                </Card>
-              </div>
-            ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
       <section data-tour="loja-requisicoes">
         <h2 className="mb-2 font-semibold text-gray-900">Minhas requisições</h2>

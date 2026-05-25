@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
-import { addDias, hojeISO, podeDesistir, turnoFinalizado } from "@/lib/dates";
+import { addDias, hojeISO, inicioDaSemana, isISODate, podeDesistir, turnoFinalizado } from "@/lib/dates";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import { corDoTurno } from "@/lib/horarios";
 import { bairroCidade, ruaDaLoja } from "@/lib/loja";
@@ -11,6 +11,7 @@ import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
 import PushToggle from "@/components/PushToggle";
 import MarcaBadge from "@/components/MarcaBadge";
+import BarraDia from "@/components/BarraDia";
 import Avatar from "@/components/Avatar";
 import FotoUpload from "@/components/FotoUpload";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
@@ -44,10 +45,10 @@ export default async function DiaristaLinkPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ checkin?: string; desistir?: string }>;
+  searchParams: Promise<{ checkin?: string; desistir?: string; dia?: string }>;
 }) {
   const { token } = await params;
-  const { checkin, desistir } = await searchParams;
+  const { checkin, desistir, dia } = await searchParams;
   const hoje = hojeISO();
   const desde = addDias(hoje, -14);
   // Diarista só se candidata a diárias de até 2 dias à frente.
@@ -104,6 +105,14 @@ export default async function DiaristaLinkPage({
 
   const proximas = diarista.escalas.filter((e) => e.data >= hoje);
   const recentes = diarista.escalas.filter((e) => e.data < hoje).reverse();
+
+  // Filtro de dia: ?dia=AAAA-MM-DD mostra só aquele dia; padrão = esta semana.
+  const diaSel = dia && isISODate(dia) ? dia : null;
+  const fimSemana = addDias(inicioDaSemana(hoje), 6);
+  const proximasFiltradas = diaSel
+    ? proximas.filter((e) => e.data === diaSel)
+    : proximas.filter((e) => e.data <= fimSemana);
+  const proximasDepois = diaSel ? 0 : proximas.filter((e) => e.data > fimSemana).length;
 
   // Diárias encerradas que ainda faltam o diarista avaliar (trava novas vagas).
   const pendentesAvaliacao = diarista.escalas.filter(
@@ -453,13 +462,21 @@ export default async function DiaristaLinkPage({
 
         <section id="proximas" className="scroll-mt-14">
           <h2 className="mb-2 font-semibold text-gray-900">Próximos dias</h2>
-          {proximas.length === 0 ? (
+          <div className="mb-3">
+            <BarraDia basePath={`/d/${token}`} diaSel={diaSel} />
+          </div>
+          {proximasDepois > 0 && (
+            <p className="mb-2 text-xs text-gray-500">
+              Você tem {proximasDepois} diária(s) depois desta semana — escolha a data no calendário.
+            </p>
+          )}
+          {proximasFiltradas.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-500">
-              Nenhum dia agendado por enquanto.
+              {diaSel ? "Nada agendado para esse dia." : "Nenhum dia agendado nesta semana."}
             </div>
           ) : (
             <ul className="space-y-3">
-              {proximas.map((e) => (
+              {proximasFiltradas.map((e) => (
                 <li
                   key={e.id}
                   className={`rounded-xl border p-4 shadow-sm ${corDoTurno(e.horaInicio).card}`}
