@@ -1,155 +1,106 @@
 import { prisma } from "@/lib/prisma";
-import { Card, EmptyState, btnPrimary } from "@/components/ui";
+import { Card, EmptyState } from "@/components/ui";
+import CopyButton from "@/components/CopyButton";
 import { formatBRL, formatDateShort } from "@/lib/format";
-import { grupoDaLoja } from "@/lib/marcas";
-import { desfazerPago, marcarPago, pagarEscalas } from "./actions";
+import { togglePago } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function PagamentosPage() {
-  const aPagar = await prisma.escala.findMany({
-    where: { presenca: "PRESENTE", pago: false },
-    include: { diarista: true, loja: true },
-    orderBy: [{ data: "asc" }],
+  // Mostra as diárias a pagar e as pagas recentemente (para o botão alternar no lugar).
+  const corte = new Date();
+  corte.setDate(corte.getDate() - 14);
+  const diarias = await prisma.escala.findMany({
+    where: {
+      presenca: "PRESENTE",
+      OR: [{ pago: false }, { pago: true, pagoEm: { gte: corte } }],
+    },
+    include: {
+      diarista: { select: { nome: true, chavePix: true } },
+      loja: { select: { id: true, nome: true } },
+    },
+    orderBy: [{ pago: "asc" }, { data: "asc" }],
   });
 
-  const pagos = await prisma.escala.findMany({
-    where: { presenca: "PRESENTE", pago: true },
-    include: { diarista: true, loja: true },
-    orderBy: [{ pagoEm: "desc" }],
-    take: 30,
-  });
-
-  type Item = (typeof aPagar)[number];
-  // Agrupa "a pagar" por marca e, dentro, por diarista.
-  type SubGrupo = { nome: string; chavePix: string | null; total: number; itens: Item[] };
-  type Grupo = { label: string; ordem: number; total: number; porDiarista: Map<string, SubGrupo> };
-  const marcas = new Map<string, Grupo>();
-  for (const e of aPagar) {
-    const g = grupoDaLoja(e.loja.nome);
-    const marca = marcas.get(g.key) ?? {
-      label: g.label,
-      ordem: g.ordem,
-      total: 0,
-      porDiarista: new Map<string, SubGrupo>(),
-    };
-    marca.total += e.valor;
-    const sub = marca.porDiarista.get(e.diaristaId) ?? {
-      nome: e.diarista.nome,
-      chavePix: e.diarista.chavePix,
-      total: 0,
-      itens: [],
-    };
-    sub.total += e.valor;
-    sub.itens.push(e);
-    marca.porDiarista.set(e.diaristaId, sub);
-    marcas.set(g.key, marca);
+  // Agrupa por loja.
+  type Item = (typeof diarias)[number];
+  type GrupoLoja = { nome: string; aPagar: number; itens: Item[] };
+  const porLoja = new Map<string, GrupoLoja>();
+  for (const e of diarias) {
+    const g = porLoja.get(e.loja.id) ?? { nome: e.loja.nome, aPagar: 0, itens: [] };
+    if (!e.pago) g.aPagar += e.valor;
+    g.itens.push(e);
+    porLoja.set(e.loja.id, g);
   }
-  const marcasOrdenadas = [...marcas.values()].sort((a, b) => a.ordem - b.ordem);
-
-  const totalGeral = aPagar.reduce((s, e) => s + e.valor, 0);
+  const lojas = [...porLoja.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+  const lojasComPendencia = lojas.filter((l) => l.aPagar > 0);
 
   return (
     <div>
       <h1 className="mb-1 text-xl font-bold text-gray-900">Pagamentos</h1>
-      <p className="mb-4 text-sm text-gray-500">
-        Diárias de quem trabalhou (presente) e ainda não recebeu.
+      <p className="mb-3 text-sm text-gray-500">
+        Diárias de quem trabalhou. Toque no botão para marcar pago (verde) ou não pago (vermelho).
       </p>
 
-      <Card className="mb-4 border-orange-200 bg-orange-50">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-orange-800">Total a pagar</span>
-          <span className="text-2xl font-bold text-orange-800">{formatBRL(totalGeral)}</span>
-        </div>
-      </Card>
-
-      {marcasOrdenadas.length === 0 ? (
-        <EmptyState>Tudo em dia! Não há diárias pendentes de pagamento.</EmptyState>
-      ) : (
-        <div className="space-y-5">
-          {marcasOrdenadas.map((marca) => (
-            <section key={marca.label}>
-              <h2 className="mb-2 flex items-center justify-between text-sm font-bold uppercase tracking-wide text-gray-500">
-                <span>{marca.label}</span>
-                <span className="text-orange-700">{formatBRL(marca.total)}</span>
-              </h2>
-              <div className="space-y-3">
-                {[...marca.porDiarista.entries()].map(([diaristaId, g]) => (
-                  <Card key={diaristaId}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-gray-900">{g.nome}</p>
-                        {g.chavePix && <p className="text-sm text-gray-500">Pix: {g.chavePix}</p>}
-                        <p className="mt-1 text-sm text-gray-600">
-                          {g.itens.length} diária(s) · <strong>{formatBRL(g.total)}</strong>
-                        </p>
-                      </div>
-                      <form action={pagarEscalas}>
-                        {g.itens.map((e) => (
-                          <input key={e.id} type="hidden" name="escalaIds" value={e.id} />
-                        ))}
-                        <button type="submit" className={btnPrimary}>
-                          Pagar tudo
-                        </button>
-                      </form>
-                    </div>
-
-                    <ul className="mt-3 divide-y divide-gray-100 border-t border-gray-100">
-                      {g.itens.map((e) => (
-                        <li key={e.id} className="flex items-center justify-between gap-3 py-2">
-                          <div className="text-sm">
-                            <span className="text-gray-500">{formatDateShort(e.data)}</span>{" "}
-                            <span className="text-gray-700">· {e.loja.nome}</span>
-                            <span className="ml-2 font-medium text-gray-900">
-                              {formatBRL(e.valor)}
-                            </span>
-                          </div>
-                          <form action={marcarPago}>
-                            <input type="hidden" name="id" value={e.id} />
-                            <button
-                              type="submit"
-                              className="rounded-lg border border-orange-600 px-3 py-1 text-sm font-medium text-orange-700 hover:bg-orange-50"
-                            >
-                              Marcar pago
-                            </button>
-                          </form>
-                        </li>
-                      ))}
-                    </ul>
-                  </Card>
-                ))}
-              </div>
-            </section>
+      {/* Resumo fino: total a pagar por loja */}
+      {lojasComPendencia.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-x-3 gap-y-1 border-y border-gray-100 py-2 text-xs text-gray-600">
+          {lojasComPendencia.map((l) => (
+            <span key={l.nome}>
+              <span className="font-medium text-gray-800">{l.nome}</span>:{" "}
+              <span className="font-semibold text-orange-700">{formatBRL(l.aPagar)}</span>
+            </span>
           ))}
         </div>
       )}
 
-      {pagos.length > 0 && (
-        <div className="mt-8">
-          <h2 className="mb-2 text-lg font-semibold text-gray-900">Histórico de pagos</h2>
-          <Card>
-            <ul className="divide-y divide-gray-100">
-              {pagos.map((e) => (
-                <li key={e.id} className="flex items-center justify-between gap-3 py-2">
-                  <div className="min-w-0 text-sm">
-                    <p className="truncate font-medium text-gray-900">{e.diarista.nome}</p>
-                    <p className="truncate text-gray-500">
-                      {formatDateShort(e.data)} · {e.loja.nome} · {formatBRL(e.valor)}
-                    </p>
-                  </div>
-                  <form action={desfazerPago}>
-                    <input type="hidden" name="id" value={e.id} />
-                    <button
-                      type="submit"
-                      className="shrink-0 text-xs text-gray-400 underline hover:text-gray-600"
-                    >
-                      desfazer
-                    </button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          </Card>
+      {diarias.length === 0 ? (
+        <EmptyState>Tudo em dia! Não há diárias pendentes de pagamento.</EmptyState>
+      ) : (
+        <div className="space-y-4">
+          {lojas.map((l) => (
+            <section key={l.nome}>
+              <h2 className="mb-1 flex items-center justify-between text-sm font-bold uppercase tracking-wide text-gray-500">
+                <span>{l.nome}</span>
+                {l.aPagar > 0 && <span className="text-orange-700">{formatBRL(l.aPagar)}</span>}
+              </h2>
+              <Card className="p-2">
+                <ul className="divide-y divide-gray-100">
+                  {l.itens.map((e) => (
+                    <li key={e.id} className="flex items-center justify-between gap-2 py-1.5">
+                      <div className="min-w-0 text-sm">
+                        <span className="font-medium text-gray-900">{e.diarista.nome}</span>
+                        <span className="text-gray-500">
+                          {" · "}
+                          {formatDateShort(e.data)} · {formatBRL(e.valor)}
+                        </span>
+                        {e.diarista.chavePix && (
+                          <CopyButton
+                            text={e.diarista.chavePix}
+                            label="Pix"
+                            className="ml-2 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-600"
+                          />
+                        )}
+                      </div>
+                      <form action={togglePago} className="shrink-0">
+                        <input type="hidden" name="id" value={e.id} />
+                        <button
+                          type="submit"
+                          className={
+                            e.pago
+                              ? "rounded-lg bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
+                              : "rounded-lg border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                          }
+                        >
+                          {e.pago ? "✓ Pago" : "Marcar pago"}
+                        </button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </section>
+          ))}
         </div>
       )}
     </div>

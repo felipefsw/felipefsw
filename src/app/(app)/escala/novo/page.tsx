@@ -13,11 +13,17 @@ import { hojeISO, isISODate, maxAgendamentoISO } from "@/lib/dates";
 import { VALORES_DIARIA } from "@/lib/valoresDiaria";
 import { formatBRL, formatDateShort } from "@/lib/format";
 import { grupoDaLoja } from "@/lib/marcas";
-import Avatar from "@/components/Avatar";
+import { semBloqueioGlobalWhere } from "@/lib/limites";
+import DiaristaInfo from "@/components/DiaristaInfo";
 import SubmitButton from "@/components/SubmitButton";
-import { createEscala, escalarNaVaga } from "../actions";
+import { createEscala, convidarParaVaga } from "../actions";
 
 export const dynamic = "force-dynamic";
+
+function notaDe(avaliacoes: { estrelas: number }[]): number | null {
+  if (avaliacoes.length < 5) return null;
+  return avaliacoes.reduce((s, a) => s + a.estrelas, 0) / avaliacoes.length;
+}
 
 export default async function NovoAgendamentoPage({
   searchParams,
@@ -32,9 +38,11 @@ export default async function NovoAgendamentoPage({
 
   const [diaristas, lojas, requisicoes] = await Promise.all([
     prisma.diarista.findMany({
-      where: { ativo: true },
+      where: { ativo: true, ...semBloqueioGlobalWhere() },
       orderBy: { nome: "asc" },
       include: {
+        avaliacoes: { select: { estrelas: true }, orderBy: { criadoEm: "desc" }, take: 5 },
+        _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
         escalas: { select: { lojaId: true, data: true } },
         bloqueios: {
           where: { OR: [{ ate: null }, { ate: { gt: new Date() } }] },
@@ -89,6 +97,8 @@ export default async function NovoAgendamentoPage({
       nome: d.nome,
       funcao: d.funcao,
       fotoUrl: d.fotoUrl,
+      nota: notaDe(d.avaliacoes),
+      diarias: d._count.escalas,
       freq,
       datas,
       bloq: new Set(d.bloqueios.map((b) => b.lojaId)),
@@ -215,7 +225,7 @@ export default async function NovoAgendamentoPage({
       {gruposOrdenados.length > 0 && (
         <details className="space-y-4">
           <summary className="cursor-pointer text-sm font-bold uppercase tracking-wide text-gray-500">
-            Ou escale nas vagas abertas (sugestões em 1 toque)
+            Ou convide para as vagas abertas (a diarista aceita)
           </summary>
           <div className="mt-3 space-y-4">
             {gruposOrdenados.map((g) => (
@@ -240,24 +250,25 @@ export default async function NovoAgendamentoPage({
                         ) : (
                           sugeridos.map((d) => (
                             <div key={d.id} className="flex items-center justify-between gap-2">
-                              <span className="flex min-w-0 items-center gap-2">
-                                <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-7 w-7" />
-                                <span className="min-w-0">
-                                  <span className="block truncate text-sm text-gray-800">
-                                    {d.nome}
-                                  </span>
+                              <DiaristaInfo
+                                nome={d.nome}
+                                fotoUrl={d.fotoUrl}
+                                funcao={d.funcao}
+                                nota={d.nota}
+                                diarias={d.diarias}
+                                avatarClassName="h-8 w-8"
+                                extra={
                                   <span className="block text-[11px] text-gray-400">
                                     {d.freq.get(r.lojaId) ?? 0}× nesta loja
-                                    {d.funcao ? ` · ${d.funcao}` : ""}
                                   </span>
-                                </span>
-                              </span>
-                              <form action={escalarNaVaga.bind(null, r.id, d.id)}>
+                                }
+                              />
+                              <form action={convidarParaVaga.bind(null, r.id, d.id)}>
                                 <SubmitButton
                                   pendingLabel="…"
-                                  className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-800"
+                                  className="shrink-0 rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-800 hover:bg-orange-100"
                                 >
-                                  Escalar
+                                  Convidar
                                 </SubmitButton>
                               </form>
                             </div>

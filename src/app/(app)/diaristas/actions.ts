@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { cpfValido } from "@/lib/cpf";
+import { BLOQUEIO_PARA_SEMPRE } from "@/lib/limites";
 
 // Lê as lojas preferidas do formulário, remove vazias e duplicadas (máx. 5).
 function lojasPreferidasIds(formData: FormData): { id: string }[] {
@@ -80,6 +81,34 @@ export async function removerBloqueio(formData: FormData) {
   if (!id) return;
   await prisma.bloqueio.delete({ where: { id } });
   if (diaristaId) revalidatePath(`/diaristas/${diaristaId}`);
+}
+
+// Bloqueio GLOBAL (RH): a diarista não recebe nenhuma diária por 7/14/30 dias ou "sempre".
+export async function bloquearGlobal(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const dias = String(formData.get("dias") ?? "");
+  if (!id) return;
+
+  let ate: Date;
+  if (dias === "sempre") {
+    ate = BLOQUEIO_PARA_SEMPRE;
+  } else {
+    const n = Number.parseInt(dias, 10);
+    if (![7, 14, 30].includes(n)) return;
+    ate = new Date(Date.now() + n * 24 * 60 * 60 * 1000);
+  }
+
+  await prisma.diarista.update({ where: { id }, data: { bloqueadoAte: ate } });
+  revalidatePath("/diaristas");
+  revalidatePath(`/diaristas/${id}`);
+}
+
+export async function desbloquearGlobal(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.diarista.update({ where: { id }, data: { bloqueadoAte: null } });
+  revalidatePath("/diaristas");
+  revalidatePath(`/diaristas/${id}`);
 }
 
 export async function deleteDiarista(formData: FormData) {

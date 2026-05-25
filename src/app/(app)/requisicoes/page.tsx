@@ -27,14 +27,19 @@ function statusBadge(status: string) {
 export default async function RequisicoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; convites?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, convites } = await searchParams;
   const filtro = STATUS.find((s) => s.key === status)?.key ?? "ABERTA";
+  const nConvites = Number.parseInt(convites ?? "", 10);
 
   const requisicoes = await prisma.requisicao.findMany({
     where: { status: filtro },
-    include: { loja: true, _count: { select: { escalas: true } } },
+    include: {
+      loja: true,
+      _count: { select: { escalas: true } },
+      convocacoes: { where: { status: "PENDENTE" }, select: { id: true } },
+    },
     orderBy: { criadoEm: "desc" },
   });
 
@@ -60,6 +65,12 @@ export default async function RequisicoesPage({
         subtitle="Pedidos de diaristas das lojas"
         action={{ href: "/requisicoes/nova", label: "+ Nova" }}
       />
+
+      {Number.isFinite(nConvites) && nConvites > 0 && (
+        <div className="mb-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-700">
+          {nConvites} convite(s) enviado(s)! A vaga é preenchida quando a diarista aceitar.
+        </div>
+      )}
 
       <div className="mb-3">
         <ClickMagicoBotao />
@@ -100,7 +111,7 @@ export default async function RequisicoesPage({
           {grupo.itens.map((r) => (
             <div
               key={r.id}
-              className={`rounded-xl border p-4 shadow-sm ${corDaFuncao(r.funcao).card}`}
+              className={`rounded-xl border p-3 shadow-sm ${corDaFuncao(r.funcao).card}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -117,9 +128,12 @@ export default async function RequisicoesPage({
                     <strong>{r.quantidade}</strong> diarista(s)
                     {r.funcao ? <> · {r.funcao}</> : null} · {formatBRL(r.valorDiaria)}
                   </p>
-                  {r._count.escalas > 0 && (
+                  {(r._count.escalas > 0 || r.convocacoes.length > 0) && (
                     <p className="mt-1 text-sm text-orange-700">
-                      {r._count.escalas} escalado(s)
+                      {r._count.escalas} alocado(s)
+                      {r.convocacoes.length > 0 && (
+                        <span className="text-amber-700"> · {r.convocacoes.length} convite(s) pendente(s)</span>
+                      )}
                     </p>
                   )}
                   {r.observacoes && (
@@ -131,7 +145,7 @@ export default async function RequisicoesPage({
                     href={`/requisicoes/${r.id}`}
                     className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
                   >
-                    Sugerir alocação
+                    Convidar
                   </Link>
                 )}
               </div>

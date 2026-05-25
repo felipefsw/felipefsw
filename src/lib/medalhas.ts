@@ -3,6 +3,32 @@ import { mediaDaAvaliacao } from "./bonificacoes";
 
 export type Medalha = { emoji: string; nome: string };
 
+// Patentes por nº de diárias realizadas. A diarista fica na maior patente que alcançou.
+export type Patente = { min: number; emoji: string; nome: string };
+
+export const PATENTES: Patente[] = [
+  { min: 5, emoji: "🥉", nome: "Bronze" },
+  { min: 10, emoji: "🥈", nome: "Prata" },
+  { min: 20, emoji: "🥇", nome: "Ouro" },
+  { min: 50, emoji: "💎", nome: "Platina" },
+  { min: 100, emoji: "💠", nome: "Diamante" },
+  { min: 200, emoji: "🏆", nome: "Mestre" },
+  { min: 500, emoji: "👑", nome: "Lenda" },
+  { min: 1000, emoji: "🔥", nome: "Imortal" },
+];
+
+/** Maior patente alcançada com o nº de diárias (null se ainda não atingiu 5). */
+export function patenteDeDiarias(diarias: number): Patente | null {
+  let atual: Patente | null = null;
+  for (const p of PATENTES) if (diarias >= p.min) atual = p;
+  return atual;
+}
+
+/** Próxima patente a alcançar (null se já está na máxima). */
+export function proximaPatente(diarias: number): Patente | null {
+  return PATENTES.find((p) => diarias < p.min) ?? null;
+}
+
 function horaDe(d: Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }

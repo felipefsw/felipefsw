@@ -183,6 +183,45 @@ export async function notificarEscalado(escalaId: string): Promise<void> {
   }
 }
 
+// Avisa a diarista de que recebeu um CONVITE de diária (precisa aceitar/recusar no app).
+export async function notificarConvite(convocacaoId: string): Promise<void> {
+  const c = await prisma.convocacao.findUnique({
+    where: { id: convocacaoId },
+    select: {
+      data: true,
+      horaInicio: true,
+      horaFim: true,
+      valor: true,
+      diaristaId: true,
+      diarista: { select: { token: true, telegramChatId: true, valorDiaria: true } },
+      loja: { select: { nome: true } },
+    },
+  });
+  if (!c) return;
+
+  const hora = c.horaInicio && c.horaFim ? ` • ${c.horaInicio}–${c.horaFim}` : "";
+  const valor = c.valor ?? c.diarista.valorDiaria;
+  const resumo = `${c.loja.nome} • ${formatDate(c.data)}${hora} • ${formatBRL(valor)}`;
+  const caminho = `/d/${c.diarista.token}`;
+
+  await enviarPushParaDiaristas([c.diaristaId], {
+    title: "Convite de diária 🤝",
+    body: `${resumo} — toque para aceitar ou recusar.`,
+    url: caminho,
+  });
+
+  if (c.diarista.telegramChatId) {
+    const link = linkPublico(caminho);
+    const rodape = link
+      ? `\n\n👉 Aceitar ou recusar: ${link}`
+      : "\n\nAbra o app para aceitar ou recusar.";
+    await enviarTelegram(
+      c.diarista.telegramChatId,
+      `🤝 <b>Convite de diária</b>\n${resumo}${rodape}`,
+    );
+  }
+}
+
 // Notifica diaristas sobre uma nova diária: quem tem a loja como preferida ou foi convidado.
 export async function notificarNovaDiaria(
   lojaId: string,

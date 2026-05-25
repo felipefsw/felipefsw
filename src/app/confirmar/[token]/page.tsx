@@ -52,7 +52,7 @@ export default async function ConfirmarPage({
           </p>
         </div>
 
-        {escala.presenca === "PRESENTE" ? (
+        {escala.confirmadaEm ? (
           <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center">
             <p className="text-lg font-semibold text-green-700">✓ Presença confirmada</p>
             <p className="mt-1 text-sm text-green-800">
