@@ -25,7 +25,6 @@ import {
   aprovarCandidato,
   cancelarRequisicaoLoja,
   convocarDiarista,
-  criarRequisicaoLoja,
   desbloquearDiaristaLoja,
   marcarPagoDiaria,
   recusarCandidato,
@@ -222,10 +221,6 @@ export default async function LojaHome({
   const textoDia = escalasPeriodo.length > 0 ? linhasDia.join("\n").trim() : "";
 
   // Atalho "pedir de novo": usa a requisição mais recente como modelo.
-  const ultima = requisicoes.length
-    ? [...requisicoes].sort((a, b) => b.criadoEm.getTime() - a.criadoEm.getTime())[0]
-    : null;
-
   // Pedidos atuais/futuros ficam em "Minhas requisições"; os de dias passados
   // viram "Diárias realizadas".
   const requisicoesAtivas = requisicoes.filter(
@@ -363,27 +358,6 @@ export default async function LojaHome({
             ))}
           </div>
         </section>
-      )}
-
-      {pendentes === 0 && ultima && (
-        <form action={criarRequisicaoLoja}>
-          <input type="hidden" name="data" value={hoje} />
-          <input type="hidden" name="horaInicio" value={ultima.horaInicio} />
-          <input type="hidden" name="horaFim" value={ultima.horaFim} />
-          <input type="hidden" name="funcao" value={ultima.funcao ?? ""} />
-          <input type="hidden" name="quantidade" value={String(ultima.quantidade)} />
-          <input type="hidden" name="valorDiaria" value={String(ultima.valorDiaria / 100)} />
-          <button
-            type="submit"
-            className="w-full rounded-xl border border-orange-200 bg-orange-50 p-3 text-left text-sm font-medium text-orange-900 hover:bg-orange-100"
-          >
-            🔁 Pedir de novo (hoje):{" "}
-            <strong>
-              {ultima.quantidade} {ultima.funcao ?? "diarista(s)"}
-            </strong>{" "}
-            · {ultima.horaInicio}–{ultima.horaFim} · {formatBRL(ultima.valorDiaria)}
-          </button>
-        </form>
       )}
 
       <section data-tour="loja-resumo">
