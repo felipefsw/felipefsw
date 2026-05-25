@@ -5,6 +5,7 @@ import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import CopyLink from "@/components/CopyLink";
 import DiaristaInfo from "@/components/DiaristaInfo";
+import BarraDia from "@/components/BarraDia";
 import { formatBRL, formatDateShort, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO, inicioDaSemana, isISODate, semana, turnoComecou } from "@/lib/dates";
 import { grupoDaLoja } from "@/lib/marcas";
@@ -21,17 +22,21 @@ function notaDe(avaliacoes: { estrelas: number }[]): number | null {
 export default async function EscalaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ inicio?: string; erro?: string }>;
+  searchParams: Promise<{ inicio?: string; dia?: string; erro?: string }>;
 }) {
   const sp = await searchParams;
   const hoje = hojeISO();
+
+  // Vista por dia (?dia=) ou pela semana inteira (padrão / ?inicio=).
+  const diaSel = sp.dia && isISODate(sp.dia) ? sp.dia : null;
   const inicio =
     sp.inicio && isISODate(sp.inicio) ? inicioDaSemana(sp.inicio) : inicioDaSemana(hoje);
-  const dias = semana(inicio);
+  const dias = diaSel ? [diaSel] : semana(inicio);
+  const fim = dias[dias.length - 1];
 
   const [escalas, convitesPendentes] = await Promise.all([
     prisma.escala.findMany({
-      where: { data: { gte: dias[0], lte: dias[6] } },
+      where: { data: { gte: dias[0], lte: fim } },
       include: {
         diarista: {
           select: {
@@ -49,7 +54,7 @@ export default async function EscalaPage({
       orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
     }),
     prisma.convocacao.count({
-      where: { status: "PENDENTE", data: { gte: dias[0], lte: dias[6] } },
+      where: { status: "PENDENTE", data: { gte: dias[0], lte: fim } },
     }),
   ]);
 
@@ -75,13 +80,19 @@ export default async function EscalaPage({
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Escala</h1>
-          <p className="text-sm text-gray-500">
-            {formatDateShort(dias[0])} – {formatDateShort(dias[6])}
+          <p className="text-sm capitalize text-gray-500">
+            {diaSel
+              ? formatDateWithWeekday(diaSel)
+              : `${formatDateShort(dias[0])} – ${formatDateShort(fim)}`}
           </p>
         </div>
         <Link href="/escala/novo" className={btnPrimary}>
           + Agendar
         </Link>
+      </div>
+
+      <div className="mb-4">
+        <BarraDia basePath="/escala" diaSel={diaSel} />
       </div>
 
       <div className="mb-4 grid grid-cols-4 gap-2">
@@ -109,23 +120,43 @@ export default async function EscalaPage({
         </div>
       )}
 
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <Link
-          href={`/escala?inicio=${addDias(inicio, -7)}`}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          ← Semana
-        </Link>
-        <Link href="/escala" className="text-sm font-medium text-orange-700 hover:underline">
-          Esta semana
-        </Link>
-        <Link
-          href={`/escala?inicio=${addDias(inicio, 7)}`}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Semana →
-        </Link>
-      </div>
+      {diaSel ? (
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <Link
+            href={`/escala?dia=${addDias(diaSel, -1)}`}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            ← Dia
+          </Link>
+          <Link href={`/escala?dia=${hoje}`} className="text-sm font-medium text-orange-700 hover:underline">
+            Hoje
+          </Link>
+          <Link
+            href={`/escala?dia=${addDias(diaSel, 1)}`}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Dia →
+          </Link>
+        </div>
+      ) : (
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <Link
+            href={`/escala?inicio=${addDias(inicio, -7)}`}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            ← Semana
+          </Link>
+          <Link href="/escala" className="text-sm font-medium text-orange-700 hover:underline">
+            Esta semana
+          </Link>
+          <Link
+            href={`/escala?inicio=${addDias(inicio, 7)}`}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Semana →
+          </Link>
+        </div>
+      )}
 
       <div className="space-y-3">
         {dias.map((dia) => {
@@ -315,7 +346,7 @@ export default async function EscalaPage({
       {escalas.length === 0 && (
         <div className="mt-4">
           <EmptyState>
-            Nenhum agendamento nesta semana. Toque em <strong>+ Agendar</strong>.
+            Nenhum agendamento no período. Toque em <strong>+ Agendar</strong>.
           </EmptyState>
         </div>
       )}
