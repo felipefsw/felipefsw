@@ -505,6 +505,18 @@ export default async function LojaHome({
                             )}
                           </div>
                         )}
+                        {/* Lojista só visualiza o status do pagamento (quem marca é gestor/RH). */}
+                        {!ctx.gestorId && (e.pago || e.presenca === "PRESENTE") && (
+                          <div className="mt-2">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                e.pago ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"
+                              }`}
+                            >
+                              {e.pago ? "✓ pago" : "não pago"}
+                            </span>
+                          </div>
+                        )}
                       </li>
                             ))}
                           </ul>

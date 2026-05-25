@@ -1,5 +1,11 @@
 // Validação de CPF (dígitos verificadores). Rejeita formatos inválidos e
 // sequências repetidas (ex.: 111.111.111-11).
+
+// Só os dígitos do CPF (para comparar/normalizar, ignorando pontos e traços).
+export function soCpfDigitos(entrada: string | null | undefined): string {
+  return String(entrada ?? "").replace(/\D/g, "");
+}
+
 export function cpfValido(entrada: string | null | undefined): boolean {
   const cpf = String(entrada ?? "").replace(/\D/g, "");
   if (cpf.length !== 11) return false;

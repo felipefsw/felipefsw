@@ -3,8 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { cpfValido } from "@/lib/cpf";
+import { cpfValido, soCpfDigitos } from "@/lib/cpf";
 import { BLOQUEIO_PARA_SEMPRE } from "@/lib/limites";
+
+// CPF (dígitos) já usado por outro diarista? Evita cadastro duplicado.
+async function cpfDuplicado(cpf: string, excetoId?: string): Promise<boolean> {
+  const alvo = soCpfDigitos(cpf);
+  if (!alvo) return false;
+  const existentes = await prisma.diarista.findMany({
+    where: { cpf: { not: null }, ...(excetoId ? { id: { not: excetoId } } : {}) },
+    select: { cpf: true },
+  });
+  return existentes.some((d) => soCpfDigitos(d.cpf) === alvo);
+}
 
 // Lê as lojas preferidas do formulário, remove vazias e duplicadas (máx. 5).
 function lojasPreferidasIds(formData: FormData): { id: string }[] {
@@ -18,6 +29,7 @@ export async function createDiarista(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) return;
   if (!cpfValido(String(formData.get("cpf") ?? ""))) redirect("/diaristas/nova?erro=cpf");
+  if (await cpfDuplicado(String(formData.get("cpf") ?? ""))) redirect("/diaristas/nova?erro=cpfdup");
 
   await prisma.diarista.create({
     data: {
@@ -39,6 +51,9 @@ export async function updateDiarista(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!id || !nome) return;
   if (!cpfValido(String(formData.get("cpf") ?? ""))) redirect(`/diaristas/${id}?erro=cpf`);
+  if (await cpfDuplicado(String(formData.get("cpf") ?? ""), id)) {
+    redirect(`/diaristas/${id}?erro=cpfdup`);
+  }
 
   await prisma.diarista.update({
     where: { id },
