@@ -14,7 +14,7 @@ import {
   notificarVagaPreenchida,
 } from "@/lib/push";
 import { podeMaisUmaNaSemana, temBloqueioGlobal } from "@/lib/limites";
-import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
+import { cancelarConvocacoesPendentes, limparOutrasInscricoesDoDia } from "@/lib/escalas";
 import { uploadImagemResultado } from "@/lib/storage";
 
 // Loja ativa da sessão (loja avulsa ou gestor). Redireciona se não houver.
@@ -188,6 +188,7 @@ export async function aprovarCandidato(requisicaoId: string, diaristaId: string)
 
   if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
     await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });
+    await cancelarConvocacoesPendentes(requisicaoId, diaristaId);
     await notificarVagaPreenchida(requisicaoId);
   }
 

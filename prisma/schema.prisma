@@ -270,7 +270,7 @@ model Avaliacao {
 model Convocacao {
   id         String   @id @default(cuid())
   data       String // "AAAA-MM-DD"
-  status     String   @default("PENDENTE") // PENDENTE | ACEITA | RECUSADA
+  status     String   @default("PENDENTE") // PENDENTE | ACEITA | RECUSADA | CANCELADA (vaga preenchida)
   horaInicio String? // "HH:MM" (quando veio de uma requisição/sugestão)
   horaFim    String? // "HH:MM"
   valor      Int? // centavos; null = usa o valor padrão da diarista
