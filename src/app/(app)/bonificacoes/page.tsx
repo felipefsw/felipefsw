@@ -3,19 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { formatBRL } from "@/lib/format";
 import {
-  DIARIAS_CASHBACK,
-  DIARIAS_CASHBACK_20,
-  DIARIAS_MILESTONE_30,
-  DIARIAS_MILESTONE_50,
-  MEDIA_MINIMA_CASHBACK,
-  MEDIA_MINIMA_CASHBACK_20,
-  VALOR_BONUS_30,
-  VALOR_BONUS_50,
-  mediaDaAvaliacao,
+  MARCOS_DIARIAS,
+  MEDIA_MINIMA,
+  VALOR_BONUS,
+  mediaGeral,
   mesAtual,
   rankingDoMes,
+  tipoMarco,
 } from "@/lib/bonificacoes";
-import { pagarCashback, pagarCashback20, pagarMilestone, pagarTopMes } from "./actions";
+import { pagarMarco, pagarTopMes } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +21,9 @@ export default async function BonificacoesPage() {
   const [diaristas, ranking, topPagos] = await Promise.all([
     prisma.diarista.findMany({
       include: {
-        avaliacoes: { orderBy: { criadoEm: "asc" }, take: DIARIAS_CASHBACK_20 },
+        avaliacoes: { select: { estrelas: true } },
         bonificacoes: {
-          where: { tipo: { in: ["CASHBACK_5", "CASHBACK_20", "MILESTONE_30", "MILESTONE_50"] } },
+          where: { tipo: { startsWith: "MARCO_" } },
           select: { tipo: true },
         },
         _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
@@ -40,51 +36,34 @@ export default async function BonificacoesPage() {
     }),
   ]);
 
-  const mediaDe = (avs: { estrelas: number }[]): number =>
-    avs.reduce((s, a) => s + mediaDaAvaliacao(a), 0) / (avs.length || 1);
-
-  // Elegíveis ao cashback: 5 primeiras diárias avaliadas com média >= 9, ainda não pagos.
-  const elegiveisCashback = diaristas
-    .filter(
-      (d) =>
-        !d.bonificacoes.some((b) => b.tipo === "CASHBACK_5") &&
-        d.avaliacoes.length >= DIARIAS_CASHBACK &&
-        mediaDe(d.avaliacoes.slice(0, DIARIAS_CASHBACK)) >= MEDIA_MINIMA_CASHBACK,
-    )
-    .map((d) => ({ id: d.id, nome: d.nome }));
-
-  // Segundo bônus: 20 primeiras diárias avaliadas com média >= 8,5, ainda não pagos.
-  const elegiveisCashback20 = diaristas
-    .filter(
-      (d) =>
-        !d.bonificacoes.some((b) => b.tipo === "CASHBACK_20") &&
-        d.avaliacoes.length >= DIARIAS_CASHBACK_20 &&
-        mediaDe(d.avaliacoes.slice(0, DIARIAS_CASHBACK_20)) >= MEDIA_MINIMA_CASHBACK_20,
-    )
-    .map((d) => ({ id: d.id, nome: d.nome }));
-
-  // Marcos por nº de diárias realizadas (independe da nota).
-  const elegiveisMarco30 = diaristas
-    .filter(
-      (d) =>
-        !d.bonificacoes.some((b) => b.tipo === "MILESTONE_30") &&
-        d._count.escalas >= DIARIAS_MILESTONE_30,
-    )
-    .map((d) => ({ id: d.id, nome: d.nome, diarias: d._count.escalas }));
-
-  const elegiveisMarco50 = diaristas
-    .filter(
-      (d) =>
-        !d.bonificacoes.some((b) => b.tipo === "MILESTONE_50") &&
-        d._count.escalas >= DIARIAS_MILESTONE_50,
-    )
-    .map((d) => ({ id: d.id, nome: d.nome, diarias: d._count.escalas }));
+  // Para cada marco, quem já fez N diárias mantendo a média e ainda não recebeu.
+  const elegiveisPorMarco = MARCOS_DIARIAS.map((n) => ({
+    n,
+    lista: diaristas
+      .filter(
+        (d) =>
+          d._count.escalas >= n &&
+          mediaGeral(d.avaliacoes) >= MEDIA_MINIMA &&
+          !d.bonificacoes.some((b) => b.tipo === tipoMarco(n)),
+      )
+      .map((d) => ({
+        id: d.id,
+        nome: d.nome,
+        diarias: d._count.escalas,
+        media: mediaGeral(d.avaliacoes),
+      })),
+  }));
 
   const topPagosSet = new Set(topPagos.map((b) => b.diaristaId));
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Bonificações" subtitle="Cashback e top do mês (R$ 100,00)" />
+      <PageHeader title="Bonificações" subtitle="R$ 100,00 por marco de diárias + Top do mês" />
+
+      <p className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-xs text-orange-800">
+        A cada marco de diárias ({MARCOS_DIARIAS.join(", ")}) mantendo a média ≥{" "}
+        {MEDIA_MINIMA.toFixed(1).replace(".", ",")} ★, o diarista ganha {formatBRL(VALOR_BONUS)}.
+      </p>
 
       <p className="text-sm">
         <Link href="/ranking" className="font-medium text-orange-700 underline">
@@ -92,126 +71,45 @@ export default async function BonificacoesPage() {
         </Link>
       </p>
 
-      <section>
-        <h2 className="mb-2 font-semibold text-gray-900">
-          Cashback — 5 diárias com média ≥ {MEDIA_MINIMA_CASHBACK.toFixed(1)}
-        </h2>
-        {elegiveisCashback.length === 0 ? (
-          <EmptyState>Ninguém elegível ao cashback no momento.</EmptyState>
-        ) : (
-          <div className="space-y-2">
-            {elegiveisCashback.map((d) => (
-              <Card key={d.id}>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium text-gray-900">{d.nome}</span>
-                  <form action={pagarCashback}>
-                    <input type="hidden" name="diaristaId" value={d.id} />
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
-                    >
-                      Pagar {formatBRL(10000)}
-                    </button>
-                  </form>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
+      {elegiveisPorMarco.map(({ n, lista }) => (
+        <section key={n}>
+          <h2 className="mb-2 font-semibold text-gray-900">
+            Marco de {n} diárias (média ≥ {MEDIA_MINIMA.toFixed(1).replace(".", ",")} ★) ·{" "}
+            {formatBRL(VALOR_BONUS)}
+          </h2>
+          {lista.length === 0 ? (
+            <EmptyState>Ninguém elegível a este marco no momento.</EmptyState>
+          ) : (
+            <div className="space-y-2">
+              {lista.map((d) => (
+                <Card key={d.id}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-gray-900">{d.nome}</span>
+                      <span className="block text-xs text-gray-500">
+                        {d.diarias} diárias · média {d.media.toFixed(1)} ★
+                      </span>
+                    </span>
+                    <form action={pagarMarco}>
+                      <input type="hidden" name="diaristaId" value={d.id} />
+                      <input type="hidden" name="marco" value={n} />
+                      <button
+                        type="submit"
+                        className="shrink-0 rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
+                      >
+                        Pagar {formatBRL(VALOR_BONUS)}
+                      </button>
+                    </form>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
 
       <section>
-        <h2 className="mb-2 font-semibold text-gray-900">
-          Cashback — 20 diárias com média ≥ {MEDIA_MINIMA_CASHBACK_20.toFixed(1)}
-        </h2>
-        {elegiveisCashback20.length === 0 ? (
-          <EmptyState>Ninguém elegível ao bônus de 20 diárias no momento.</EmptyState>
-        ) : (
-          <div className="space-y-2">
-            {elegiveisCashback20.map((d) => (
-              <Card key={d.id}>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium text-gray-900">{d.nome}</span>
-                  <form action={pagarCashback20}>
-                    <input type="hidden" name="diaristaId" value={d.id} />
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
-                    >
-                      Pagar {formatBRL(10000)}
-                    </button>
-                  </form>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <h2 className="mb-2 font-semibold text-gray-900">
-          Marco — {DIARIAS_MILESTONE_30} diárias realizadas ({formatBRL(VALOR_BONUS_30)})
-        </h2>
-        {elegiveisMarco30.length === 0 ? (
-          <EmptyState>Ninguém atingiu 30 diárias ainda.</EmptyState>
-        ) : (
-          <div className="space-y-2">
-            {elegiveisMarco30.map((d) => (
-              <Card key={d.id}>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium text-gray-900">
-                    {d.nome} <span className="text-xs text-gray-500">· {d.diarias} diárias</span>
-                  </span>
-                  <form action={pagarMilestone}>
-                    <input type="hidden" name="diaristaId" value={d.id} />
-                    <input type="hidden" name="marco" value="30" />
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
-                    >
-                      Pagar {formatBRL(VALOR_BONUS_30)}
-                    </button>
-                  </form>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <h2 className="mb-2 font-semibold text-gray-900">
-          Marco — {DIARIAS_MILESTONE_50} diárias realizadas ({formatBRL(VALOR_BONUS_50)})
-        </h2>
-        {elegiveisMarco50.length === 0 ? (
-          <EmptyState>Ninguém atingiu 50 diárias ainda.</EmptyState>
-        ) : (
-          <div className="space-y-2">
-            {elegiveisMarco50.map((d) => (
-              <Card key={d.id}>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium text-gray-900">
-                    {d.nome} <span className="text-xs text-gray-500">· {d.diarias} diárias</span>
-                  </span>
-                  <form action={pagarMilestone}>
-                    <input type="hidden" name="diaristaId" value={d.id} />
-                    <input type="hidden" name="marco" value="50" />
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
-                    >
-                      Pagar {formatBRL(VALOR_BONUS_50)}
-                    </button>
-                  </form>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <h2 className="mb-2 font-semibold text-gray-900">Top do mês</h2>
+        <h2 className="mb-2 font-semibold text-gray-900">Top do mês · {formatBRL(VALOR_BONUS)}</h2>
         {ranking.length === 0 ? (
           <EmptyState>Sem ranking neste mês ainda.</EmptyState>
         ) : (
@@ -240,7 +138,7 @@ export default async function BonificacoesPage() {
                         type="submit"
                         className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
                       >
-                        Pagar {formatBRL(10000)}
+                        Pagar {formatBRL(VALOR_BONUS)}
                       </button>
                     </form>
                   )}
