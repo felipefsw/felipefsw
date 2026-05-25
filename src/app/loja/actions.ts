@@ -235,6 +235,31 @@ export async function recusarCandidato(requisicaoId: string, diaristaId: string)
   revalidatePath("/requisicoes");
 }
 
+// A loja/gestor cancela um pedido em aberto (some da lista; desconvoca pendentes
+// e remove candidaturas pendentes). Quem já confirmou mantém a diária.
+export async function cancelarRequisicaoLoja(formData: FormData) {
+  const requisicaoId = String(formData.get("requisicaoId") ?? "");
+  if (!requisicaoId) return;
+  const permitidas = await lojasDaSessao();
+  if (permitidas.length === 0) return;
+
+  const req = await prisma.requisicao.findUnique({
+    where: { id: requisicaoId },
+    select: { lojaId: true, status: true },
+  });
+  if (!req || !permitidas.includes(req.lojaId) || req.status !== "ABERTA") {
+    revalidatePath("/loja");
+    return;
+  }
+
+  await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "CANCELADA" } });
+  await cancelarConvocacoesPendentes(requisicaoId);
+  await prisma.inscricao.deleteMany({ where: { requisicaoId, status: "PENDENTE" } });
+  revalidatePath("/loja");
+  revalidatePath("/requisicoes");
+  revalidatePath("/");
+}
+
 // Liga/desliga a permissão de mais de 2 diárias por semana (a loja assume o risco).
 export async function alternarLimiteSemana() {
   const lojaId = await lojaSessaoId();
