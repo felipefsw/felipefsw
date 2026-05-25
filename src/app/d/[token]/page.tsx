@@ -219,11 +219,11 @@ export default async function DiaristaLinkPage({
       </header>
 
       <nav className="sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-gray-200 bg-white px-4 py-2 text-sm">
-        <a href="#vagas" data-tour="diarista-vagas" className="whitespace-nowrap rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-800">
-          📋 Vagas
+        <a href="#proximas" className="whitespace-nowrap rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-800">
+          📅 Minhas diárias
         </a>
-        <a href="#proximas" className="whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
-          📅 Próximas
+        <a href="#vagas" data-tour="diarista-vagas" className="whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
+          📋 Vagas
         </a>
         <Link
           href={`/d/${token}/guia`}
@@ -356,6 +356,132 @@ export default async function DiaristaLinkPage({
             </ul>
           </section>
         )}
+
+        {/* Confirmadas / hoje no topo: é a prioridade da diarista */}
+        <section id="proximas" className="scroll-mt-14">
+          <h2 className="mb-2 font-semibold text-gray-900">Próximos dias</h2>
+          <div className="mb-3">
+            <BarraDia basePath={`/d/${token}`} diaSel={diaSel} />
+          </div>
+          {proximasDepois > 0 && (
+            <p className="mb-2 text-xs text-gray-500">
+              Você tem {proximasDepois} diária(s) depois desta semana — escolha a data no calendário.
+            </p>
+          )}
+          {proximasFiltradas.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-500">
+              {diaSel ? "Nada agendado para esse dia." : "Nenhum dia agendado nesta semana."}
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {proximasFiltradas.map((e) => (
+                <li
+                  key={e.id}
+                  className={`rounded-xl border p-4 shadow-sm ${corDoTurno(e.horaInicio).card}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium capitalize text-gray-900">
+                        {formatDateWithWeekday(e.data)}
+                        {e.data === hoje && (
+                          <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
+                            hoje
+                          </span>
+                        )}
+                      </p>
+                      <p className="flex items-center gap-1.5 text-sm text-gray-500">
+                        <MarcaBadge nome={e.loja.nome} className="h-5 w-5 shrink-0 rounded" />
+                        {e.loja.nome}
+                      </p>
+                      {enderecoCompleto(e.loja) && (
+                        <p className="text-xs text-gray-400">{enderecoCompleto(e.loja)}</p>
+                      )}
+                      <p className="mt-1 text-sm text-gray-600">
+                        {e.horaInicio && e.horaFim ? (
+                          <span
+                            className={`mr-1 rounded px-1.5 py-0.5 font-medium ${corDoTurno(e.horaInicio).chip}`}
+                          >
+                            {e.horaInicio}–{e.horaFim}
+                          </span>
+                        ) : null}
+                        {formatBRL(e.valor)}
+                      </p>
+                    </div>
+                    {e.presenca === "PRESENTE" ? (
+                      <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                        ✓ confirmado
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {e.checkinEm ? (
+                    <div className="mt-2 text-sm text-green-700">
+                      ✓ Check-in às {horaDe(e.checkinEm)}
+                      {e.checkoutEm && (
+                        <span className="text-gray-600">
+                          {" "}
+                          · saída {horaDe(e.checkoutEm)} · recebe{" "}
+                          <strong>{formatBRL(e.valorPago ?? e.valor)}</strong>
+                        </span>
+                      )}
+                    </div>
+                  ) : e.data === hoje ? (
+                    <CheckinButton action={fazerCheckin} token={token} escalaId={e.id} />
+                  ) : e.presenca !== "PRESENTE" && e.data < hoje ? (
+                    <form action={confirmarPresenca} className="mt-3">
+                      <input type="hidden" name="id" value={e.id} />
+                      <input type="hidden" name="token" value={token} />
+                      <button
+                        type="submit"
+                        className="w-full rounded-lg bg-green-600 py-2 font-medium text-white hover:bg-green-700"
+                      >
+                        Confirmar presença
+                      </button>
+                    </form>
+                  ) : null}
+
+                  {!e.checkinEm && podeDesistir(e.data, e.horaInicio) && (
+                    <form action={desistirDaDiaria} className="mt-2">
+                      <input type="hidden" name="token" value={token} />
+                      <input type="hidden" name="escalaId" value={e.id} />
+                      <ConfirmSubmit
+                        className="text-xs text-red-600 underline"
+                        message="Desistir desta diária? A vaga será reaberta para outros. Só dá pra desistir até 4h antes."
+                      >
+                        Desistir desta diária
+                      </ConfirmSubmit>
+                    </form>
+                  )}
+
+                  {e.presenca === "PRESENTE" && enderecoCompleto(e.loja) && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoCompleto(e.loja))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
+                      >
+                        Google Maps
+                      </a>
+                      <a
+                        href={`https://waze.com/ul?q=${encodeURIComponent(enderecoCompleto(e.loja))}&navigate=yes`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white"
+                      >
+                        Waze
+                      </a>
+                      <CopyButton
+                        text={enderecoCompleto(e.loja)}
+                        className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
+                      />
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         {/* Avaliação pendente trava novas vagas */}
         {bloqueado && (
@@ -493,131 +619,6 @@ export default async function DiaristaLinkPage({
             </div>
           ) : (
             <ListaDiarias token={token} itens={itensDiarias} />
-          )}
-        </section>
-
-        <section id="proximas" className="scroll-mt-14">
-          <h2 className="mb-2 font-semibold text-gray-900">Próximos dias</h2>
-          <div className="mb-3">
-            <BarraDia basePath={`/d/${token}`} diaSel={diaSel} />
-          </div>
-          {proximasDepois > 0 && (
-            <p className="mb-2 text-xs text-gray-500">
-              Você tem {proximasDepois} diária(s) depois desta semana — escolha a data no calendário.
-            </p>
-          )}
-          {proximasFiltradas.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-500">
-              {diaSel ? "Nada agendado para esse dia." : "Nenhum dia agendado nesta semana."}
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {proximasFiltradas.map((e) => (
-                <li
-                  key={e.id}
-                  className={`rounded-xl border p-4 shadow-sm ${corDoTurno(e.horaInicio).card}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium capitalize text-gray-900">
-                        {formatDateWithWeekday(e.data)}
-                        {e.data === hoje && (
-                          <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
-                            hoje
-                          </span>
-                        )}
-                      </p>
-                      <p className="flex items-center gap-1.5 text-sm text-gray-500">
-                        <MarcaBadge nome={e.loja.nome} className="h-5 w-5 shrink-0 rounded" />
-                        {e.loja.nome}
-                      </p>
-                      {enderecoCompleto(e.loja) && (
-                        <p className="text-xs text-gray-400">{enderecoCompleto(e.loja)}</p>
-                      )}
-                      <p className="mt-1 text-sm text-gray-600">
-                        {e.horaInicio && e.horaFim ? (
-                          <span
-                            className={`mr-1 rounded px-1.5 py-0.5 font-medium ${corDoTurno(e.horaInicio).chip}`}
-                          >
-                            {e.horaInicio}–{e.horaFim}
-                          </span>
-                        ) : null}
-                        {formatBRL(e.valor)}
-                      </p>
-                    </div>
-                    {e.presenca === "PRESENTE" ? (
-                      <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-                        ✓ confirmado
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {e.checkinEm ? (
-                    <div className="mt-2 text-sm text-green-700">
-                      ✓ Check-in às {horaDe(e.checkinEm)}
-                      {e.checkoutEm && (
-                        <span className="text-gray-600">
-                          {" "}
-                          · saída {horaDe(e.checkoutEm)} · recebe{" "}
-                          <strong>{formatBRL(e.valorPago ?? e.valor)}</strong>
-                        </span>
-                      )}
-                    </div>
-                  ) : e.data === hoje ? (
-                    <CheckinButton action={fazerCheckin} token={token} escalaId={e.id} />
-                  ) : e.presenca !== "PRESENTE" && e.data < hoje ? (
-                    <form action={confirmarPresenca} className="mt-3">
-                      <input type="hidden" name="id" value={e.id} />
-                      <input type="hidden" name="token" value={token} />
-                      <button
-                        type="submit"
-                        className="w-full rounded-lg bg-green-600 py-2 font-medium text-white hover:bg-green-700"
-                      >
-                        Confirmar presença
-                      </button>
-                    </form>
-                  ) : null}
-
-                  {!e.checkinEm && podeDesistir(e.data, e.horaInicio) && (
-                    <form action={desistirDaDiaria} className="mt-2">
-                      <input type="hidden" name="token" value={token} />
-                      <input type="hidden" name="escalaId" value={e.id} />
-                      <ConfirmSubmit
-                        className="text-xs text-red-600 underline"
-                        message="Desistir desta diária? A vaga será reaberta para outros. Só dá pra desistir até 4h antes."
-                      >
-                        Desistir desta diária
-                      </ConfirmSubmit>
-                    </form>
-                  )}
-
-                  {e.presenca === "PRESENTE" && enderecoCompleto(e.loja) && (
-                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoCompleto(e.loja))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
-                      >
-                        Google Maps
-                      </a>
-                      <a
-                        href={`https://waze.com/ul?q=${encodeURIComponent(enderecoCompleto(e.loja))}&navigate=yes`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white"
-                      >
-                        Waze
-                      </a>
-                      <CopyButton
-                        text={enderecoCompleto(e.loja)}
-                        className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700"
-                      />
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
           )}
         </section>
 
