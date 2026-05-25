@@ -373,27 +373,62 @@ export async function convocarDiarista(formData: FormData) {
   revalidatePath("/loja");
 }
 
+// Lojas que a sessão pode gerenciar (loja avulsa = a sua; gestor = todas as dele).
+async function lojasDaSessao(): Promise<string[]> {
+  const ctx = contextoLoja(await getSessao());
+  if (!ctx) return [];
+  if (ctx.gestorId) {
+    const lojas = await prisma.loja.findMany({
+      where: { gestores: { some: { id: ctx.gestorId } } },
+      select: { id: true },
+    });
+    return lojas.map((l) => l.id);
+  }
+  return ctx.lojaId ? [ctx.lojaId] : [];
+}
+
 export async function bloquearDiaristaLoja(formData: FormData) {
-  const lojaId = await lojaSessaoId();
   const diaristaId = String(formData.get("diaristaId") ?? "");
   const dias = Number.parseInt(String(formData.get("dias") ?? ""), 10);
   if (!diaristaId || ![7, 14, 21].includes(dias)) return;
 
+  const permitidas = await lojasDaSessao();
+  if (permitidas.length === 0) return;
+  // Lojas alvo: as marcadas (gestor) limitadas às dele; senão, a loja ativa.
+  const marcadas = formData.getAll("lojaIds").map(String).filter(Boolean);
+  const alvo = (marcadas.length > 0 ? marcadas.filter((id) => permitidas.includes(id)) : permitidas.slice(0, 1));
+  if (alvo.length === 0) return;
+
   const ate = new Date(Date.now() + dias * 24 * 60 * 60 * 1000);
-  await prisma.bloqueio.create({
-    data: { lojaId, diaristaId, origem: "LOJA", ate },
+  // Não duplica bloqueios LOJA ativos para as mesmas lojas.
+  const existentes = await prisma.bloqueio.findMany({
+    where: {
+      diaristaId,
+      origem: "LOJA",
+      lojaId: { in: alvo },
+      OR: [{ ate: null }, { ate: { gt: new Date() } }],
+    },
+    select: { lojaId: true },
   });
+  const jaBloq = new Set(existentes.map((b) => b.lojaId));
+  const novas = alvo.filter((id) => !jaBloq.has(id));
+  if (novas.length > 0) {
+    await prisma.bloqueio.createMany({
+      data: novas.map((lojaId) => ({ lojaId, diaristaId, origem: "LOJA", ate })),
+    });
+  }
   revalidatePath("/loja");
 }
 
 export async function desbloquearDiaristaLoja(formData: FormData) {
-  const lojaId = await lojaSessaoId();
   const diaristaId = String(formData.get("diaristaId") ?? "");
   if (!diaristaId) return;
+  const permitidas = await lojasDaSessao();
+  if (permitidas.length === 0) return;
 
-  // A loja só remove os próprios bloqueios (temporários), nunca os do RH.
+  // A loja/gestor só remove os próprios bloqueios (temporários), nunca os do RH.
   await prisma.bloqueio.deleteMany({
-    where: { lojaId, diaristaId, origem: "LOJA" },
+    where: { diaristaId, origem: "LOJA", lojaId: { in: permitidas } },
   });
   revalidatePath("/loja");
 }
