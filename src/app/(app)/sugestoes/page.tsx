@@ -21,7 +21,7 @@ export default async function SugestoesPage() {
 
   const [diaristas, requisicoes] = await Promise.all([
     prisma.diarista.findMany({
-      where: { ativo: true, ...semBloqueioGlobalWhere() },
+      where: { ativo: true, aprovado: true, ...semBloqueioGlobalWhere() },
       select: {
         id: true,
         nome: true,

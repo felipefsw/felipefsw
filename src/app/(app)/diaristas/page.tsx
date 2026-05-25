@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, PageHeader, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
+import SubmitButton from "@/components/SubmitButton";
 import CopyButton from "@/components/CopyButton";
 import CompartilharCadastro from "@/components/CompartilharCadastro";
 import DiaristaInfo from "@/components/DiaristaInfo";
@@ -10,7 +11,12 @@ import { FUNCOES } from "@/lib/funcoes";
 import { mediaDaAvaliacao } from "@/lib/bonificacoes";
 import { bloqueadaGlobalmente } from "@/lib/limites";
 import { formatDate } from "@/lib/format";
-import { deleteDiarista, desbloquearGlobal, toggleDiaristaAtivo } from "./actions";
+import {
+  aprovarDiaristaCadastro,
+  deleteDiarista,
+  desbloquearGlobal,
+  toggleDiaristaAtivo,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +33,12 @@ export default async function DiaristasPage({
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
 
   const where = {
+    aprovado: true, // pendentes aparecem na seção de aprovação, não na lista geral
     ...(filtro ? { funcao: filtro } : {}),
     ...(q ? { nome: { contains: q, mode: "insensitive" as const } } : {}),
   };
 
-  const [total, diaristas] = await Promise.all([
+  const [total, diaristas, pendentes] = await Promise.all([
     prisma.diarista.count({ where }),
     prisma.diarista.findMany({
       where,
@@ -42,6 +49,20 @@ export default async function DiaristasPage({
         avaliacoes: { orderBy: { criadoEm: "desc" }, take: 5 },
         escalas: { where: { presenca: "PRESENTE" }, select: { loja: { select: { nome: true } } } },
         _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
+      },
+    }),
+    // Autocadastros aguardando aprovação do RH.
+    prisma.diarista.findMany({
+      where: { aprovado: false, ativo: true },
+      orderBy: { criadoEm: "desc" },
+      select: {
+        id: true,
+        nome: true,
+        cpf: true,
+        funcao: true,
+        telefone: true,
+        fotoUrl: true,
+        criadoEm: true,
       },
     }),
   ]);
@@ -85,6 +106,59 @@ export default async function DiaristasPage({
       <div className="mb-4">
         <CompartilharCadastro />
       </div>
+
+      {pendentes.length > 0 && (
+        <section className="mb-4">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-amber-700">
+            Aguardando aprovação ({pendentes.length})
+          </h2>
+          <div className="space-y-2">
+            {pendentes.map((p) => (
+              <Card key={p.id} className="border-amber-200 bg-amber-50 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <DiaristaInfo
+                    nome={p.nome}
+                    fotoUrl={p.fotoUrl}
+                    funcao={p.funcao}
+                    nota={null}
+                    diarias={0}
+                    avatarClassName="h-9 w-9"
+                    extra={
+                      <span className="block text-[11px] text-gray-500">
+                        {p.cpf ? `CPF ${p.cpf}` : "sem CPF"}
+                        {p.telefone ? ` · ${p.telefone}` : ""}
+                      </span>
+                    }
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-amber-200 pt-2">
+                  <Link
+                    href={`/diaristas/${p.id}`}
+                    className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700"
+                  >
+                    Ver ficha
+                  </Link>
+                  <form action={aprovarDiaristaCadastro}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <SubmitButton className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-700">
+                      ✓ Aprovar
+                    </SubmitButton>
+                  </form>
+                  <form action={deleteDiarista}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <ConfirmSubmit
+                      className="rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                      message={`Recusar e excluir o cadastro de "${p.nome}"?`}
+                    >
+                      Recusar
+                    </ConfirmSubmit>
+                  </form>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       <form method="get" className="mb-3 flex gap-2">
         {filtro && <input type="hidden" name="funcao" value={filtro} />}

@@ -235,6 +235,12 @@ export default async function DiaristaLinkPage({
       </nav>
 
       <main className="space-y-6 p-5">
+        {!diarista.aprovado && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+            ⏳ <strong>Cadastro em análise.</strong> O RH precisa aprovar seu cadastro antes de você
+            pegar diárias. Você será avisado assim que liberar.
+          </div>
+        )}
         {checkin === "ok" && (
           <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800">
             ✓ Check-in realizado!
@@ -608,7 +614,11 @@ export default async function DiaristaLinkPage({
 
         <section id="vagas" className="scroll-mt-14">
           <h2 className="mb-2 font-semibold text-gray-900">Agende sua diária</h2>
-          {bloqueado ? (
+          {!diarista.aprovado ? (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+              ⏳ Disponível assim que o RH aprovar seu cadastro.
+            </div>
+          ) : bloqueado ? (
             <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
               🔒 Avalie sua(s) última(s) diária(s) acima para liberar novas vagas.
             </div>

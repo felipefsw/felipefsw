@@ -103,6 +103,9 @@ model Diarista {
   valorDiaria Int         @default(0) // centavos
   observacoes String?
   ativo       Boolean     @default(true)
+  // Aprovação do RH para quem se autocadastrou pelo link. Cadastros antigos e os
+  // criados pelo próprio RH nascem aprovados (default true); autocadastro entra como false.
+  aprovado    Boolean     @default(true)
   // Bloqueio GLOBAL (RH): a diarista não recebe nenhuma diária enquanto estiver no futuro.
   // null = não bloqueada. Data bem distante = "para sempre".
   bloqueadoAte DateTime?

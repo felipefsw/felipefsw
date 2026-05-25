@@ -56,6 +56,7 @@ export default async function ConvidarRequisicaoPage({
     prisma.diarista.findMany({
       where: {
         ativo: true,
+        aprovado: true,
         ...(requisicao.funcao ? { funcao: requisicao.funcao } : {}),
         ...(busca ? { nome: { contains: busca, mode: "insensitive" as const } } : {}),
       },

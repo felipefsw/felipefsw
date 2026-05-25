@@ -118,6 +118,15 @@ export async function bloquearGlobal(formData: FormData) {
   revalidatePath(`/diaristas/${id}`);
 }
 
+// Aprova um autocadastro (libera a diarista para pegar diárias).
+export async function aprovarDiaristaCadastro(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.diarista.update({ where: { id }, data: { aprovado: true } });
+  revalidatePath("/diaristas");
+  revalidatePath("/");
+}
+
 // Redefine a senha da diarista: limpa a senha atual. No próximo acesso (quando o
 // login por senha estiver ativo) ela cria uma nova. Em modo sem senha, não afeta o acesso.
 export async function redefinirSenhaDiarista(formData: FormData) {
