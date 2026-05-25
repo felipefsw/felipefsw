@@ -33,6 +33,11 @@ export default async function InicioPage() {
     faltasHoje,
     mensagensNaoLidas,
     solicitacoesPendentes,
+    lojasResumo,
+    confGB,
+    convitesGB,
+    aPagarGB,
+    pagoGB,
   ] = await Promise.all([
     prisma.escala.findMany({
       where: { data: hoje },
@@ -58,6 +63,31 @@ export default async function InicioPage() {
     prisma.escala.count({ where: { data: hoje, presenca: "FALTOU" } }),
     prisma.mensagem.count({ where: { autor: "DIARISTA", lida: false } }),
     prisma.inscricao.count({ where: { status: "PENDENTE" } }),
+    prisma.loja.findMany({ where: { ativo: true }, select: { id: true, nome: true } }),
+    // Confirmadas: escalas aceitas/agendadas que ainda vão acontecer.
+    prisma.escala.groupBy({
+      by: ["lojaId"],
+      where: { presenca: "PENDENTE", data: { gte: hoje } },
+      _count: { _all: true },
+    }),
+    // A confirmar: convites enviados aguardando a diarista aceitar.
+    prisma.convocacao.groupBy({
+      by: ["lojaId"],
+      where: { status: "PENDENTE" },
+      _count: { _all: true },
+    }),
+    // A pagar: diárias realizadas ainda não pagas.
+    prisma.escala.groupBy({
+      by: ["lojaId"],
+      where: { presenca: "PRESENTE", pago: false },
+      _sum: { valor: true },
+    }),
+    // Pago: diárias realizadas já pagas.
+    prisma.escala.groupBy({
+      by: ["lojaId"],
+      where: { presenca: "PRESENTE", pago: true },
+      _sum: { valor: true },
+    }),
   ]);
 
   const totalAPagar = aPagar.reduce((s, e) => s + e.valor, 0);
@@ -72,6 +102,28 @@ export default async function InicioPage() {
   const escalasPorMarca = agruparPorMarca(escalasHoje);
   const pendentesPorMarca = agruparPorMarca(pendentes);
   const requisicoesPorMarca = agruparPorMarca(requisicoesAbertas);
+
+  // Resumo por loja: a confirmar, confirmadas, a pagar e pago.
+  const countPorLoja = (gb: { lojaId: string; _count: { _all: number } }[]) =>
+    new Map(gb.map((g) => [g.lojaId, g._count._all]));
+  const somaPorLoja = (gb: { lojaId: string; _sum: { valor: number | null } }[]) =>
+    new Map(gb.map((g) => [g.lojaId, g._sum.valor ?? 0]));
+  const confMap = countPorLoja(confGB);
+  const convMap = countPorLoja(convitesGB);
+  const aPagarMap = somaPorLoja(aPagarGB);
+  const pagoMap = somaPorLoja(pagoGB);
+
+  const resumoLojas = lojasResumo
+    .map((l) => ({
+      nome: l.nome,
+      ordem: grupoDaLoja(l.nome).ordem,
+      conf: confMap.get(l.id) ?? 0,
+      conv: convMap.get(l.id) ?? 0,
+      aPagar: aPagarMap.get(l.id) ?? 0,
+      pago: pagoMap.get(l.id) ?? 0,
+    }))
+    .filter((l) => l.conf > 0 || l.conv > 0 || l.aPagar > 0 || l.pago > 0)
+    .sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
 
   const semaforo =
     vagasAbertasHoje > 0
@@ -119,6 +171,51 @@ export default async function InicioPage() {
           Ir para pagamentos →
         </Link>
       </Card>
+
+      {resumoLojas.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-lg font-semibold text-gray-900">Resumo por loja</h2>
+          <Card className="p-2">
+            <p className="mb-1 px-1 text-[11px] text-gray-400">
+              ⏳ a confirmar · ✓ confirmadas · 🔴 a pagar · 🟢 pago
+            </p>
+            <ul className="divide-y divide-gray-100">
+              {resumoLojas.map((l) => (
+                <li
+                  key={l.nome}
+                  className="flex items-center justify-between gap-2 py-1.5"
+                >
+                  <span className="min-w-0 truncate text-sm font-medium text-gray-900">
+                    {l.nome}
+                  </span>
+                  <span className="flex shrink-0 flex-wrap items-center justify-end gap-1 text-[11px]">
+                    {l.conv > 0 && (
+                      <span className="rounded-full bg-amber-100 px-1.5 py-0.5 font-medium text-amber-700">
+                        ⏳ {l.conv}
+                      </span>
+                    )}
+                    {l.conf > 0 && (
+                      <span className="rounded-full bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700">
+                        ✓ {l.conf}
+                      </span>
+                    )}
+                    {l.aPagar > 0 && (
+                      <span className="rounded-full bg-red-100 px-1.5 py-0.5 font-semibold text-red-700">
+                        {formatBRL(l.aPagar)}
+                      </span>
+                    )}
+                    {l.pago > 0 && (
+                      <span className="rounded-full bg-green-100 px-1.5 py-0.5 font-medium text-green-700">
+                        {formatBRL(l.pago)}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      )}
 
       <Link
         href="/sugestoes"
