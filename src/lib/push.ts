@@ -129,6 +129,60 @@ export async function notificarVagaPreenchida(requisicaoId: string): Promise<voi
   );
 }
 
+// URL base pública do app, para montar links em mensagens fora do navegador (Telegram).
+// Em produção a Vercel define VERCEL_PROJECT_PRODUCTION_URL/VERCEL_URL; também dá para
+// fixar um domínio próprio em NEXT_PUBLIC_BASE_URL.
+function linkPublico(path: string): string | null {
+  const explicit = process.env.NEXT_PUBLIC_BASE_URL;
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  const base = explicit
+    ? explicit.replace(/\/+$/, "")
+    : vercel
+      ? `https://${vercel.replace(/\/+$/, "")}`
+      : null;
+  if (!base) return null;
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+// Avisa a diarista de que foi escalada para uma diária, com link para confirmar a presença.
+export async function notificarEscalado(escalaId: string): Promise<void> {
+  const e = await prisma.escala.findUnique({
+    where: { id: escalaId },
+    select: {
+      data: true,
+      horaInicio: true,
+      horaFim: true,
+      valor: true,
+      tokenConfirmacao: true,
+      diaristaId: true,
+      diarista: { select: { telegramChatId: true } },
+      loja: { select: { nome: true } },
+    },
+  });
+  if (!e) return;
+
+  const hora = e.horaInicio && e.horaFim ? ` • ${e.horaInicio}–${e.horaFim}` : "";
+  const resumo = `${e.loja.nome} • ${formatDate(e.data)}${hora} • ${formatBRL(e.valor)}`;
+  const caminho = e.tokenConfirmacao ? `/confirmar/${e.tokenConfirmacao}` : "/";
+
+  await enviarPushParaDiaristas([e.diaristaId], {
+    title: "Você foi escalada! 🎉",
+    body: `${resumo} — toque para confirmar a presença.`,
+    url: caminho,
+  });
+
+  if (e.diarista.telegramChatId) {
+    const link = linkPublico(caminho);
+    const rodape = link
+      ? `\n\n👉 Confirme sua presença: ${link}`
+      : "\n\nAbra o app para confirmar sua presença.";
+    await enviarTelegram(
+      e.diarista.telegramChatId,
+      `✅ <b>Você foi escalada!</b>\n${resumo}${rodape}`,
+    );
+  }
+}
+
 // Notifica diaristas sobre uma nova diária: quem tem a loja como preferida ou foi convidado.
 export async function notificarNovaDiaria(
   lojaId: string,

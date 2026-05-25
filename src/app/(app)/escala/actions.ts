@@ -8,7 +8,7 @@ import { parseBRLToCents } from "@/lib/format";
 import { dentroDaJanelaAgendamento, hojeISO, inicioDaSemana, isISODate } from "@/lib/dates";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
 import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
-import { notificarVagaPreenchida } from "@/lib/push";
+import { notificarEscalado, notificarVagaPreenchida } from "@/lib/push";
 
 export async function createEscala(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
@@ -38,10 +38,11 @@ export async function createEscala(formData: FormData) {
     valor = d?.valorDiaria ?? 0;
   }
 
-  await prisma.escala.create({
-    data: { diaristaId, lojaId, data, valor },
+  const escala = await prisma.escala.create({
+    data: { diaristaId, lojaId, data, valor, tokenConfirmacao: crypto.randomUUID() },
   });
   await limparOutrasInscricoesDoDia(diaristaId, data);
+  await notificarEscalado(escala.id);
 
   revalidatePath("/escala");
   revalidatePath("/");
@@ -72,7 +73,7 @@ export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
   if (jaNoDia || bloqueio) return;
   if (!(await podeMaisUmaNaSemana(diaristaId, requisicao.lojaId, requisicao.data))) return;
 
-  await prisma.escala.create({
+  const escala = await prisma.escala.create({
     data: {
       diaristaId,
       lojaId: requisicao.lojaId,
@@ -81,10 +82,12 @@ export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
       horaFim: requisicao.horaFim,
       valor: requisicao.valorDiaria,
       requisicaoId: requisicao.id,
+      tokenConfirmacao: crypto.randomUUID(),
     },
   });
 
   await limparOutrasInscricoesDoDia(diaristaId, requisicao.data, requisicaoId);
+  await notificarEscalado(escala.id);
 
   if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
     await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });
