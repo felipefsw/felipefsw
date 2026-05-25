@@ -619,13 +619,13 @@ export default async function LojaHome({
                           </ul>
                         </div>
                       )}
-                      {convocadosDaReq(r.id, r.data).filter((c) => c.status !== "ACEITA").length >
+                      {convocadosDaReq(r.id, r.data).filter((c) => c.status === "PENDENTE" || c.status === "RECUSADA").length >
                         0 && (
                         <div className="mt-1.5">
                           <p className="text-[11px] font-medium text-gray-500">Convocados:</p>
                           <ul className="mt-0.5 space-y-0.5">
                             {convocadosDaReq(r.id, r.data)
-                              .filter((c) => c.status !== "ACEITA")
+                              .filter((c) => c.status === "PENDENTE" || c.status === "RECUSADA")
                               .map((c) => {
                                 const sc = statusConvocacao(c.status);
                                 return (

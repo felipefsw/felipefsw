@@ -8,7 +8,7 @@ import { addDias, hojeISO, podeDesistir, turnoFinalizado } from "@/lib/dates";
 import { notificarNovaDiaria, notificarVagaPreenchida } from "@/lib/push";
 import { uploadImagemResultado } from "@/lib/storage";
 import { podeMaisUmaNaSemana, temBloqueioGlobal } from "@/lib/limites";
-import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
+import { cancelarConvocacoesPendentes, limparOutrasInscricoesDoDia } from "@/lib/escalas";
 import { gerarHashSenha, senhaForte } from "@/lib/senha";
 import { entrarDiaristaSessao } from "@/lib/auth";
 
@@ -268,6 +268,8 @@ export async function responderConvocacao(formData: FormData) {
           where: { id: convocacao.requisicaoId },
           data: { status: "ATENDIDA" },
         });
+        // Desconvoca quem foi convidado e não foi escolhido.
+        await cancelarConvocacoesPendentes(convocacao.requisicaoId, convocacao.diaristaId);
         await notificarVagaPreenchida(convocacao.requisicaoId);
       }
     }
