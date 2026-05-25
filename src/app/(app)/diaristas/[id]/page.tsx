@@ -4,12 +4,13 @@ import { Card } from "@/components/ui";
 import CopyLink from "@/components/CopyLink";
 import CopyButton from "@/components/CopyButton";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
+import SubmitButton from "@/components/SubmitButton";
 import Avatar from "@/components/Avatar";
 import { formatBRL, formatDate } from "@/lib/format";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import DiaristaForm from "../DiaristaForm";
 import {
-  bloquearPermanente,
+  bloquearEmLojas,
   redefinirSenhaDiarista,
   removerBloqueio,
   updateDiarista,
@@ -259,29 +260,39 @@ export default async function EditarDiaristaPage({
           </ul>
         )}
 
-        <form action={bloquearPermanente} className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+        <form action={bloquearEmLojas} className="mt-3 border-t border-gray-100 pt-3">
           <input type="hidden" name="diaristaId" value={diarista.id} />
-          <select
-            name="lojaId"
-            required
-            defaultValue=""
-            className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"
-          >
-            <option value="" disabled>
-              Escolha a loja
-            </option>
-            {lojas.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nome}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-          >
-            Bloquear (permanente)
-          </button>
+          <p className="mb-1 text-xs font-medium text-gray-600">
+            Bloquear em uma ou várias lojas (marque as lojas):
+          </p>
+          <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-2">
+            {lojas.map((l) => {
+              const jaBloq = bloqueios.some(
+                (b) => b.lojaId === l.id && (b.ate === null || b.ate > agora),
+              );
+              return (
+                <label
+                  key={l.id}
+                  className={`flex items-center gap-2 text-sm ${jaBloq ? "opacity-50" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    name="lojaIds"
+                    value={l.id}
+                    disabled={jaBloq}
+                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-gray-800">
+                    {l.nome}
+                    {jaBloq ? " · já bloqueada" : ""}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <SubmitButton className="mt-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50">
+            Bloquear nas lojas marcadas
+          </SubmitButton>
         </form>
       </Card>
     </div>
