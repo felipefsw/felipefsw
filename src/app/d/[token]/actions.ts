@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { RAIO_CHECKIN_METROS, distanciaMetros } from "@/lib/geo";
 import { addDias, hojeISO, podeDesistir, turnoFinalizado } from "@/lib/dates";
-import { notificarNovaDiaria, notificarVagaPreenchida } from "@/lib/push";
+import { notificarConviteAceito, notificarNovaDiaria, notificarVagaPreenchida } from "@/lib/push";
 import { uploadImagemResultado } from "@/lib/storage";
 import { podeMaisUmaNaSemana, temBloqueioGlobal } from "@/lib/limites";
 import { cancelarConvocacoesPendentes, limparOutrasInscricoesDoDia } from "@/lib/escalas";
@@ -205,7 +205,7 @@ export async function responderConvocacao(formData: FormData) {
 
   const convocacao = await prisma.convocacao.findUnique({
     where: { id: convocacaoId },
-    include: { diarista: { select: { token: true, valorDiaria: true } } },
+    include: { diarista: { select: { token: true, valorDiaria: true, nome: true } } },
   });
   if (!convocacao || convocacao.diarista.token !== token || convocacao.status !== "PENDENTE") {
     redirect(`/d/${token}`);
@@ -251,6 +251,13 @@ export async function responderConvocacao(formData: FormData) {
       convocacao.data,
       convocacao.requisicaoId ?? undefined,
     );
+
+    // Avisa a loja/gestor de que a diarista confirmou.
+    await notificarConviteAceito({
+      lojaId: convocacao.lojaId,
+      diaristaNome: convocacao.diarista.nome,
+      data: convocacao.data,
+    });
 
     // Convite vindo de uma requisição: marca a candidatura como aceita e fecha a
     // requisição quando todas as vagas forem preenchidas.

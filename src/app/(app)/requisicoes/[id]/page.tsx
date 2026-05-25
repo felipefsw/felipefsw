@@ -7,6 +7,7 @@ import {
   PageHeader,
   btnPrimary,
   btnSecondary,
+  inputClass,
   labelClass,
 } from "@/components/ui";
 import DiaristaInfo from "@/components/DiaristaInfo";
@@ -26,10 +27,11 @@ export default async function ConvidarRequisicaoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<{ erro?: string; q?: string }>;
 }) {
   const { id } = await params;
-  const { erro } = await searchParams;
+  const { erro, q } = await searchParams;
+  const busca = (q ?? "").trim();
   const requisicao = await prisma.requisicao.findUnique({
     where: { id },
     include: { loja: true },
@@ -55,6 +57,7 @@ export default async function ConvidarRequisicaoPage({
       where: {
         ativo: true,
         ...(requisicao.funcao ? { funcao: requisicao.funcao } : {}),
+        ...(busca ? { nome: { contains: busca, mode: "insensitive" as const } } : {}),
       },
       orderBy: { nome: "asc" },
       include: {
@@ -135,13 +138,37 @@ export default async function ConvidarRequisicaoPage({
         )}
       </Card>
 
+      <form method="get" className="flex gap-2">
+        <input
+          type="search"
+          name="q"
+          defaultValue={busca}
+          placeholder="🔍 Buscar diarista pelo nome…"
+          className={inputClass}
+        />
+        <button type="submit" className={btnSecondary}>
+          Buscar
+        </button>
+      </form>
+
       {diaristas.length === 0 ? (
         <EmptyState>
-          Nenhuma diarista ativa
-          {requisicao.funcao ? <> com a função {requisicao.funcao}</> : null}.{" "}
-          <Link href="/diaristas/nova" className="font-medium text-orange-700 underline">
-            Cadastrar
-          </Link>
+          {busca ? (
+            <>
+              Nenhuma diarista encontrada para “{busca}”.{" "}
+              <Link href={`/requisicoes/${id}`} className="font-medium text-orange-700 underline">
+                Limpar busca
+              </Link>
+            </>
+          ) : (
+            <>
+              Nenhuma diarista ativa
+              {requisicao.funcao ? <> com a função {requisicao.funcao}</> : null}.{" "}
+              <Link href="/diaristas/nova" className="font-medium text-orange-700 underline">
+                Cadastrar
+              </Link>
+            </>
+          )}
         </EmptyState>
       ) : (
         <Card>
