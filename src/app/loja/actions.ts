@@ -197,19 +197,27 @@ export async function aprovarCandidato(requisicaoId: string, diaristaId: string)
 
 // Marca/desmarca uma diária como paga (só loja/gestor têm acesso a esta área).
 export async function marcarPagoDiaria(escalaId: string, pago: boolean) {
-  const lojaId = await lojaSessaoId();
-  if (!escalaId) return;
+  // Quem paga pelo lado da loja é o GESTOR (lojista só visualiza).
+  const ctx = contextoLoja(await getSessao());
+  if (!ctx || !ctx.gestorId || !escalaId) return;
   const escala = await prisma.escala.findUnique({
     where: { id: escalaId },
     select: { lojaId: true },
   });
-  if (!escala || escala.lojaId !== lojaId) return;
+  if (!escala) return;
+  // O gestor pode pagar diárias de qualquer loja que ele gerencia (não só a ativa).
+  const autorizado =
+    (await prisma.loja.count({
+      where: { id: escala.lojaId, gestores: { some: { id: ctx.gestorId } } },
+    })) > 0;
+  if (!autorizado) return;
   await prisma.escala.update({
     where: { id: escalaId },
     data: { pago, pagoEm: pago ? new Date() : null },
   });
   revalidatePath("/loja");
   revalidatePath("/pagamentos");
+  revalidatePath("/");
 }
 
 // Recusa um candidato (remove a inscrição dele desta vaga).

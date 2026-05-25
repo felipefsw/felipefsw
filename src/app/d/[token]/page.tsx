@@ -9,6 +9,7 @@ import { grupoDaLoja } from "@/lib/marcas";
 import { DIARIAS_CASHBACK, DIARIAS_CASHBACK_20 } from "@/lib/bonificacoes";
 import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
+import SubmitButton from "@/components/SubmitButton";
 import PushToggle from "@/components/PushToggle";
 import MarcaBadge from "@/components/MarcaBadge";
 import BarraDia from "@/components/BarraDia";
@@ -331,24 +332,18 @@ export default async function DiaristaLinkPage({
                         <input type="hidden" name="token" value={token} />
                         <input type="hidden" name="convocacaoId" value={c.id} />
                         <input type="hidden" name="resposta" value="ACEITA" />
-                        <button
-                          type="submit"
-                          className="w-full rounded-lg bg-green-600 py-2 font-medium text-white hover:bg-green-700"
-                        >
+                        <SubmitButton className="w-full rounded-lg bg-green-600 py-2 font-medium text-white hover:bg-green-700">
                           Aceitar
-                        </button>
+                        </SubmitButton>
                       </form>
                     )}
                     <form action={responderConvocacao} className="flex-1">
                       <input type="hidden" name="token" value={token} />
                       <input type="hidden" name="convocacaoId" value={c.id} />
                       <input type="hidden" name="resposta" value="RECUSADA" />
-                      <button
-                        type="submit"
-                        className="w-full rounded-lg border border-gray-300 bg-white py-2 font-medium text-gray-700 hover:bg-gray-50"
-                      >
+                      <SubmitButton className="w-full rounded-lg border border-gray-300 bg-white py-2 font-medium text-gray-700 hover:bg-gray-50">
                         Recusar
-                      </button>
+                      </SubmitButton>
                     </form>
                   </div>
                 </li>
