@@ -65,6 +65,18 @@ export function podeDesistir(data: string, horaInicio: string | null): boolean {
   return new Date() < limite;
 }
 
+/**
+ * Diz se o diarista ainda pode desfazer a solicitação (inscrição) de uma vaga:
+ * precisa faltar mais de 12h para o início da diária.
+ */
+export function podeDesfazerSolicitacao(data: string, horaInicio: string | null): boolean {
+  const [a, m, d] = data.split("-").map(Number);
+  const [h, mi] = (horaInicio ?? "00:00").split(":").map(Number);
+  const inicio = new Date(a, m - 1, d, h, mi);
+  const limite = new Date(inicio.getTime() - 12 * 60 * 60 * 1000);
+  return new Date() < limite;
+}
+
 /** Hora atual no formato "HH:MM" (horário local do servidor). */
 export function agoraHHMM(): string {
   const d = new Date();

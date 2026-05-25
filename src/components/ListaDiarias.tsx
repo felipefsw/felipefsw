@@ -8,7 +8,7 @@ import { corDaFuncao } from "@/lib/funcoesCor";
 import MarcaBadge from "./MarcaBadge";
 import CopyButton from "./CopyButton";
 import SubmitButton from "./SubmitButton";
-import { alternarFavorita, inscreverNaDiaria } from "@/app/d/[token]/actions";
+import { alternarFavorita, desfazerInscricao, inscreverNaDiaria } from "@/app/d/[token]/actions";
 
 export type DiariaItem = {
   id: string;
@@ -31,6 +31,7 @@ export type DiariaItem = {
   nota: number | null;
   freq: number;
   favorita: boolean;
+  podeDesfazer: boolean;
 };
 
 type Ordem = "marca" | "favoritas" | "frequencia" | "valor" | "distancia" | "horas" | "horario" | "nota";
@@ -171,9 +172,25 @@ export default function ListaDiarias({ token, itens }: { token: string; itens: D
 
         <div className="mt-1.5 flex items-center gap-1.5">
           {it.inscrito ? (
-            <span className="flex-1 rounded-lg bg-green-100 py-1.5 text-center text-sm font-semibold text-green-700">
-              ✓ Solicitação já enviada
-            </span>
+            it.podeDesfazer ? (
+              <form action={desfazerInscricao} className="flex-1">
+                <input type="hidden" name="token" value={token} />
+                <input type="hidden" name="requisicaoId" value={it.id} />
+                <SubmitButton
+                  pendingLabel="Desfazendo…"
+                  className="w-full rounded-lg border border-red-300 bg-white py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                >
+                  ↩︎ Desfazer solicitação
+                </SubmitButton>
+              </form>
+            ) : (
+              <span
+                className="flex-1 rounded-lg bg-gray-100 py-1.5 text-center text-sm font-semibold text-gray-400"
+                title="Faltam menos de 12h: não dá mais para desfazer."
+              >
+                ✓ Solicitação enviada
+              </span>
+            )
           ) : (
             <form action={inscreverNaDiaria} className="flex-1">
               <input type="hidden" name="token" value={token} />

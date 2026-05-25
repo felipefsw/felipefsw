@@ -11,6 +11,9 @@ const ORIENTACOES = [
   "Vai atrasar ou teve um imprevisto? Avise pelo chat \"Falar com o RH\" — avisar não tira sua nota.",
   "Faltar sem avisar prejudica sua nota e pode gerar bloqueio na loja.",
   "No fim do turno, confirme a saída. O pagamento é feito por Pix.",
+  "Solicitou uma vaga e mudou de ideia? Dá para desfazer a solicitação até 12h antes do início da diária. Depois disso o botão fica cinza e não dá mais para desfazer.",
+  "Mantenha sua chave Pix correta em 'Editar dados'. O pagamento vai para a chave que você informar — a loja não se responsabiliza por chave errada.",
+  "Sua nota (e a nota das lojas) só aparece depois de 10 avaliações, para ser justa.",
   "Trate todos com respeito e trabalhe em equipe — isso conta muito na sua avaliação.",
 ];
 

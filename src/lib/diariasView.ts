@@ -2,6 +2,8 @@ import type { DiariaItem } from "@/components/ListaDiarias";
 import { prisma } from "./prisma";
 import { bairroCidade, enderecoCompleto, ruaDaLoja } from "./loja";
 import { grupoDaLoja } from "./marcas";
+import { podeDesfazerSolicitacao } from "./dates";
+import { notaPublica } from "./notas";
 
 type LojaLite = {
   nome: string;
@@ -58,9 +60,10 @@ export async function notasDasLojas(
     cur.qtd += 1;
     acc.set(a.lojaId, cur);
   }
+  // Só mostra a nota depois de um mínimo de avaliações.
   return (lojaId: string) => {
     const c = acc.get(lojaId);
-    return c ? c.soma / c.qtd : null;
+    return c ? notaPublica(c.soma, c.qtd) : null;
   };
 }
 
@@ -101,6 +104,7 @@ export function montarItensDiarias(
         nota: notaDaLoja(r.lojaId),
         freq: ctx.freqPorLoja.get(r.lojaId) ?? 0,
         favorita: ctx.favoritas.has(r.lojaId),
+        podeDesfazer: podeDesfazerSolicitacao(r.data, r.horaInicio),
       };
     });
 }

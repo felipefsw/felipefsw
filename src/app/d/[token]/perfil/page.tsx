@@ -2,24 +2,33 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import FotoUpload from "@/components/FotoUpload";
 import PushToggle from "@/components/PushToggle";
+import { prisma } from "@/lib/prisma";
 import { exigirDiarista } from "@/lib/diaristaSessao";
 import { medalhasDoDiarista } from "@/lib/medalhas";
-import { mudarSenhaDiarista } from "../actions";
+import { MIN_AVALIACOES, notaPublica } from "@/lib/notas";
 
 export const dynamic = "force-dynamic";
 
 export default async function PerfilPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ senha?: string }>;
 }) {
   const { token } = await params;
-  const { senha } = await searchParams;
   const diarista = await exigirDiarista(token);
 
-  const medalhas = await medalhasDoDiarista(diarista.id);
+  const [medalhas, agg, diarias] = await Promise.all([
+    medalhasDoDiarista(diarista.id),
+    prisma.avaliacao.aggregate({
+      where: { diaristaId: diarista.id },
+      _avg: { estrelas: true },
+      _count: { _all: true },
+    }),
+    prisma.escala.count({ where: { diaristaId: diarista.id, presenca: "PRESENTE" } }),
+  ]);
+
+  const totalAval = agg._count._all;
+  const nota = notaPublica((agg._avg.estrelas ?? 0) * totalAval, totalAval);
 
   return (
     <div className="space-y-6">
@@ -31,6 +40,30 @@ export default async function PerfilPage({
         </div>
         <FotoUpload token={token} />
       </section>
+
+      <section className="grid grid-cols-2 gap-3 text-center">
+        <div className="rounded-xl border border-gray-200 bg-white p-3">
+          <p className="text-2xl font-bold text-amber-600">
+            {nota != null ? `★ ${nota.toFixed(1)}` : "—"}
+          </p>
+          <p className="text-xs text-gray-500">
+            {nota != null
+              ? "sua nota"
+              : `nota após ${MIN_AVALIACOES} avaliações (${totalAval}/${MIN_AVALIACOES})`}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-3">
+          <p className="text-2xl font-bold text-gray-900">{diarias}</p>
+          <p className="text-xs text-gray-500">diárias na rede</p>
+        </div>
+      </section>
+
+      <Link
+        href={`/d/${token}/editar`}
+        className="block rounded-xl bg-orange-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-orange-700"
+      >
+        ✏️ Editar meus dados / Pix
+      </Link>
 
       {medalhas.length > 0 && (
         <section>
@@ -64,85 +97,12 @@ export default async function PerfilPage({
       </section>
 
       <section>
-        <h2 className="mb-2 font-semibold text-gray-900">Mudar senha</h2>
-        {senha === "ok" && (
-          <p className="mb-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-700">
-            ✓ Senha alterada com sucesso.
-          </p>
-        )}
-        {senha === "invalida" && (
-          <p className="mb-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
-            A nova senha precisa ter ao menos 6 caracteres e as duas devem ser iguais.
-          </p>
-        )}
-        {senha === "atual" && (
-          <p className="mb-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
-            A senha atual está incorreta.
-          </p>
-        )}
-        <form action={mudarSenhaDiarista} className="space-y-3">
-          <input type="hidden" name="token" value={token} />
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="senhaAtual">
-              Senha atual
-            </label>
-            <input
-              id="senhaAtual"
-              name="senhaAtual"
-              type="password"
-              placeholder="deixe em branco se ainda não tem senha"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="senha">
-              Nova senha
-            </label>
-            <input
-              id="senha"
-              name="senha"
-              type="password"
-              required
-              minLength={6}
-              placeholder="mínimo 6 caracteres"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="confirmarSenha">
-              Repita a nova senha
-            </label>
-            <input
-              id="confirmarSenha"
-              name="confirmarSenha"
-              type="password"
-              required
-              minLength={6}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-orange-700 py-2.5 font-medium text-white hover:bg-orange-800"
-          >
-            Salvar nova senha
-          </button>
-        </form>
-      </section>
-
-      <section className="space-y-2">
         <Link
           href={`/d/${token}/guia`}
           className="block rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           📖 Guia do diarista
         </Link>
-        <a
-          href="/entrar"
-          className="block rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Sair da conta
-        </a>
       </section>
     </div>
   );

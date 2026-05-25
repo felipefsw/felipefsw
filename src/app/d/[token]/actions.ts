@@ -4,7 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { RAIO_CHECKIN_METROS, distanciaMetros } from "@/lib/geo";
-import { addDias, hojeISO, podeDesistir, turnoFinalizado } from "@/lib/dates";
+import {
+  addDias,
+  hojeISO,
+  podeDesfazerSolicitacao,
+  podeDesistir,
+  turnoFinalizado,
+} from "@/lib/dates";
+import { FUNCOES } from "@/lib/funcoes";
 import { notificarNovaDiaria } from "@/lib/push";
 import { uploadImagemResultado } from "@/lib/storage";
 import { podeMaisUmaNaSemana } from "@/lib/limites";
@@ -273,6 +280,60 @@ export async function alternarFavorita(formData: FormData) {
   revalidatePath(`/d/${token}`);
   revalidatePath(`/d/${token}/vagas`);
   revalidatePath(`/d/${token}/lojas`);
+}
+
+// Edição dos próprios dados pelo diarista (inclui a chave Pix). O pagamento é
+// feito para a chave que o diarista informar; a loja não se responsabiliza por
+// dados incorretos (aviso mostrado na tela).
+export async function editarDadosDiarista(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  if (!token) redirect("/entrar");
+  const d = await prisma.diarista.findUnique({ where: { token }, select: { id: true } });
+  if (!d) redirect("/entrar");
+
+  const nome = String(formData.get("nome") ?? "").trim();
+  const telefone = String(formData.get("telefone") ?? "").trim() || null;
+  const chavePix = String(formData.get("chavePix") ?? "").trim() || null;
+  const dataNascimento = String(formData.get("dataNascimento") ?? "").trim() || null;
+  const funcaoIn = String(formData.get("funcao") ?? "").trim();
+  const funcao = (FUNCOES as readonly string[]).includes(funcaoIn) ? funcaoIn : null;
+
+  if (!nome) redirect(`/d/${token}/editar?dados=invalido`);
+
+  await prisma.diarista.update({
+    where: { id: d.id },
+    data: { nome, telefone, chavePix, dataNascimento, funcao },
+  });
+
+  revalidatePath(`/d/${token}`);
+  revalidatePath(`/d/${token}/perfil`);
+  revalidatePath(`/d/${token}/editar`);
+  redirect(`/d/${token}/editar?dados=ok`);
+}
+
+// Desfaz a solicitação (inscrição) em uma vaga, permitido até 12h antes do início.
+export async function desfazerInscricao(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const requisicaoId = String(formData.get("requisicaoId") ?? "");
+  if (!token || !requisicaoId) return;
+
+  const diarista = await prisma.diarista.findUnique({ where: { token }, select: { id: true } });
+  if (!diarista) return;
+
+  const req = await prisma.requisicao.findUnique({
+    where: { id: requisicaoId },
+    select: { data: true, horaInicio: true },
+  });
+  if (!req) return;
+  // Passou do prazo (12h antes): não permite desfazer.
+  if (!podeDesfazerSolicitacao(req.data, req.horaInicio)) return;
+
+  await prisma.inscricao.deleteMany({ where: { requisicaoId, diaristaId: diarista.id } });
+
+  revalidatePath(`/d/${token}`);
+  revalidatePath(`/d/${token}/vagas`);
+  revalidatePath(`/d/${token}/lojas`);
+  revalidatePath("/requisicoes");
 }
 
 // Troca de senha pela tela de Perfil (já logado). Confere a senha atual quando

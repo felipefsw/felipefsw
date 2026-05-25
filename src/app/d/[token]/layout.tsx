@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { diaristaAutenticado } from "@/lib/diaristaSessao";
 import BottomNavDiarista from "@/components/BottomNavDiarista";
+import MenuDiarista from "@/components/MenuDiarista";
 import ChatRH from "@/components/ChatRH";
 
 export const dynamic = "force-dynamic";
@@ -32,15 +33,15 @@ export default async function DiaristaLayout({
         <Link href={`/d/${token}`} className="flex min-w-0 items-center gap-2 font-semibold">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/rwp-logo.svg" alt="RWP" className="h-7 w-auto shrink-0" />
-          <span className="truncate text-sm">{diarista.nome.split(" ")[0]}</span>
         </Link>
-        <div className="flex shrink-0 items-center gap-3 text-xs font-medium">
-          <Link href={`/d/${token}/perfil`} className="rounded-full bg-orange-600 px-3 py-1">
-            Perfil
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href={`/d/${token}/top`}
+            className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white"
+          >
+            🏆 Top diaristas
           </Link>
-          <a href="/entrar" className="text-orange-100 underline">
-            Sair
-          </a>
+          <MenuDiarista token={token} />
         </div>
       </header>
 
