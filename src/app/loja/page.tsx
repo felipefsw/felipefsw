@@ -224,6 +224,13 @@ export default async function LojaHome({
     ? [...requisicoes].sort((a, b) => b.criadoEm.getTime() - a.criadoEm.getTime())[0]
     : null;
 
+  // Pedidos atuais/futuros ficam em "Minhas requisições"; os de dias passados
+  // viram "Diárias realizadas".
+  const requisicoesAtivas = requisicoes.filter((r) => r.data >= hoje);
+  const requisicoesRealizadas = requisicoes
+    .filter((r) => r.data < hoje)
+    .sort((a, b) => (a.data < b.data ? 1 : -1));
+
   // Diaristas distintos que já vieram, com datas e notas dadas por esta loja.
   type Info = {
     nome: string;
@@ -533,13 +540,13 @@ export default async function LojaHome({
 
       <section data-tour="loja-requisicoes">
         <h2 className="mb-2 font-semibold text-gray-900">Minhas requisições</h2>
-        {requisicoes.length === 0 ? (
+        {requisicoesAtivas.length === 0 ? (
           <EmptyState>
-            Nenhuma requisição ainda. Toque em <strong>Solicitar diaristas</strong>.
+            Nenhuma requisição atual. Toque em <strong>Solicitar diaristas</strong>.
           </EmptyState>
         ) : (
           <div className="space-y-3">
-            {requisicoes.map((r) => {
+            {requisicoesAtivas.map((r) => {
               const st = statusLabel(r.status);
               const turno = corDoTurno(r.horaInicio);
               // Confirmados desta vaga: escalas vinculadas a ela ou do mesmo dia (vínculos antigos).
@@ -619,13 +626,17 @@ export default async function LojaHome({
                           </ul>
                         </div>
                       )}
-                      {convocadosDaReq(r.id, r.data).filter((c) => c.status === "PENDENTE" || c.status === "RECUSADA").length >
+                      {convocadosDaReq(r.id, r.data).filter((c) =>
+                                (c.status === "PENDENTE" || c.status === "RECUSADA") &&
+                                !escalaDiaristaData.has(`${c.diaristaId}|${c.data}`)).length >
                         0 && (
                         <div className="mt-1.5">
                           <p className="text-[11px] font-medium text-gray-500">Convocados:</p>
                           <ul className="mt-0.5 space-y-0.5">
                             {convocadosDaReq(r.id, r.data)
-                              .filter((c) => c.status === "PENDENTE" || c.status === "RECUSADA")
+                              .filter((c) =>
+                                (c.status === "PENDENTE" || c.status === "RECUSADA") &&
+                                !escalaDiaristaData.has(`${c.diaristaId}|${c.data}`))
                               .map((c) => {
                                 const sc = statusConvocacao(c.status);
                                 return (
@@ -816,6 +827,68 @@ export default async function LojaHome({
           </div>
         )}
       </section>
+
+      {requisicoesRealizadas.length > 0 && (
+        <section>
+          <h2 className="mb-2 font-semibold text-gray-900">Diárias realizadas</h2>
+          <div className="space-y-2">
+            {requisicoesRealizadas.map((r) => {
+              const feitos = escalas.filter(
+                (e) => e.requisicaoId === r.id || (e.requisicaoId == null && e.data === r.data),
+              );
+              return (
+                <Card key={r.id} className="p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium capitalize text-gray-900">
+                      {formatDateWithWeekday(r.data)}
+                    </p>
+                    <span className="text-xs text-gray-500">
+                      {r.funcao ?? "qualquer"} · {formatBRL(r.valorDiaria)}
+                    </span>
+                  </div>
+                  {feitos.length === 0 ? (
+                    <p className="mt-1 text-xs text-gray-400">Ninguém compareceu.</p>
+                  ) : (
+                    <ul className="mt-1 space-y-0.5">
+                      {feitos.map((e) => {
+                        const stt =
+                          e.presenca === "PRESENTE"
+                            ? { t: "presente", c: "bg-green-100 text-green-700" }
+                            : e.presenca === "FALTOU"
+                              ? { t: "faltou", c: "bg-red-100 text-red-700" }
+                              : { t: "confirmado", c: "bg-gray-100 text-gray-600" };
+                        return (
+                          <li
+                            key={e.id}
+                            className="flex flex-wrap items-center gap-1.5 text-xs text-gray-700"
+                          >
+                            <Avatar
+                              nome={e.diarista.nome}
+                              fotoUrl={e.diarista.fotoUrl}
+                              className="h-5 w-5"
+                            />
+                            <span>{e.diarista.nome}</span>
+                            <span
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${stt.c}`}
+                            >
+                              {stt.t}
+                            </span>
+                            {e.pago && (
+                              <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                                pago
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {topDiaristas.length > 0 && (
         <section>

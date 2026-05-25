@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
-import { addDias, hojeISO, inicioDaSemana, isISODate, podeDesistir, turnoFinalizado } from "@/lib/dates";
+import { addDias, hojeISO, isISODate, podeDesistir, turnoFinalizado } from "@/lib/dates";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import { corDoTurno } from "@/lib/horarios";
 import { bairroCidade, ruaDaLoja } from "@/lib/loja";
@@ -107,13 +107,10 @@ export default async function DiaristaLinkPage({
   const proximas = diarista.escalas.filter((e) => e.data >= hoje);
   const recentes = diarista.escalas.filter((e) => e.data < hoje).reverse();
 
-  // Filtro de dia: ?dia=AAAA-MM-DD mostra só aquele dia; padrão = esta semana.
+  // Filtro de dia: ?dia=AAAA-MM-DD mostra só aquele dia; padrão = todas as próximas
+  // (assim uma diária recém-aceita sempre aparece, mesmo que seja semana que vem).
   const diaSel = dia && isISODate(dia) ? dia : null;
-  const fimSemana = addDias(inicioDaSemana(hoje), 6);
-  const proximasFiltradas = diaSel
-    ? proximas.filter((e) => e.data === diaSel)
-    : proximas.filter((e) => e.data <= fimSemana);
-  const proximasDepois = diaSel ? 0 : proximas.filter((e) => e.data > fimSemana).length;
+  const proximasFiltradas = diaSel ? proximas.filter((e) => e.data === diaSel) : proximas;
 
   // Diárias encerradas que ainda faltam o diarista avaliar (trava novas vagas).
   const pendentesAvaliacao = diarista.escalas.filter(
@@ -364,14 +361,9 @@ export default async function DiaristaLinkPage({
           <div className="mb-3">
             <BarraDia basePath={`/d/${token}`} diaSel={diaSel} />
           </div>
-          {proximasDepois > 0 && (
-            <p className="mb-2 text-xs text-gray-500">
-              Você tem {proximasDepois} diária(s) depois desta semana — escolha a data no calendário.
-            </p>
-          )}
           {proximasFiltradas.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-500">
-              {diaSel ? "Nada agendado para esse dia." : "Nenhum dia agendado nesta semana."}
+              {diaSel ? "Nada agendado para esse dia." : "Nenhum dia agendado ainda."}
             </div>
           ) : (
             <ul className="space-y-3">
@@ -409,6 +401,10 @@ export default async function DiaristaLinkPage({
                       </p>
                     </div>
                     {e.presenca === "PRESENTE" ? (
+                      <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                        ✓ realizada
+                      </span>
+                    ) : e.confirmadaEm ? (
                       <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
                         ✓ confirmado
                       </span>
