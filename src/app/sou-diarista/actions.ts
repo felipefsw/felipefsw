@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { cpfValido } from "@/lib/cpf";
+import { cpfValido, soCpfDigitos } from "@/lib/cpf";
 import { isISODate } from "@/lib/dates";
 import { gerarHashSenha, senhaForte } from "@/lib/senha";
 import { entrarDiaristaSessao } from "@/lib/auth";
@@ -33,6 +33,14 @@ export async function cadastrarDiarista(formData: FormData) {
   if (!nome || !sobrenome || !cpf || !isISODate(dataNascimento) || !funcao) redirect(erroUrl("campos"));
   if (!cpfValido(cpf)) redirect(erroUrl("cpf"));
   if (!senhaForte(senha) || senha !== confirmarSenha) redirect(erroUrl("senha"));
+
+  // Não permite dois cadastros com o mesmo CPF (comparando só os dígitos).
+  const cpfDigits = soCpfDigitos(cpf);
+  const existentes = await prisma.diarista.findMany({
+    where: { cpf: { not: null } },
+    select: { cpf: true },
+  });
+  if (existentes.some((d) => soCpfDigitos(d.cpf) === cpfDigits)) redirect(erroUrl("cpfdup"));
 
   const diarista = await prisma.diarista.create({
     data: {

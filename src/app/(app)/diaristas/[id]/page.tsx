@@ -76,6 +76,11 @@ export default async function EditarDiaristaPage({
           CPF inválido. Confira os números e tente novamente.
         </p>
       )}
+      {erro === "cpfdup" && (
+        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          Já existe outra diarista cadastrada com esse CPF.
+        </p>
+      )}
       <DiaristaForm
         action={updateDiarista}
         diarista={diarista}

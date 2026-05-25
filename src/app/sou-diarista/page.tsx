@@ -33,6 +33,11 @@ export default async function SouDiaristaPage({
             CPF inválido. Confira os números e tente novamente.
           </p>
         )}
+        {erro === "cpfdup" && (
+          <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            Esse CPF já está cadastrado. Entre com o seu acesso em vez de criar outro cadastro.
+          </p>
+        )}
         {erro === "campos" && (
           <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
             Preencha nome, sobrenome, CPF, data de nascimento (DD/MM/AAAA) e função.

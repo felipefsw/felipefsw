@@ -25,6 +25,11 @@ export default async function NovaDiaristaPage({
           CPF inválido. Confira os números e tente novamente.
         </p>
       )}
+      {erro === "cpfdup" && (
+        <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          Já existe uma diarista cadastrada com esse CPF.
+        </p>
+      )}
       <DiaristaForm action={createDiarista} lojas={lojas} submitLabel="Salvar diarista" />
     </div>
   );
