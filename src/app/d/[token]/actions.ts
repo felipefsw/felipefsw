@@ -325,6 +325,8 @@ export async function inscreverNaDiaria(formData: FormData) {
 
   const diarista = await prisma.diarista.findUnique({ where: { token } });
   if (!diarista) return;
+  // Cadastro ainda não aprovado pelo RH não pode pegar vagas.
+  if (!diarista.aprovado) return;
 
   // Precisa avaliar as diárias encerradas antes de pegar novas vagas.
   if (await temAvaliacaoPendente(diarista.id)) return;

@@ -38,7 +38,7 @@ export default async function NovoAgendamentoPage({
 
   const [diaristas, lojas, requisicoes] = await Promise.all([
     prisma.diarista.findMany({
-      where: { ativo: true, ...semBloqueioGlobalWhere() },
+      where: { ativo: true, aprovado: true, ...semBloqueioGlobalWhere() },
       orderBy: { nome: "asc" },
       include: {
         avaliacoes: { select: { estrelas: true }, orderBy: { criadoEm: "desc" }, take: 5 },

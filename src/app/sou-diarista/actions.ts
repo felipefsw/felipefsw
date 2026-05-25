@@ -52,6 +52,7 @@ export async function cadastrarDiarista(formData: FormData) {
       chavePix: chavePix || null,
       senha: gerarHashSenha(senha),
       observacoes: String(formData.get("observacoes") ?? "").trim() || null,
+      aprovado: false, // autocadastro precisa de aprovação do RH antes de pegar diárias
     },
   });
 
