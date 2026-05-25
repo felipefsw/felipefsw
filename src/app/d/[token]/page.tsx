@@ -14,15 +14,12 @@ import MarcaBadge from "@/components/MarcaBadge";
 import Avatar from "@/components/Avatar";
 import FotoUpload from "@/components/FotoUpload";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
-import { redirect } from "next/navigation";
 import ListaDiarias, { type DiariaItem } from "@/components/ListaDiarias";
 import ChatRH from "@/components/ChatRH";
 import TrilhaAprendizado from "@/components/TrilhaAprendizado";
 import { TRILHA_DIARISTA } from "@/lib/trilhas";
-import { getSessao } from "@/lib/auth";
 import {
   confirmarPresenca,
-  definirSenhaDiarista,
   desistirDaDiaria,
   fazerCheckin,
   responderConvocacao,
@@ -47,10 +44,10 @@ export default async function DiaristaLinkPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ checkin?: string; desistir?: string; erro?: string }>;
+  searchParams: Promise<{ checkin?: string; desistir?: string }>;
 }) {
   const { token } = await params;
-  const { checkin, desistir, erro } = await searchParams;
+  const { checkin, desistir } = await searchParams;
   const hoje = hojeISO();
   const desde = addDias(hoje, -14);
   // Diarista só se candidata a diárias de até 2 dias à frente.
@@ -101,73 +98,9 @@ export default async function DiaristaLinkPage({
     );
   }
 
-  // Primeiro acesso: ainda não tem senha → cria a senha (não exige sessão).
-  if (!diarista.senha) {
-    return (
-      <div className="mx-auto max-w-md">
-        <header className="bg-neutral-900 px-5 py-6 text-white">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/rwp-logo.svg" alt="RWP" className="mb-3 h-7 w-auto" />
-          <h1 className="text-xl font-bold">Primeiro acesso</h1>
-          <p className="mt-1 text-sm text-orange-100">
-            Olá, {diarista.nome.split(" ")[0]}! Crie uma senha para acessar sua agenda.
-          </p>
-        </header>
-        <main className="p-5">
-          {erro === "senha" && (
-            <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
-              As senhas não conferem ou têm menos de 6 caracteres.
-            </p>
-          )}
-          <form action={definirSenhaDiarista} className="space-y-3">
-            <input type="hidden" name="token" value={token} />
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="senha">
-                Crie uma senha
-              </label>
-              <input
-                id="senha"
-                name="senha"
-                type="password"
-                required
-                minLength={6}
-                placeholder="mínimo 6 caracteres"
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
-              />
-            </div>
-            <div>
-              <label
-                className="mb-1 block text-sm font-medium text-gray-700"
-                htmlFor="confirmarSenha"
-              >
-                Repita a senha
-              </label>
-              <input
-                id="confirmarSenha"
-                name="confirmarSenha"
-                type="password"
-                required
-                minLength={6}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-orange-700 py-2.5 font-medium text-white hover:bg-orange-800"
-            >
-              Criar senha e entrar
-            </button>
-          </form>
-        </main>
-      </div>
-    );
-  }
-
-  // Já tem senha: exige sessão deste diarista (login por CPF + senha).
-  const sessao = await getSessao();
-  if (!(sessao?.tipo === "diarista" && sessao.diaristaId === diarista.id)) {
-    redirect("/entrar?perfil=diarista");
-  }
+  // ACESSO TEMPORÁRIO SEM SENHA: o token do link pessoal já é a credencial da diarista,
+  // então a agenda abre direto. (Ao voltar o login, restaurar a criação de senha e a
+  // checagem de sessão de diarista aqui.)
 
   const proximas = diarista.escalas.filter((e) => e.data >= hoje);
   const recentes = diarista.escalas.filter((e) => e.data < hoje).reverse();

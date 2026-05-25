@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Card, btnPrimary, inputClass } from "@/components/ui";
+import { Card } from "@/components/ui";
 import MarcaBadge from "@/components/MarcaBadge";
-import { entrarComoGestao, entrarComoGestor, entrarComoLoja, entrarConfiguracao, entrarDiarista } from "./actions";
+import Avatar from "@/components/Avatar";
+import {
+  entrarDiaristaDireto,
+  entrarGestaoDireto,
+  entrarGestorDireto,
+  entrarLojaDireto,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
 const PERFIS = ["diarista", "lojista", "gestor", "gestao"] as const;
 type Perfil = (typeof PERFIS)[number];
-
-const precisaDefinir = (senha: string | null | undefined) => !senha || !senha.includes(":");
 
 function Cabecalho() {
   return (
@@ -24,61 +28,15 @@ function Cabecalho() {
   );
 }
 
-// Etapa de senha: só login. O 1º acesso/reset é pelo link secreto (WhatsApp).
-function CartaoSenha({
-  action,
-  alvo,
-  voltarHref,
-  erro,
-}: {
-  action: (formData: FormData) => void;
-  alvo: { id: string; nome: string; senha: string | null };
-  voltarHref: string;
-  erro?: string;
-}) {
-  const primeiro = precisaDefinir(alvo.senha);
-  return (
-    <Card>
-      <Link href={voltarHref} className="mb-3 inline-block text-sm font-medium text-orange-700">
-        ← escolher outro nome
-      </Link>
-      <h2 className="font-semibold text-gray-900">{alvo.nome}</h2>
-      {primeiro ? (
-        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Primeiro acesso ainda não liberado. Peça ao RH o seu <strong>link de acesso</strong> (enviado
-          no WhatsApp) para criar a sua senha.
-        </p>
-      ) : (
-        <>
-          <p className="mb-3 mt-1 text-sm text-gray-500">Digite sua senha.</p>
-          {erro === "login" && <p className="mb-2 text-sm text-red-600">Senha incorreta.</p>}
-          <form action={action} className="space-y-3">
-            <input type="hidden" name="id" value={alvo.id} />
-            <input
-              name="senha"
-              type="password"
-              required
-              placeholder="Sua senha"
-              className={inputClass}
-            />
-            <button type="submit" className={`${btnPrimary} w-full`}>
-              Entrar
-            </button>
-          </form>
-        </>
-      )}
-    </Card>
-  );
-}
-
 export default async function EntrarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string; perfil?: string; id?: string }>;
+  searchParams: Promise<{ perfil?: string }>;
 }) {
-  const { erro, perfil, id } = await searchParams;
+  const { perfil } = await searchParams;
   const sel = (PERFIS as readonly string[]).includes(perfil ?? "") ? (perfil as Perfil) : null;
 
+  // Tela inicial: escolher o perfil (sem senha).
   if (!sel) {
     const opcoes: { perfil: Perfil; titulo: string; desc: string; emoji: string }[] = [
       { perfil: "diarista", titulo: "Sou diarista", desc: "Quero pegar diárias", emoji: "🧑‍🍳" },
@@ -89,6 +47,9 @@ export default async function EntrarPage({
     return (
       <div className="mx-auto max-w-md px-5 py-8">
         <Cabecalho />
+        <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-center text-xs font-medium text-amber-800">
+          Acesso temporário sem senha — escolha como quer entrar.
+        </p>
         <div className="space-y-3">
           {opcoes.map((o) => (
             <Link
@@ -109,42 +70,29 @@ export default async function EntrarPage({
     );
   }
 
-  const lojas =
-    sel === "lojista" && !id
-      ? await prisma.loja.findMany({
+  const [diaristas, lojas, gestores] = await Promise.all([
+    sel === "diarista"
+      ? prisma.diarista.findMany({
+          where: { ativo: true },
+          orderBy: { nome: "asc" },
+          select: { id: true, nome: true, fotoUrl: true, funcao: true },
+        })
+      : Promise.resolve([]),
+    sel === "lojista"
+      ? prisma.loja.findMany({
           where: { ativo: true },
           orderBy: { nome: "asc" },
           select: { id: true, nome: true, bairro: true, cidade: true },
         })
-      : [];
-  const lojaSel =
-    sel === "lojista" && id
-      ? await prisma.loja.findUnique({ where: { id }, select: { id: true, nome: true, senha: true } })
-      : null;
-  const gestores =
-    sel === "gestor" && !id
-      ? await prisma.gestor.findMany({
-          where: { ativo: true, aprovado: true },
+      : Promise.resolve([]),
+    sel === "gestor"
+      ? prisma.gestor.findMany({
+          where: { ativo: true },
           orderBy: { nome: "asc" },
           select: { id: true, nome: true },
         })
-      : [];
-  const membros =
-    sel === "gestao" && !id
-      ? await prisma.membro.findMany({
-          where: { ativo: true },
-          orderBy: { nome: "asc" },
-          select: { id: true, nome: true, perfil: true, papel: true },
-        })
-      : [];
-  const gestorSel =
-    sel === "gestor" && id
-      ? await prisma.gestor.findUnique({ where: { id }, select: { id: true, nome: true, senha: true } })
-      : null;
-  const membroSel =
-    sel === "gestao" && id
-      ? await prisma.membro.findUnique({ where: { id }, select: { id: true, nome: true, senha: true } })
-      : null;
+      : Promise.resolve([]),
+  ]);
 
   return (
     <div className="mx-auto max-w-md px-5 py-8">
@@ -155,24 +103,40 @@ export default async function EntrarPage({
 
       {sel === "diarista" && (
         <Card>
-          <h2 className="font-semibold text-gray-900">Sou diarista</h2>
-          <p className="mb-3 mt-1 text-sm text-gray-500">Informe seu CPF e sua senha.</p>
-          {erro === "diarista" && <p className="mb-2 text-sm text-red-600">Informe um CPF válido.</p>}
-          {erro === "senha" && <p className="mb-2 text-sm text-red-600">CPF ou senha incorretos.</p>}
-          {erro === "semsenha" && (
-            <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
-              Primeiro acesso é pelo <strong>link pessoal</strong> que o RH te envia no WhatsApp.
+          <h2 className="font-semibold text-gray-900">Entrar como diarista</h2>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
+          {diaristas.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Nenhuma diarista cadastrada.{" "}
+              <Link href="/sou-diarista" className="font-medium text-orange-700 underline">
+                Cadastre-se
+              </Link>
             </p>
+          ) : (
+            <div className="max-h-[60vh] space-y-1 overflow-y-auto">
+              {diaristas.map((d) => (
+                <form key={d.id} action={entrarDiaristaDireto}>
+                  <input type="hidden" name="id" value={d.id} />
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left hover:border-orange-300"
+                  >
+                    <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-8 w-8" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-gray-900">
+                        {d.nome}
+                      </span>
+                      {d.funcao && (
+                        <span className="block truncate text-xs text-gray-500">{d.funcao}</span>
+                      )}
+                    </span>
+                  </button>
+                </form>
+              ))}
+            </div>
           )}
-          <form action={entrarDiarista} className="space-y-3">
-            <input name="cpf" inputMode="numeric" required placeholder="Seu CPF" className={inputClass} />
-            <input name="senha" type="password" placeholder="Sua senha" className={inputClass} />
-            <button type="submit" className={`${btnPrimary} w-full`}>
-              Entrar
-            </button>
-          </form>
-          <p className="mt-2 text-center text-sm text-gray-500">
-            Primeira vez?{" "}
+          <p className="mt-3 text-center text-sm text-gray-500">
+            Não está na lista?{" "}
             <Link href="/sou-diarista" className="font-medium text-orange-700 underline">
               Cadastre-se
             </Link>
@@ -180,130 +144,102 @@ export default async function EntrarPage({
         </Card>
       )}
 
-      {sel === "lojista" &&
-        (lojaSel ? (
-          <CartaoSenha
-            action={entrarComoLoja}
-            alvo={lojaSel}
-            voltarHref="/entrar?perfil=lojista"
-            erro={erro}
-          />
-        ) : (
-          <Card>
-            <h2 className="font-semibold text-gray-900">Entrar como loja</h2>
-            <p className="mb-3 mt-1 text-sm text-gray-500">Toque na sua loja para entrar.</p>
+      {sel === "lojista" && (
+        <Card>
+          <h2 className="font-semibold text-gray-900">Entrar como loja</h2>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Toque na sua loja para entrar.</p>
+          {lojas.length === 0 ? (
+            <p className="text-sm text-gray-500">Nenhuma loja cadastrada ainda.</p>
+          ) : (
             <div className="max-h-[60vh] space-y-1 overflow-y-auto">
               {lojas.map((l) => (
-                <Link
-                  key={l.id}
-                  href={`/entrar?perfil=lojista&id=${l.id}`}
-                  className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left hover:border-orange-300"
-                >
-                  <MarcaBadge nome={l.nome} className="h-6 w-6 shrink-0 rounded" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-gray-900">{l.nome}</span>
-                    {(l.bairro || l.cidade) && (
-                      <span className="block truncate text-xs text-gray-500">
-                        {[l.bairro, l.cidade].filter(Boolean).join(" · ")}
+                <form key={l.id} action={entrarLojaDireto}>
+                  <input type="hidden" name="id" value={l.id} />
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left hover:border-orange-300"
+                  >
+                    <MarcaBadge nome={l.nome} className="h-6 w-6 shrink-0 rounded" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-gray-900">
+                        {l.nome}
                       </span>
-                    )}
-                  </span>
-                </Link>
+                      {(l.bairro || l.cidade) && (
+                        <span className="block truncate text-xs text-gray-500">
+                          {[l.bairro, l.cidade].filter(Boolean).join(" · ")}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </form>
               ))}
             </div>
-            <p className="mt-3 text-center text-sm text-gray-500">
-              Sua loja não está aqui?{" "}
-              <Link href="/solicitar-acesso" className="font-medium text-orange-700 underline">
-                Solicitar acesso
-              </Link>
-            </p>
-          </Card>
-        ))}
+          )}
+          <p className="mt-3 text-center text-sm text-gray-500">
+            Sua loja não está aqui?{" "}
+            <Link href="/solicitar-acesso" className="font-medium text-orange-700 underline">
+              Solicitar acesso
+            </Link>
+          </p>
+        </Card>
+      )}
 
-      {sel === "gestor" &&
-        (gestorSel ? (
-          <CartaoSenha
-            action={entrarComoGestor}
-            alvo={gestorSel}
-            voltarHref="/entrar?perfil=gestor"
-            erro={erro}
-          />
-        ) : (
-          <Card>
-            <h2 className="font-semibold text-gray-900">Entrar como gestor</h2>
-            <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
-            {gestores.length === 0 ? (
-              <p className="text-sm text-gray-500">Nenhum gestor cadastrado ainda.</p>
-            ) : (
-              <div className="space-y-1">
-                {gestores.map((g) => (
-                  <Link
-                    key={g.id}
-                    href={`/entrar?perfil=gestor&id=${g.id}`}
+      {sel === "gestor" && (
+        <Card>
+          <h2 className="font-semibold text-gray-900">Entrar como gestor</h2>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
+          {gestores.length === 0 ? (
+            <p className="text-sm text-gray-500">Nenhum gestor cadastrado ainda.</p>
+          ) : (
+            <div className="space-y-1">
+              {gestores.map((g) => (
+                <form key={g.id} action={entrarGestorDireto}>
+                  <input type="hidden" name="id" value={g.id} />
+                  <button
+                    type="submit"
                     className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left font-medium text-gray-900 hover:border-orange-300"
                   >
                     🧑‍💼 {g.nome}
-                  </Link>
-                ))}
-              </div>
-            )}
-            <p className="mt-3 text-center text-sm text-gray-500">
-              Não tem cadastro?{" "}
-              <Link href="/solicitar-acesso" className="font-medium text-orange-700 underline">
-                Solicitar acesso
-              </Link>
-            </p>
-          </Card>
-        ))}
+                  </button>
+                </form>
+              ))}
+            </div>
+          )}
+          <p className="mt-3 text-center text-sm text-gray-500">
+            Não tem cadastro?{" "}
+            <Link href="/solicitar-acesso" className="font-medium text-orange-700 underline">
+              Solicitar acesso
+            </Link>
+          </p>
+        </Card>
+      )}
 
-      {sel === "gestao" &&
-        (membroSel ? (
-          <CartaoSenha
-            action={entrarComoGestao}
-            alvo={membroSel}
-            voltarHref="/entrar?perfil=gestao"
-            erro={erro}
-          />
-        ) : (
-          <Card>
-            <h2 className="font-semibold text-gray-900">RH / TI (gestão)</h2>
-            <form action={entrarConfiguracao} className="mt-3">
+      {sel === "gestao" && (
+        <Card>
+          <h2 className="font-semibold text-gray-900">RH / TI (gestão)</h2>
+          <p className="mb-3 mt-1 text-sm text-gray-500">Entre como RH ou TI.</p>
+          <div className="space-y-2">
+            <form action={entrarGestaoDireto}>
+              <input type="hidden" name="perfil" value="rh" />
               <button
                 type="submit"
-                className="w-full rounded-lg bg-orange-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-orange-800"
+                className="w-full rounded-lg bg-orange-700 px-3 py-3 text-sm font-semibold text-white hover:bg-orange-800"
               >
-                🔧 Entrar para configurar (sem senha)
+                🛠️ Entrar como RH
               </button>
             </form>
-            <p className="mb-3 mt-1 text-xs text-amber-700">
-              Acesso temporário só para a configuração inicial.
-            </p>
-            <p className="mb-3 mt-1 text-sm text-gray-500">Ou toque no seu nome para entrar.</p>
-            {(["rh", "ti"] as const).map((p) => {
-              const lista = membros.filter((m) => m.perfil === p);
-              if (lista.length === 0) return null;
-              return (
-                <div key={p} className="mb-3 last:mb-0">
-                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-400">
-                    {p === "rh" ? "RH" : "TI"}
-                  </p>
-                  <div className="space-y-1">
-                    {lista.map((m) => (
-                      <Link
-                        key={m.id}
-                        href={`/entrar?perfil=gestao&id=${m.id}`}
-                        className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left hover:border-orange-300"
-                      >
-                        <span className="font-medium text-gray-900">🛠️ {m.nome}</span>
-                        {m.papel && <span className="text-xs text-gray-400">{m.papel}</span>}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </Card>
-        ))}
+            <form action={entrarGestaoDireto}>
+              <input type="hidden" name="perfil" value="ti" />
+              <button
+                type="submit"
+                className="w-full rounded-lg bg-neutral-900 px-3 py-3 text-sm font-semibold text-white hover:bg-neutral-800"
+              >
+                🛠️ Entrar como TI
+              </button>
+            </form>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
