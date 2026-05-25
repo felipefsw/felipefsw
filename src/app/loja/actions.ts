@@ -7,8 +7,13 @@ import { contextoLoja, getSessao, setSessao } from "@/lib/auth";
 import { dentroDaJanelaAgendamento, isHHMM, isISODate, turnoFinalizado } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
 import { valorProporcional } from "@/lib/geo";
-import { notificarNovaDiaria, notificarPagamentoDaEscala, notificarVagaPreenchida } from "@/lib/push";
-import { podeMaisUmaNaSemana } from "@/lib/limites";
+import {
+  notificarConvite,
+  notificarNovaDiaria,
+  notificarPagamentoDaEscala,
+  notificarVagaPreenchida,
+} from "@/lib/push";
+import { podeMaisUmaNaSemana, temBloqueioGlobal } from "@/lib/limites";
 import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
 import { uploadImagemResultado } from "@/lib/storage";
 
@@ -145,7 +150,7 @@ export async function aprovarCandidato(requisicaoId: string, diaristaId: string)
   if (!requisicao || requisicao.lojaId !== lojaId || requisicao.status !== "ABERTA") return;
   if (requisicao._count.escalas >= requisicao.quantidade) return;
 
-  const [inscrito, jaNoDia, bloqueio] = await Promise.all([
+  const [inscrito, jaNoDia, bloqueio, bloqGlobal] = await Promise.all([
     prisma.inscricao.findUnique({
       where: { requisicaoId_diaristaId: { requisicaoId, diaristaId } },
       select: { id: true },
@@ -155,8 +160,9 @@ export async function aprovarCandidato(requisicaoId: string, diaristaId: string)
       where: { lojaId, diaristaId, OR: [{ ate: null }, { ate: { gt: new Date() } }] },
       select: { id: true },
     }),
+    temBloqueioGlobal(diaristaId),
   ]);
-  if (!inscrito || jaNoDia || bloqueio) return;
+  if (!inscrito || jaNoDia || bloqueio || bloqGlobal) return;
   if (!(await podeMaisUmaNaSemana(diaristaId, lojaId, requisicao.data))) return;
 
   await prisma.$transaction([
@@ -320,21 +326,23 @@ export async function convocarDiarista(formData: FormData) {
   if (!diaristaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
   if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
-  // Garante que o diarista existe, não está já convocado e não tem diária nesse dia.
-  const [diarista, jaConvocado, jaNoDia] = await Promise.all([
+  // Garante que o diarista existe, não está já convocado, sem diária nesse dia e sem bloqueio global.
+  const [diarista, jaConvocado, jaNoDia, bloqGlobal] = await Promise.all([
     prisma.diarista.findUnique({ where: { id: diaristaId }, select: { id: true } }),
     prisma.convocacao.findFirst({
       where: { lojaId, diaristaId, data, status: "PENDENTE" },
       select: { id: true },
     }),
     prisma.escala.findFirst({ where: { diaristaId, data }, select: { id: true } }),
+    temBloqueioGlobal(diaristaId),
   ]);
-  if (!diarista || jaConvocado || jaNoDia) {
+  if (!diarista || jaConvocado || jaNoDia || bloqGlobal) {
     revalidatePath("/loja");
     return;
   }
 
-  await prisma.convocacao.create({ data: { lojaId, diaristaId, data } });
+  const convocacao = await prisma.convocacao.create({ data: { lojaId, diaristaId, data } });
+  await notificarConvite(convocacao.id);
   revalidatePath("/loja");
 }
 

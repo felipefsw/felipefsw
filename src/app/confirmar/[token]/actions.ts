@@ -15,9 +15,10 @@ export async function confirmarPorLink(formData: FormData) {
   });
   if (!escala) return;
 
+  // Confirmar só registra que a diarista vem — NÃO marca presença (isso é a realização).
   await prisma.$transaction([
     prisma.diarista.update({ where: { id: escala.diaristaId }, data: { nome } }),
-    prisma.escala.update({ where: { id: escala.id }, data: { presenca: "PRESENTE" } }),
+    prisma.escala.update({ where: { id: escala.id }, data: { confirmadaEm: new Date() } }),
   ]);
 
   revalidatePath(`/confirmar/${token}`);

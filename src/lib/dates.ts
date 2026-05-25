@@ -65,6 +65,19 @@ export function podeDesistir(data: string, horaInicio: string | null): boolean {
   return new Date() < limite;
 }
 
+/**
+ * Diz se o turno já começou (estamos no meio do período da diária ou depois).
+ * Usado para liberar marcar presença/avaliar só depois que a diária está acontecendo.
+ * Sem horário de início, considera começado quando a data chegou (hoje ou antes).
+ */
+export function turnoComecou(data: string, horaInicio: string | null): boolean {
+  const hoje = hojeISO();
+  if (data > hoje) return false; // ainda é no futuro
+  if (data < hoje) return true; // já passou
+  if (!horaInicio) return true; // é hoje e sem horário definido
+  return agoraHHMM() >= horaInicio; // é hoje: precisa ter passado do início
+}
+
 /** Hora atual no formato "HH:MM" (horário local do servidor). */
 export function agoraHHMM(): string {
   const d = new Date();

@@ -4,13 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { Card, EmptyState, btnPrimary } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import CopyLink from "@/components/CopyLink";
+import DiaristaInfo from "@/components/DiaristaInfo";
 import { formatBRL, formatDateShort, formatDateWithWeekday } from "@/lib/format";
-import { addDias, hojeISO, inicioDaSemana, isISODate, semana } from "@/lib/dates";
+import { addDias, hojeISO, inicioDaSemana, isISODate, semana, turnoComecou } from "@/lib/dates";
 import { grupoDaLoja } from "@/lib/marcas";
 import EstrelasAvaliacao from "@/components/EstrelasAvaliacao";
 import { avaliarEstrelasRH, deleteEscala, gerarLinkConfirmacao, marcarPresenca } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+function notaDe(avaliacoes: { estrelas: number }[]): number | null {
+  if (avaliacoes.length < 5) return null;
+  return avaliacoes.reduce((s, a) => s + a.estrelas, 0) / avaliacoes.length;
+}
 
 export default async function EscalaPage({
   searchParams,
@@ -23,15 +29,27 @@ export default async function EscalaPage({
     sp.inicio && isISODate(sp.inicio) ? inicioDaSemana(sp.inicio) : inicioDaSemana(hoje);
   const dias = semana(inicio);
 
-  const [escalas, requisicoesSemana] = await Promise.all([
+  const [escalas, convitesPendentes] = await Promise.all([
     prisma.escala.findMany({
       where: { data: { gte: dias[0], lte: dias[6] } },
-      include: { diarista: true, loja: true, avaliacao: { select: { id: true, estrelas: true } } },
+      include: {
+        diarista: {
+          select: {
+            id: true,
+            nome: true,
+            fotoUrl: true,
+            funcao: true,
+            avaliacoes: { select: { estrelas: true }, orderBy: { criadoEm: "desc" }, take: 5 },
+            _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
+          },
+        },
+        loja: true,
+        avaliacao: { select: { id: true, estrelas: true } },
+      },
       orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
     }),
-    prisma.requisicao.findMany({
-      where: { status: "ABERTA", data: { gte: dias[0], lte: dias[6] } },
-      select: { quantidade: true, _count: { select: { escalas: true } } },
+    prisma.convocacao.count({
+      where: { status: "PENDENTE", data: { gte: dias[0], lte: dias[6] } },
     }),
   ]);
 
@@ -39,18 +57,22 @@ export default async function EscalaPage({
   for (const dia of dias) porDia.set(dia, []);
   for (const e of escalas) porDia.get(e.data)?.push(e);
 
-  // Resumo da semana: confirmadas (diarista confirmou = PRESENTE),
-  // a confirmar (agendadas mas ainda PENDENTE) e a alocar (vagas em aberto sem diarista).
-  const confirmadas = escalas.filter((e) => e.presenca === "PRESENTE").length;
-  const aConfirmar = escalas.filter((e) => e.presenca === "PENDENTE").length;
-  const aAlocar = requisicoesSemana.reduce(
-    (s, r) => s + Math.max(0, r.quantidade - r._count.escalas),
-    0,
-  );
+  // 4 indicadores da semana.
+  const realizadas = escalas.filter((e) => e.presenca === "PRESENTE").length;
+  const faltas = escalas.filter((e) => e.presenca === "FALTOU").length;
+  const confirmadas = escalas.filter((e) => e.presenca === "PENDENTE").length;
+  const programadas = convitesPendentes; // convites enviados, aguardando aceite
+
+  const indicadores = [
+    { n: confirmadas, label: "Confirmadas", cls: "border-green-200 bg-green-50 text-green-800" },
+    { n: realizadas, label: "Realizadas", cls: "border-blue-200 bg-blue-50 text-blue-800" },
+    { n: programadas, label: "Programadas", cls: "border-amber-200 bg-amber-50 text-amber-800" },
+    { n: faltas, label: "Faltas", cls: "border-red-200 bg-red-50 text-red-800" },
+  ];
 
   return (
     <div>
-      <div className="mb-4 flex items-end justify-between gap-3">
+      <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Escala</h1>
           <p className="text-sm text-gray-500">
@@ -62,22 +84,13 @@ export default async function EscalaPage({
         </Link>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-green-200 bg-green-50 p-3">
-          <p className="text-2xl font-bold text-green-800">{confirmadas}</p>
-          <p className="text-sm font-medium text-green-800">Confirmadas</p>
-          <p className="text-xs text-green-700">diaristas que confirmaram a diária</p>
-        </div>
-        <Link
-          href="/escala/novo"
-          className="rounded-xl border border-amber-200 bg-amber-50 p-3 hover:bg-amber-100"
-        >
-          <p className="text-2xl font-bold text-amber-800">{aConfirmar + aAlocar}</p>
-          <p className="text-sm font-medium text-amber-800">A confirmar / a alocar</p>
-          <p className="text-xs text-amber-700">
-            {aConfirmar} a confirmar · {aAlocar} vaga(s) a alocar
-          </p>
-        </Link>
+      <div className="mb-4 grid grid-cols-4 gap-2">
+        {indicadores.map((i) => (
+          <div key={i.label} className={`rounded-xl border p-2 text-center ${i.cls}`}>
+            <p className="text-xl font-bold leading-none">{i.n}</p>
+            <p className="mt-1 text-[11px] font-medium leading-tight">{i.label}</p>
+          </div>
+        ))}
       </div>
 
       {sp.erro === "conflito" && (
@@ -90,6 +103,11 @@ export default async function EscalaPage({
           Limite de 2 diárias por semana nessa loja atingido. Libere o limite na loja se quiser.
         </div>
       )}
+      {sp.erro === "bloqueado" && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          Essa diarista está bloqueada pelo RH e não pode ser escalada.
+        </div>
+      )}
 
       <div className="mb-4 flex items-center justify-between gap-2">
         <Link
@@ -98,10 +116,7 @@ export default async function EscalaPage({
         >
           ← Semana
         </Link>
-        <Link
-          href="/escala"
-          className="text-sm font-medium text-orange-700 hover:underline"
-        >
+        <Link href="/escala" className="text-sm font-medium text-orange-700 hover:underline">
           Esta semana
         </Link>
         <Link
@@ -115,7 +130,6 @@ export default async function EscalaPage({
       <div className="space-y-3">
         {dias.map((dia) => {
           const lista = porDia.get(dia) ?? [];
-          // Ordena por marca para agrupar visualmente dentro do dia.
           const ordenada = [...lista].sort((a, b) => {
             const ga = grupoDaLoja(a.loja.nome);
             const gb = grupoDaLoja(b.loja.nome);
@@ -149,127 +163,146 @@ export default async function EscalaPage({
                     const marcaLabel = grupoDaLoja(e.loja.nome).label;
                     const prevLabel =
                       idx > 0 ? grupoDaLoja(ordenada[idx - 1].loja.nome).label : null;
+                    const comecou = turnoComecou(e.data, e.horaInicio);
                     return (
-                    <Fragment key={e.id}>
-                    {marcaLabel !== prevLabel && (
-                      <li className="pt-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">
-                        {marcaLabel}
-                      </li>
-                    )}
-                    <li className="py-2">
-                      <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-gray-900">
-                          {e.diarista.nome}
-                        </p>
-                        <p className="truncate text-sm text-gray-500">{e.loja.nome}</p>
-                        <p className="text-sm text-gray-600">
-                          {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim} · ` : ""}
-                          {formatBRL(e.valor)}
-                        </p>
-                      </div>
+                      <Fragment key={e.id}>
+                        {marcaLabel !== prevLabel && (
+                          <li className="pt-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                            {marcaLabel}
+                          </li>
+                        )}
+                        <li className="py-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <DiaristaInfo
+                              nome={e.diarista.nome}
+                              fotoUrl={e.diarista.fotoUrl}
+                              funcao={e.diarista.funcao}
+                              nota={notaDe(e.diarista.avaliacoes)}
+                              diarias={e.diarista._count.escalas}
+                              avatarClassName="h-9 w-9"
+                              extra={
+                                <span className="block text-xs text-gray-600">
+                                  {e.loja.nome}
+                                  {" · "}
+                                  {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim} · ` : ""}
+                                  {formatBRL(e.valor)}
+                                </span>
+                              }
+                            />
 
-                      <div className="flex shrink-0 flex-col items-end gap-1.5">
-                        {e.presenca === "PENDENTE" ? (
-                          <div className="flex gap-1.5">
-                            <form action={marcarPresenca}>
-                              <input type="hidden" name="id" value={e.id} />
-                              <input type="hidden" name="presenca" value="PRESENTE" />
-                              <button
-                                type="submit"
-                                className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
-                              >
-                                Presente
-                              </button>
-                            </form>
-                            <form action={marcarPresenca}>
-                              <input type="hidden" name="id" value={e.id} />
-                              <input type="hidden" name="presenca" value="FALTOU" />
-                              <button
-                                type="submit"
-                                className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                              >
-                                Faltou
-                              </button>
-                            </form>
+                            <div className="flex shrink-0 flex-col items-end gap-1.5">
+                              {e.presenca === "PENDENTE" ? (
+                                comecou ? (
+                                  <div className="flex gap-1.5">
+                                    <form action={marcarPresenca}>
+                                      <input type="hidden" name="id" value={e.id} />
+                                      <input type="hidden" name="presenca" value="PRESENTE" />
+                                      <button
+                                        type="submit"
+                                        className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
+                                      >
+                                        Presente
+                                      </button>
+                                    </form>
+                                    <form action={marcarPresenca}>
+                                      <input type="hidden" name="id" value={e.id} />
+                                      <input type="hidden" name="presenca" value="FALTOU" />
+                                      <button
+                                        type="submit"
+                                        className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                                      >
+                                        Faltou
+                                      </button>
+                                    </form>
+                                  </div>
+                                ) : (
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                      e.confirmadaEm
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-amber-100 text-amber-700"
+                                    }`}
+                                  >
+                                    {e.confirmadaEm ? "✓ confirmou" : "aguardando o dia"}
+                                  </span>
+                                )
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  {e.presenca === "PRESENTE" ? (
+                                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                                      Realizada
+                                    </span>
+                                  ) : (
+                                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                                      Faltou
+                                    </span>
+                                  )}
+                                  {e.pago && (
+                                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
+                                      pago
+                                    </span>
+                                  )}
+                                  {e.data >= hoje && (
+                                    <form action={marcarPresenca}>
+                                      <input type="hidden" name="id" value={e.id} />
+                                      <input type="hidden" name="presenca" value="PENDENTE" />
+                                      <button
+                                        type="submit"
+                                        className="text-xs text-gray-400 underline hover:text-gray-600"
+                                      >
+                                        desfazer
+                                      </button>
+                                    </form>
+                                  )}
+                                </div>
+                              )}
+
+                              {e.presenca === "PRESENTE" && (
+                                <EstrelasAvaliacao
+                                  escalaId={e.id}
+                                  valorInicial={e.avaliacao?.estrelas ?? 0}
+                                  acao={avaliarEstrelasRH}
+                                />
+                              )}
+
+                              {e.data >= hoje && e.presenca === "PENDENTE" && (
+                                <form action={deleteEscala}>
+                                  <input type="hidden" name="id" value={e.id} />
+                                  <ConfirmSubmit
+                                    className="text-xs text-gray-400 hover:text-red-600"
+                                    message="Excluir este agendamento?"
+                                  >
+                                    excluir
+                                  </ConfirmSubmit>
+                                </form>
+                              )}
+                            </div>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            {e.presenca === "PRESENTE" ? (
-                              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                                Presente
-                              </span>
-                            ) : (
-                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                                Faltou
-                              </span>
-                            )}
-                            {e.pago && (
-                              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
-                                pago
-                              </span>
-                            )}
-                            {e.data >= hoje && (
-                              <form action={marcarPresenca}>
-                                <input type="hidden" name="id" value={e.id} />
-                                <input type="hidden" name="presenca" value="PENDENTE" />
-                                <button
-                                  type="submit"
-                                  className="text-xs text-gray-400 underline hover:text-gray-600"
-                                >
-                                  desfazer
-                                </button>
-                              </form>
-                            )}
-                          </div>
-                        )}
 
-                        {e.presenca === "PRESENTE" && (
-                          <EstrelasAvaliacao
-                            escalaId={e.id}
-                            valorInicial={e.avaliacao?.estrelas ?? 0}
-                            acao={avaliarEstrelasRH}
-                          />
-                        )}
-
-                        {e.data >= hoje && e.presenca === "PENDENTE" && (
-                          <form action={deleteEscala}>
-                            <input type="hidden" name="id" value={e.id} />
-                            <ConfirmSubmit
-                              className="text-xs text-gray-400 hover:text-red-600"
-                              message="Excluir este agendamento?"
-                            >
-                              excluir
-                            </ConfirmSubmit>
-                          </form>
-                        )}
-                      </div>
-                      </div>
-
-                      {e.presenca === "PENDENTE" && (
-                        <div className="mt-2">
-                          {e.tokenConfirmacao ? (
-                            <>
-                              <p className="mb-1 text-xs text-gray-400">
-                                Link de confirmação (envie para a diarista):
-                              </p>
-                              <CopyLink path={`/confirmar/${e.tokenConfirmacao}`} />
-                            </>
-                          ) : (
-                            <form action={gerarLinkConfirmacao}>
-                              <input type="hidden" name="id" value={e.id} />
-                              <button
-                                type="submit"
-                                className="text-xs font-medium text-orange-700 underline"
-                              >
-                                🔗 gerar link de confirmação
-                              </button>
-                            </form>
+                          {e.presenca === "PENDENTE" && !comecou && (
+                            <div className="mt-2">
+                              {e.tokenConfirmacao ? (
+                                <>
+                                  <p className="mb-1 text-xs text-gray-400">
+                                    Link de confirmação (envie para a diarista):
+                                  </p>
+                                  <CopyLink path={`/confirmar/${e.tokenConfirmacao}`} />
+                                </>
+                              ) : (
+                                <form action={gerarLinkConfirmacao}>
+                                  <input type="hidden" name="id" value={e.id} />
+                                  <button
+                                    type="submit"
+                                    className="text-xs font-medium text-orange-700 underline"
+                                  >
+                                    🔗 gerar link de confirmação
+                                  </button>
+                                </form>
+                              )}
+                            </div>
                           )}
-                        </div>
-                      )}
-                    </li>
-                    </Fragment>
+                        </li>
+                      </Fragment>
                     );
                   })}
                 </ul>

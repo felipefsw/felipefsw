@@ -41,6 +41,7 @@ export default async function LojasPage({
       include: {
         _count: { select: { escalas: true } },
         requisicoes: { where: { status: "ABERTA" }, select: { funcao: true, quantidade: true } },
+        gestores: { select: { nome: true } },
       },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -137,6 +138,12 @@ export default async function LojasPage({
                           {[loja.bairro, loja.cidade].filter(Boolean).join(" · ")}
                         </p>
                       )}
+                      <p className="mt-0.5 truncate text-[11px] text-gray-500">
+                        <span className="text-gray-400">Gestor/gerente:</span>{" "}
+                        {loja.gestores.length > 0
+                          ? loja.gestores.map((g) => g.nome).join(", ")
+                          : "—"}
+                      </p>
                       {vagas > 0 ? (
                         <p className="mt-1 text-[11px] font-semibold text-amber-700">
                           {vagas} vaga(s):{" "}

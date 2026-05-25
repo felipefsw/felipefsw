@@ -6,13 +6,11 @@ import { prisma } from "@/lib/prisma";
 import {
   dentroDaJanelaAgendamento,
   hojeISO,
-  inicioDaSemana,
   isHHMM,
   isISODate,
 } from "@/lib/dates";
 import { parseBRLToCents } from "@/lib/format";
-import { notificarNovaDiaria, notificarVagaPreenchida } from "@/lib/push";
-import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
+import { notificarConvite, notificarNovaDiaria } from "@/lib/push";
 
 export type ResultadoMagico = {
   total: number;
@@ -173,19 +171,22 @@ export async function createRequisicao(formData: FormData) {
   redirect("/requisicoes");
 }
 
+// Envia CONVITES para os diaristas escolhidos (item: aceite obrigatório).
+// A escala só nasce quando a diarista aceitar; a requisição fecha sozinha ao lotar.
 export async function fecharRequisicao(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  const data = String(formData.get("data") ?? "");
   const diaristaIds = formData.getAll("diaristaIds").map(String).filter(Boolean);
 
-  if (!id || !isISODate(data) || !dentroDaJanelaAgendamento(data) || diaristaIds.length === 0) return;
+  if (!id) redirect("/requisicoes");
+  if (diaristaIds.length === 0) redirect(`/requisicoes/${id}?erro=selecione`);
 
   const requisicao = await prisma.requisicao.findUnique({ where: { id } });
-  if (!requisicao) return;
+  if (!requisicao || requisicao.status !== "ABERTA") redirect("/requisicoes");
+  const data = requisicao.data;
 
-  // Evita conflito: remove quem já está escalado nesse dia (em qualquer loja)
-  // ou quem está bloqueado nesta loja.
-  const [jaEscalados, bloqueados] = await Promise.all([
+  // Não convida quem já tem diária nesse dia, está bloqueado (loja ou global)
+  // ou já foi convidado para esta vaga.
+  const [jaEscalados, bloqueados, bloqGlobais, jaConvidados] = await Promise.all([
     prisma.escala.findMany({
       where: { data, diaristaId: { in: diaristaIds } },
       select: { diaristaId: true },
@@ -198,38 +199,46 @@ export async function fecharRequisicao(formData: FormData) {
       },
       select: { diaristaId: true },
     }),
-  ]);
-  const ocupados = new Set(jaEscalados.map((e) => e.diaristaId));
-  const bloqSet = new Set(bloqueados.map((b) => b.diaristaId));
-  const livres = diaristaIds.filter((d) => !ocupados.has(d) && !bloqSet.has(d));
-  if (livres.length === 0) return;
-
-  await prisma.$transaction([
-    prisma.escala.createMany({
-      data: livres.map((diaristaId) => ({
-        diaristaId,
-        lojaId: requisicao.lojaId,
-        data,
-        horaInicio: requisicao.horaInicio,
-        horaFim: requisicao.horaFim,
-        valor: requisicao.valorDiaria,
-        requisicaoId: requisicao.id,
-      })),
+    prisma.diarista.findMany({
+      where: { id: { in: diaristaIds }, bloqueadoAte: { gt: new Date() } },
+      select: { id: true },
     }),
-    prisma.requisicao.update({ where: { id }, data: { status: "ATENDIDA" } }),
-    prisma.inscricao.updateMany({
-      where: { requisicaoId: id, diaristaId: { in: livres } },
-      data: { status: "ACEITA" },
+    prisma.convocacao.findMany({
+      where: { requisicaoId: id, diaristaId: { in: diaristaIds }, status: "PENDENTE" },
+      select: { diaristaId: true },
     }),
   ]);
+  const indisponiveis = new Set([
+    ...jaEscalados.map((e) => e.diaristaId),
+    ...bloqueados.map((b) => b.diaristaId),
+    ...bloqGlobais.map((b) => b.id),
+    ...jaConvidados.map((c) => c.diaristaId),
+  ]);
+  const livres = diaristaIds.filter((d) => !indisponiveis.has(d));
+  if (livres.length === 0) redirect(`/requisicoes/${id}?erro=indisponivel`);
 
-  for (const d of livres) await limparOutrasInscricoesDoDia(d, data, id);
-  await notificarVagaPreenchida(id);
+  await prisma.convocacao.createMany({
+    data: livres.map((diaristaId) => ({
+      diaristaId,
+      lojaId: requisicao.lojaId,
+      data,
+      horaInicio: requisicao.horaInicio,
+      horaFim: requisicao.horaFim,
+      valor: requisicao.valorDiaria,
+      requisicaoId: requisicao.id,
+    })),
+  });
+
+  const novas = await prisma.convocacao.findMany({
+    where: { requisicaoId: id, diaristaId: { in: livres }, status: "PENDENTE" },
+    select: { id: true },
+  });
+  for (const c of novas) await notificarConvite(c.id);
 
   revalidatePath("/requisicoes");
-  revalidatePath("/escala");
+  revalidatePath("/loja");
   revalidatePath("/");
-  redirect(`/escala?inicio=${inicioDaSemana(data)}`);
+  redirect(`/requisicoes?convites=${livres.length}`);
 }
 
 export async function cancelarRequisicao(formData: FormData) {

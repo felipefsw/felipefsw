@@ -336,7 +336,13 @@ export default async function DiaristaLinkPage({
                   )}
                   <p className="mt-1 text-sm capitalize text-gray-700">
                     {formatDateWithWeekday(c.data)}
+                    {c.horaInicio && c.horaFim ? ` · ${c.horaInicio}–${c.horaFim}` : ""}
                   </p>
+                  {c.valor != null && (
+                    <p className="text-sm text-gray-700">
+                      Valor: <strong>{formatBRL(c.valor)}</strong>
+                    </p>
+                  )}
                   <div className="mt-3 flex gap-2">
                     {bloqueado ? (
                       <span className="flex-1 rounded-lg bg-amber-100 py-2 text-center text-xs font-medium text-amber-800">

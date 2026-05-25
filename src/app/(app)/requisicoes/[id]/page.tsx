@@ -7,21 +7,29 @@ import {
   PageHeader,
   btnPrimary,
   btnSecondary,
-  inputClass,
   labelClass,
 } from "@/components/ui";
+import DiaristaInfo from "@/components/DiaristaInfo";
 import { formatBRL, formatDateWithWeekday } from "@/lib/format";
-import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
+import { bloqueadaGlobalmente } from "@/lib/limites";
 import { fecharRequisicao } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function FecharRequisicaoPage({
+function notaDe(avaliacoes: { estrelas: number }[]): number | null {
+  if (avaliacoes.length < 5) return null;
+  return avaliacoes.reduce((s, a) => s + a.estrelas, 0) / avaliacoes.length;
+}
+
+export default async function ConvidarRequisicaoPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ erro?: string }>;
 }) {
   const { id } = await params;
+  const { erro } = await searchParams;
   const requisicao = await prisma.requisicao.findUnique({
     where: { id },
     include: { loja: true },
@@ -42,16 +50,18 @@ export default async function FecharRequisicaoPage({
     );
   }
 
-  const [diaristas, escalasNoDia, inscricoes, bloqueios] = await Promise.all([
+  const [diaristas, escalasNoDia, inscricoes, bloqueios, convites] = await Promise.all([
     prisma.diarista.findMany({
       where: {
         ativo: true,
         ...(requisicao.funcao ? { funcao: requisicao.funcao } : {}),
       },
       orderBy: { nome: "asc" },
+      include: {
+        avaliacoes: { select: { estrelas: true }, orderBy: { criadoEm: "desc" }, take: 5 },
+        _count: { select: { escalas: { where: { presenca: "PRESENTE" } } } },
+      },
     }),
-    // Diaristas já escalados nesse mesmo dia (em qualquer loja) não podem ser
-    // selecionados de novo, para evitar conflito de agenda.
     prisma.escala.findMany({
       where: { data: requisicao.data },
       include: { loja: { select: { nome: true } } },
@@ -64,19 +74,34 @@ export default async function FecharRequisicaoPage({
       where: { lojaId: requisicao.lojaId, OR: [{ ate: null }, { ate: { gt: new Date() } }] },
       select: { diaristaId: true },
     }),
+    prisma.convocacao.findMany({
+      where: { requisicaoId: requisicao.id, status: "PENDENTE" },
+      select: { diaristaId: true },
+    }),
   ]);
 
   const ocupadoEm = new Map<string, string>();
   for (const e of escalasNoDia) ocupadoEm.set(e.diaristaId, e.loja.nome);
   const bloqueados = new Set(bloqueios.map((b) => b.diaristaId));
+  const jaConvidados = new Set(convites.map((c) => c.diaristaId));
 
-  // Quem se inscreveu nessa requisição aparece primeiro.
   const inscritos = new Set(inscricoes.map((i) => i.diaristaId));
   diaristas.sort((a, b) => Number(inscritos.has(b.id)) - Number(inscritos.has(a.id)));
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Fechar requisição" subtitle={requisicao.loja.nome} />
+      <PageHeader title="Convidar diaristas" subtitle={requisicao.loja.nome} />
+
+      {erro === "selecione" && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+          Selecione pelo menos uma diarista para convidar.
+        </div>
+      )}
+      {erro === "indisponivel" && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          Ninguém selecionado está disponível (já tem diária no dia, bloqueado ou já convidado).
+        </div>
+      )}
 
       <Card>
         <p className="text-sm capitalize text-gray-600">
@@ -106,31 +131,19 @@ export default async function FecharRequisicaoPage({
             <input type="hidden" name="id" value={requisicao.id} />
 
             <div>
-              <label className={labelClass} htmlFor="data">
-                Data do trabalho
-              </label>
-              <input
-                id="data"
-                name="data"
-                type="date"
-                required
-                min={hojeISO()}
-                max={maxAgendamentoISO()}
-                defaultValue={requisicao.data}
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <p className={labelClass}>Escolha os diaristas</p>
+              <p className={labelClass}>Quem você quer convidar?</p>
               <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
                 {diaristas.map((d) => {
                   const ocupada = ocupadoEm.get(d.id);
                   const motivo = ocupada
-                    ? `Já selecionado para ${ocupada} nesse dia`
+                    ? `Já tem diária em ${ocupada} nesse dia`
                     : bloqueados.has(d.id)
                       ? "Bloqueado nesta loja"
-                      : null;
+                      : bloqueadaGlobalmente(d.bloqueadoAte)
+                        ? "Bloqueado pelo RH"
+                        : jaConvidados.has(d.id)
+                          ? "Já convidado"
+                          : null;
                   if (motivo) {
                     return (
                       <li
@@ -138,20 +151,9 @@ export default async function FecharRequisicaoPage({
                         className="flex items-center gap-3 px-3 py-2.5 opacity-60"
                         title={motivo}
                       >
-                        <input
-                          type="checkbox"
-                          disabled
-                          className="h-5 w-5 rounded border-gray-300"
-                        />
+                        <input type="checkbox" disabled className="h-5 w-5 rounded border-gray-300" />
                         <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium text-gray-500 line-through">{d.nome}</span>
-                            {d.funcao && (
-                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-400">
-                                {d.funcao}
-                              </span>
-                            )}
-                          </span>
+                          <span className="font-medium text-gray-500 line-through">{d.nome}</span>
                           <span className="block text-xs text-gray-400">{motivo}</span>
                         </span>
                       </li>
@@ -159,42 +161,42 @@ export default async function FecharRequisicaoPage({
                   }
                   return (
                     <li key={d.id}>
-                      <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-gray-50">
+                      <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-gray-50">
                         <input
                           type="checkbox"
                           name="diaristaIds"
                           value={d.id}
                           className="h-5 w-5 rounded border-gray-300 text-orange-700 focus:ring-orange-600"
                         />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium text-gray-900">{d.nome}</span>
-                            {d.funcao && (
-                              <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
-                                {d.funcao}
+                        <DiaristaInfo
+                          nome={d.nome}
+                          fotoUrl={d.fotoUrl}
+                          funcao={d.funcao}
+                          nota={notaDe(d.avaliacoes)}
+                          diarias={d._count.escalas}
+                          avatarClassName="h-8 w-8"
+                          extra={
+                            inscritos.has(d.id) ? (
+                              <span className="text-[11px] font-medium text-amber-700">
+                                já se candidatou
                               </span>
-                            )}
-                            {inscritos.has(d.id) && (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                se inscreveu
-                              </span>
-                            )}
-                          </span>
-                        </span>
+                            ) : undefined
+                          }
+                        />
                       </label>
                     </li>
                   );
                 })}
               </ul>
               <p className="mt-1 text-xs text-gray-400">
-                Cada diarista marcado vira um agendamento na escala, no horário e valor (
-                {formatBRL(requisicao.valorDiaria)}) desta requisição.
+                Cada diarista convidada recebe um convite e precisa aceitar. A vaga fecha quando as
+                aceitas completarem {requisicao.quantidade} diarista(s).
               </p>
             </div>
 
             <div className="flex gap-2 pt-1">
               <button type="submit" className={btnPrimary}>
-                Fechar e criar escala
+                Enviar convites
               </button>
               <Link href="/requisicoes" className={btnSecondary}>
                 Voltar

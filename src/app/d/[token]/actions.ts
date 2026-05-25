@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { RAIO_CHECKIN_METROS, distanciaMetros } from "@/lib/geo";
 import { addDias, hojeISO, podeDesistir, turnoFinalizado } from "@/lib/dates";
-import { notificarNovaDiaria } from "@/lib/push";
+import { notificarNovaDiaria, notificarVagaPreenchida } from "@/lib/push";
 import { uploadImagemResultado } from "@/lib/storage";
-import { podeMaisUmaNaSemana } from "@/lib/limites";
+import { podeMaisUmaNaSemana, temBloqueioGlobal } from "@/lib/limites";
 import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
 import { gerarHashSenha, senhaForte } from "@/lib/senha";
 import { entrarDiaristaSessao } from "@/lib/auth";
@@ -188,7 +188,9 @@ export async function confirmarPresenca(formData: FormData) {
   });
   if (!escala || escala.diarista.token !== token) return;
 
-  await prisma.escala.update({ where: { id }, data: { presenca: "PRESENTE" } });
+  // Confirmar só registra que a diarista vem — a presença (realização) é marcada
+  // pelo check-in no dia ou pelo RH depois que o turno começa.
+  await prisma.escala.update({ where: { id }, data: { confirmadaEm: new Date() } });
 
   revalidatePath(`/d/${token}`);
   revalidatePath("/escala");
@@ -210,6 +212,8 @@ export async function responderConvocacao(formData: FormData) {
   if (resposta === "ACEITA") {
     // Só aceita convocação se já tiver avaliado as diárias encerradas.
     if (await temAvaliacaoPendente(convocacao.diaristaId)) return;
+    // Diarista bloqueada globalmente pelo RH não pode aceitar.
+    if (await temBloqueioGlobal(convocacao.diaristaId)) return;
     // Respeita o limite de 2 diárias por semana na mesma loja (salvo liberação).
     if (!(await podeMaisUmaNaSemana(convocacao.diaristaId, convocacao.lojaId, convocacao.data))) {
       return;
@@ -220,6 +224,8 @@ export async function responderConvocacao(formData: FormData) {
       select: { id: true },
     });
     if (escalaNoDia) return;
+
+    // Aceitar JÁ é a confirmação: cria a escala com os dados do convite.
     await prisma.$transaction([
       prisma.convocacao.update({ where: { id: convocacaoId }, data: { status: "ACEITA" } }),
       prisma.escala.create({
@@ -227,11 +233,39 @@ export async function responderConvocacao(formData: FormData) {
           diaristaId: convocacao.diaristaId,
           lojaId: convocacao.lojaId,
           data: convocacao.data,
-          valor: convocacao.diarista.valorDiaria,
+          horaInicio: convocacao.horaInicio,
+          horaFim: convocacao.horaFim,
+          valor: convocacao.valor ?? convocacao.diarista.valorDiaria,
+          requisicaoId: convocacao.requisicaoId,
+          confirmadaEm: new Date(),
         },
       }),
     ]);
-    await limparOutrasInscricoesDoDia(convocacao.diaristaId, convocacao.data);
+    await limparOutrasInscricoesDoDia(
+      convocacao.diaristaId,
+      convocacao.data,
+      convocacao.requisicaoId ?? undefined,
+    );
+
+    // Convite vindo de uma requisição: marca a candidatura como aceita e fecha a
+    // requisição quando todas as vagas forem preenchidas.
+    if (convocacao.requisicaoId) {
+      await prisma.inscricao.updateMany({
+        where: { requisicaoId: convocacao.requisicaoId, diaristaId: convocacao.diaristaId },
+        data: { status: "ACEITA" },
+      });
+      const req = await prisma.requisicao.findUnique({
+        where: { id: convocacao.requisicaoId },
+        select: { quantidade: true, status: true, _count: { select: { escalas: true } } },
+      });
+      if (req && req.status === "ABERTA" && req._count.escalas >= req.quantidade) {
+        await prisma.requisicao.update({
+          where: { id: convocacao.requisicaoId },
+          data: { status: "ATENDIDA" },
+        });
+        await notificarVagaPreenchida(convocacao.requisicaoId);
+      }
+    }
   } else {
     await prisma.convocacao.update({ where: { id: convocacaoId }, data: { status: "RECUSADA" } });
   }
@@ -273,6 +307,8 @@ export async function inscreverNaDiaria(formData: FormData) {
 
   // Precisa avaliar as diárias encerradas antes de pegar novas vagas.
   if (await temAvaliacaoPendente(diarista.id)) return;
+  // Diarista bloqueada globalmente pelo RH não pode pegar vagas.
+  if (await temBloqueioGlobal(diarista.id)) return;
 
   // só permite inscrição em requisição aberta e de até 2 dias à frente
   const requisicao = await prisma.requisicao.findUnique({ where: { id: requisicaoId } });

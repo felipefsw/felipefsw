@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Card, EmptyState, PageHeader, btnDanger, inputClass } from "@/components/ui";
+import { Card, EmptyState, PageHeader, inputClass } from "@/components/ui";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import CopyButton from "@/components/CopyButton";
 import CompartilharCadastro from "@/components/CompartilharCadastro";
-import Avatar from "@/components/Avatar";
+import DiaristaInfo from "@/components/DiaristaInfo";
+import BotaoBloquearGlobal from "@/components/BotaoBloquearGlobal";
 import { FUNCOES } from "@/lib/funcoes";
 import { mediaDaAvaliacao } from "@/lib/bonificacoes";
-import { deleteDiarista, toggleDiaristaAtivo } from "./actions";
+import { bloqueadaGlobalmente } from "@/lib/limites";
+import { formatDate } from "@/lib/format";
+import { deleteDiarista, desbloquearGlobal, toggleDiaristaAtivo } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -135,91 +138,97 @@ export default async function DiaristasPage({
           )}
         </EmptyState>
       ) : (
-        <div className="space-y-3">
-          {diaristas.map((d) => (
-            <Card key={d.id}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 gap-3">
-                  <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-10 w-10" />
-                  <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900">{d.nome}</span>
-                    {d.funcao && (
-                      <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
-                        {d.funcao}
-                      </span>
-                    )}
-                    {!d.ativo && (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                        inativa
-                      </span>
-                    )}
-                  </div>
-                  {d.telefone && <p className="text-sm text-gray-500">{d.telefone}</p>}
-                  {(() => {
-                    const { diarias, nota, topLoja } = resumo(d);
-                    return (
+        <div className="space-y-2">
+          {diaristas.map((d) => {
+            const { diarias, nota, topLoja } = resumo(d);
+            const bloqueada = bloqueadaGlobalmente(d.bloqueadoAte);
+            const paraSempre = d.bloqueadoAte && d.bloqueadoAte.getUTCFullYear() >= 9999;
+            return (
+              <Card key={d.id} className="p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <DiaristaInfo
+                    nome={d.nome}
+                    fotoUrl={d.fotoUrl}
+                    funcao={d.funcao}
+                    nota={nota}
+                    diarias={diarias}
+                    avatarClassName="h-10 w-10"
+                    extra={
                       <>
-                        <p className="mt-0.5 text-sm text-gray-600">
-                          {nota !== null && (
-                            <span className="font-medium text-orange-700">★ {nota.toFixed(1)} · </span>
-                          )}
-                          {diarias} diária(s)
-                          {d.funcao ? ` · ${d.funcao}` : ""}
-                        </p>
+                        {!d.ativo && (
+                          <span className="mt-0.5 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">
+                            inativa
+                          </span>
+                        )}
                         {topLoja && (
-                          <p className="text-xs text-gray-400">Mais trabalha em: {topLoja}</p>
+                          <span className="block text-[11px] text-gray-400">Mais em: {topLoja}</span>
                         )}
                       </>
-                    );
-                  })()}
-                  </div>
-                </div>
-                <Link
-                  href={`/diaristas/${d.id}`}
-                  className="shrink-0 text-sm font-medium text-orange-700 hover:underline"
-                >
-                  Editar
-                </Link>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
-                {d.ativo && (
-                  <Link
-                    href={`/escala/novo?diarista=${d.id}`}
-                    className="rounded-lg bg-orange-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-800"
-                  >
-                    Alocar
-                  </Link>
-                )}
-                {d.chavePix && (
-                  <CopyButton
-                    text={d.chavePix}
-                    label="Copiar Pix"
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700"
+                    }
                   />
-                )}
-                <form action={toggleDiaristaAtivo}>
-                  <input type="hidden" name="id" value={d.id} />
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  <Link
+                    href={`/diaristas/${d.id}`}
+                    className="shrink-0 text-sm font-medium text-orange-700 hover:underline"
                   >
-                    {d.ativo ? "Desativar" : "Reativar"}
-                  </button>
-                </form>
-                <form action={deleteDiarista}>
-                  <input type="hidden" name="id" value={d.id} />
-                  <ConfirmSubmit
-                    className={btnDanger}
-                    message={`Excluir "${d.nome}"? O histórico de agendamentos dessa pessoa também será apagado.`}
-                  >
-                    Excluir
-                  </ConfirmSubmit>
-                </form>
-              </div>
-            </Card>
-          ))}
+                    Editar
+                  </Link>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2">
+                  {d.ativo && (
+                    <Link
+                      href={`/escala/novo?diarista=${d.id}`}
+                      className="rounded-lg bg-orange-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-orange-800"
+                    >
+                      Alocar
+                    </Link>
+                  )}
+                  {d.chavePix && (
+                    <CopyButton
+                      text={d.chavePix}
+                      label="Pix"
+                      className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700"
+                    />
+                  )}
+                  {bloqueada ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="rounded-lg bg-red-50 px-2 py-1 text-xs font-medium text-red-600">
+                        {paraSempre
+                          ? "Bloqueada (sempre)"
+                          : `Bloqueada até ${formatDate(d.bloqueadoAte!.toISOString().slice(0, 10))}`}
+                      </span>
+                      <form action={desbloquearGlobal}>
+                        <input type="hidden" name="id" value={d.id} />
+                        <button type="submit" className="text-xs text-orange-700 underline">
+                          desbloquear
+                        </button>
+                      </form>
+                    </span>
+                  ) : (
+                    <BotaoBloquearGlobal id={d.id} />
+                  )}
+                  <form action={toggleDiaristaAtivo}>
+                    <input type="hidden" name="id" value={d.id} />
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      {d.ativo ? "Desativar" : "Reativar"}
+                    </button>
+                  </form>
+                  <form action={deleteDiarista}>
+                    <input type="hidden" name="id" value={d.id} />
+                    <ConfirmSubmit
+                      className="rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                      message={`Excluir "${d.nome}"? O histórico de agendamentos dessa pessoa também será apagado.`}
+                    >
+                      Excluir
+                    </ConfirmSubmit>
+                  </form>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
 

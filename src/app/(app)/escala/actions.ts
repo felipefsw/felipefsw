@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseBRLToCents } from "@/lib/format";
 import { dentroDaJanelaAgendamento, hojeISO, inicioDaSemana, isISODate } from "@/lib/dates";
-import { podeMaisUmaNaSemana } from "@/lib/limites";
+import { podeMaisUmaNaSemana, temBloqueioGlobal } from "@/lib/limites";
 import { limparOutrasInscricoesDoDia } from "@/lib/escalas";
-import { notificarVagaPreenchida } from "@/lib/push";
+import { notificarConvite, notificarEscalado, notificarVagaPreenchida } from "@/lib/push";
 
 export async function createEscala(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
@@ -27,6 +27,11 @@ export async function createEscala(formData: FormData) {
     redirect(`/escala?inicio=${inicioDaSemana(data)}&erro=conflito`);
   }
 
+  // Diarista bloqueada globalmente pelo RH não pode ser escalada.
+  if (await temBloqueioGlobal(diaristaId)) {
+    redirect(`/escala?inicio=${inicioDaSemana(data)}&erro=bloqueado`);
+  }
+
   // No máximo 2 diárias por semana na mesma loja (salvo liberação da loja/RH).
   if (!(await podeMaisUmaNaSemana(diaristaId, lojaId, data))) {
     redirect(`/escala?inicio=${inicioDaSemana(data)}&erro=limite`);
@@ -38,17 +43,19 @@ export async function createEscala(formData: FormData) {
     valor = d?.valorDiaria ?? 0;
   }
 
-  await prisma.escala.create({
-    data: { diaristaId, lojaId, data, valor },
+  const escala = await prisma.escala.create({
+    data: { diaristaId, lojaId, data, valor, tokenConfirmacao: crypto.randomUUID() },
   });
   await limparOutrasInscricoesDoDia(diaristaId, data);
+  await notificarEscalado(escala.id);
 
   revalidatePath("/escala");
   revalidatePath("/");
   redirect(`/escala?inicio=${inicioDaSemana(data)}`);
 }
 
-// Escala um diarista direto numa vaga aberta (1 clique, pelo RH).
+// Aloca DIRETO numa vaga aberta um diarista que JÁ SE CANDIDATOU (ele já quis a vaga).
+// Cria a escala na hora e marca a candidatura como aceita.
 export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
   if (!requisicaoId || !diaristaId) return;
   const requisicao = await prisma.requisicao.findUnique({
@@ -58,7 +65,7 @@ export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
   if (!requisicao || requisicao.status !== "ABERTA") return;
   if (requisicao._count.escalas >= requisicao.quantidade) return;
 
-  const [jaNoDia, bloqueio] = await Promise.all([
+  const [jaNoDia, bloqueio, bloqGlobal] = await Promise.all([
     prisma.escala.findFirst({ where: { data: requisicao.data, diaristaId }, select: { id: true } }),
     prisma.bloqueio.findFirst({
       where: {
@@ -68,11 +75,74 @@ export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
       },
       select: { id: true },
     }),
+    temBloqueioGlobal(diaristaId),
   ]);
-  if (jaNoDia || bloqueio) return;
+  if (jaNoDia || bloqueio || bloqGlobal) return;
   if (!(await podeMaisUmaNaSemana(diaristaId, requisicao.lojaId, requisicao.data))) return;
 
-  await prisma.escala.create({
+  const escala = await prisma.escala.create({
+    data: {
+      diaristaId,
+      lojaId: requisicao.lojaId,
+      data: requisicao.data,
+      horaInicio: requisicao.horaInicio,
+      horaFim: requisicao.horaFim,
+      valor: requisicao.valorDiaria,
+      requisicaoId: requisicao.id,
+      tokenConfirmacao: crypto.randomUUID(),
+    },
+  });
+
+  await prisma.inscricao.updateMany({
+    where: { requisicaoId, diaristaId },
+    data: { status: "ACEITA" },
+  });
+  await limparOutrasInscricoesDoDia(diaristaId, requisicao.data, requisicaoId);
+  await notificarEscalado(escala.id);
+
+  if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
+    await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });
+    await notificarVagaPreenchida(requisicaoId);
+  }
+
+  revalidatePath("/escala/novo");
+  revalidatePath("/escala");
+  revalidatePath("/requisicoes");
+  revalidatePath("/sugestoes");
+  revalidatePath("/");
+}
+
+// SUGESTÃO do RH: convida um diarista para uma vaga aberta. Não cria a escala —
+// gera um convite pendente. A escala só nasce quando a diarista aceita.
+export async function convidarParaVaga(requisicaoId: string, diaristaId: string) {
+  if (!requisicaoId || !diaristaId) return;
+  const requisicao = await prisma.requisicao.findUnique({
+    where: { id: requisicaoId },
+    include: { _count: { select: { escalas: true } } },
+  });
+  if (!requisicao || requisicao.status !== "ABERTA") return;
+  if (requisicao._count.escalas >= requisicao.quantidade) return;
+
+  const [jaNoDia, bloqueio, bloqGlobal, jaConvidado] = await Promise.all([
+    prisma.escala.findFirst({ where: { data: requisicao.data, diaristaId }, select: { id: true } }),
+    prisma.bloqueio.findFirst({
+      where: {
+        lojaId: requisicao.lojaId,
+        diaristaId,
+        OR: [{ ate: null }, { ate: { gt: new Date() } }],
+      },
+      select: { id: true },
+    }),
+    temBloqueioGlobal(diaristaId),
+    prisma.convocacao.findFirst({
+      where: { diaristaId, requisicaoId, status: "PENDENTE" },
+      select: { id: true },
+    }),
+  ]);
+  if (jaNoDia || bloqueio || bloqGlobal || jaConvidado) return;
+  if (!(await podeMaisUmaNaSemana(diaristaId, requisicao.lojaId, requisicao.data))) return;
+
+  const convocacao = await prisma.convocacao.create({
     data: {
       diaristaId,
       lojaId: requisicao.lojaId,
@@ -83,13 +153,7 @@ export async function escalarNaVaga(requisicaoId: string, diaristaId: string) {
       requisicaoId: requisicao.id,
     },
   });
-
-  await limparOutrasInscricoesDoDia(diaristaId, requisicao.data, requisicaoId);
-
-  if (requisicao._count.escalas + 1 >= requisicao.quantidade) {
-    await prisma.requisicao.update({ where: { id: requisicaoId }, data: { status: "ATENDIDA" } });
-    await notificarVagaPreenchida(requisicaoId);
-  }
+  await notificarConvite(convocacao.id);
 
   revalidatePath("/escala/novo");
   revalidatePath("/escala");

@@ -103,6 +103,9 @@ model Diarista {
   valorDiaria Int         @default(0) // centavos
   observacoes String?
   ativo       Boolean     @default(true)
+  // Bloqueio GLOBAL (RH): a diarista não recebe nenhuma diária enquanto estiver no futuro.
+  // null = não bloqueada. Data bem distante = "para sempre".
+  bloqueadoAte DateTime?
   token       String      @unique @default(cuid()) // usado no link pessoal /d/[token]
   telegramChatId String? // vinculado quando a diarista inicia o bot do Telegram
   criadoEm    DateTime    @default(now())
@@ -169,6 +172,7 @@ model Escala {
   horaFim     String? // "HH:MM"
   valor       Int // centavos
   presenca    String    @default("PENDENTE") // PENDENTE | PRESENTE | FALTOU
+  confirmadaEm DateTime? // diarista confirmou que vem (não é "realizada")
   pago        Boolean   @default(false)
   pagoEm      DateTime?
   observacoes String?
@@ -214,6 +218,7 @@ model Requisicao {
   loja    Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   escalas Escala[]
   inscricoes Inscricao[]
+  convocacoes Convocacao[]
   convidados Diarista[] @relation("ConvidadosRequisicao")
 
   @@index([status])
@@ -259,12 +264,17 @@ model Avaliacao {
   @@index([diaristaId])
 }
 
-// Convocação direta: a loja chama um diarista para uma data; ele aceita ou recusa.
+// Convocação/convite: a loja ou o RH convidam um diarista para uma data; ele aceita ou recusa.
+// Quando aceita, vira uma Escala (alocado). Carrega os dados da vaga (horário/valor/requisição)
+// para que a diária criada no aceite saia certinha.
 model Convocacao {
-  id       String   @id @default(cuid())
-  data     String // "AAAA-MM-DD"
-  status   String   @default("PENDENTE") // PENDENTE | ACEITA | RECUSADA
-  criadoEm DateTime @default(now())
+  id         String   @id @default(cuid())
+  data       String // "AAAA-MM-DD"
+  status     String   @default("PENDENTE") // PENDENTE | ACEITA | RECUSADA
+  horaInicio String? // "HH:MM" (quando veio de uma requisição/sugestão)
+  horaFim    String? // "HH:MM"
+  valor      Int? // centavos; null = usa o valor padrão da diarista
+  criadoEm   DateTime @default(now())
 
   lojaId String
   loja   Loja   @relation(fields: [lojaId], references: [id], onDelete: Cascade)
@@ -272,8 +282,12 @@ model Convocacao {
   diaristaId String
   diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
 
+  requisicaoId String?
+  requisicao   Requisicao? @relation(fields: [requisicaoId], references: [id], onDelete: SetNull)
+
   @@index([lojaId])
   @@index([diaristaId])
+  @@index([requisicaoId])
 }
 
 // Bloqueio de um diarista em uma loja.
