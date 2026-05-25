@@ -92,7 +92,9 @@ export default async function LojaHome({
     prisma.escala.findMany({
       where: { lojaId },
       include: {
-        diarista: { select: { id: true, nome: true, funcao: true, fotoUrl: true, chavePix: true } },
+        diarista: {
+          select: { id: true, nome: true, funcao: true, fotoUrl: true, chavePix: true, token: true },
+        },
         avaliacao: true,
       },
       orderBy: { data: "desc" },
@@ -228,6 +230,7 @@ export default async function LojaHome({
     funcao: string | null;
     fotoUrl: string | null;
     chavePix: string | null;
+    token: string;
     datas: string[];
     somaNotas: number;
     qtdNotas: number;
@@ -241,6 +244,7 @@ export default async function LojaHome({
         funcao: e.diarista.funcao,
         fotoUrl: e.diarista.fotoUrl,
         chavePix: e.diarista.chavePix,
+        token: e.diarista.token,
         datas: [],
         somaNotas: 0,
         qtdNotas: 0,
@@ -259,6 +263,7 @@ export default async function LojaHome({
       funcao: v.funcao,
       fotoUrl: v.fotoUrl,
       chavePix: v.chavePix,
+      token: v.token,
       vezes: v.datas.length,
       datas: v.datas,
       nota: v.qtdNotas ? v.somaNotas / v.qtdNotas : null,
@@ -530,6 +535,7 @@ export default async function LojaHome({
                 (e) => e.requisicaoId === r.id || (e.requisicaoId == null && e.data === r.data),
               );
               const faltam = r.quantidade - confirmados.length;
+              const preenchida = faltam <= 0;
               return (
                 <div
                   key={r.id}
@@ -630,12 +636,16 @@ export default async function LojaHome({
                         </div>
                       )}
                     </div>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>
-                      {st.txt}
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                        preenchida && r.status === "ABERTA" ? "bg-green-100 text-green-700" : st.cls
+                      }`}
+                    >
+                      {preenchida && r.status === "ABERTA" ? "Preenchida ✓" : st.txt}
                     </span>
                   </div>
 
-                  {r.status === "ABERTA" && (
+                  {r.status === "ABERTA" && !preenchida && (
                     <div className="mt-3 space-y-2 border-t border-black/5 pt-3">
                       {r.inscricoes.length === 0 ? (
                         <p className="text-xs text-gray-500">
@@ -719,47 +729,64 @@ export default async function LojaHome({
                           <p className="text-[11px] font-medium text-gray-600">
                             Ou convoque quem mais trabalha aqui:
                           </p>
-                          {topConvocar.map((d, i) => (
-                            <div key={d.id} className="mt-1 flex items-center justify-between gap-2">
-                              <span className="min-w-0">
-                                <span className="block truncate text-sm text-gray-800">
-                                  {d.nome}{" "}
-                                  <span className="text-[10px] text-gray-400">top {i + 1}</span>
-                                </span>
-                                {d.chavePix && (
-                                  <span className="flex items-center gap-1 text-[11px] text-gray-500">
-                                    <span className="max-w-[9rem] truncate">Pix: {d.chavePix}</span>
-                                    <CopyButton
-                                      text={d.chavePix}
-                                      label="copiar"
-                                      className="rounded border border-gray-300 bg-white px-1 py-0.5 text-[10px] font-medium text-gray-700"
-                                    />
+                          {topConvocar.map((d, i) => {
+                            const confirmado = escalaDiaristaData.has(`${d.id}|${r.data}`);
+                            const aguardando =
+                              !confirmado && convocadoData.has(`${d.id}|${r.data}`);
+                            return (
+                              <div key={d.id} className="mt-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-sm text-gray-800">
+                                      {d.nome}{" "}
+                                      <span className="text-[10px] text-gray-400">top {i + 1}</span>
+                                    </span>
+                                    {d.chavePix && (
+                                      <span className="flex items-center gap-1 text-[11px] text-gray-500">
+                                        <span className="max-w-[9rem] truncate">
+                                          Pix: {d.chavePix}
+                                        </span>
+                                        <CopyButton
+                                          text={d.chavePix}
+                                          label="copiar"
+                                          className="rounded border border-gray-300 bg-white px-1 py-0.5 text-[10px] font-medium text-gray-700"
+                                        />
+                                      </span>
+                                    )}
                                   </span>
+                                  {confirmado ? (
+                                    <span className="shrink-0 rounded-lg bg-green-100 px-2.5 py-1.5 text-xs font-semibold text-green-700">
+                                      ✓ confirmado
+                                    </span>
+                                  ) : aguardando ? (
+                                    <span className="shrink-0 rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-semibold text-amber-700">
+                                      ⏳ aguardando
+                                    </span>
+                                  ) : (
+                                    <form action={convocarDiarista}>
+                                      <input type="hidden" name="diaristaId" value={d.id} />
+                                      <input type="hidden" name="data" value={r.data} />
+                                      <input type="hidden" name="requisicaoId" value={r.id} />
+                                      <SubmitButton
+                                        pendingLabel="…"
+                                        className="shrink-0 rounded-lg border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100"
+                                      >
+                                        Convocar {d.nome.split(" ")[0]}
+                                      </SubmitButton>
+                                    </form>
+                                  )}
+                                </div>
+                                {aguardando && (
+                                  <div className="mt-1">
+                                    <p className="mb-0.5 text-[10px] text-gray-500">
+                                      Envie este link para {d.nome.split(" ")[0]} confirmar:
+                                    </p>
+                                    <CopyLink path={`/d/${d.token}`} />
+                                  </div>
                                 )}
-                              </span>
-                              {escalaDiaristaData.has(`${d.id}|${r.data}`) ? (
-                                <span className="shrink-0 rounded-lg bg-green-100 px-2.5 py-1.5 text-xs font-semibold text-green-700">
-                                  ✓ confirmado
-                                </span>
-                              ) : convocadoData.has(`${d.id}|${r.data}`) ? (
-                                <span className="shrink-0 rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-semibold text-amber-700">
-                                  ⏳ aguardando
-                                </span>
-                              ) : (
-                                <form action={convocarDiarista}>
-                                  <input type="hidden" name="diaristaId" value={d.id} />
-                                  <input type="hidden" name="data" value={r.data} />
-                                  <input type="hidden" name="requisicaoId" value={r.id} />
-                                  <SubmitButton
-                                    pendingLabel="…"
-                                    className="shrink-0 rounded-lg border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100"
-                                  >
-                                    Convocar {d.nome.split(" ")[0]}
-                                  </SubmitButton>
-                                </form>
-                              )}
-                            </div>
-                          ))}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
 
