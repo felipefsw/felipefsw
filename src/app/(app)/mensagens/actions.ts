@@ -17,6 +17,7 @@ export async function responderMensagem(formData: FormData) {
   ]);
   revalidatePath(`/mensagens/${diaristaId}`);
   revalidatePath("/mensagens");
+  revalidatePath("/", "layout");
 }
 
 export async function marcarLidas(formData: FormData) {
@@ -28,4 +29,5 @@ export async function marcarLidas(formData: FormData) {
   });
   revalidatePath("/mensagens");
   revalidatePath(`/mensagens/${diaristaId}`);
+  revalidatePath("/", "layout");
 }
