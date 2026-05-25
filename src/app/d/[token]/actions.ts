@@ -61,7 +61,7 @@ export async function fazerCheckin(formData: FormData) {
   if (escala.loja.latitude == null || escala.loja.longitude == null) {
     redirect(`/d/${token}?checkin=lojasemloc`);
   }
-  // Só permite se estiver a no máximo 100 m da loja.
+  // Só permite se estiver dentro do raio da loja (RAIO_CHECKIN_METROS).
   const dist = distanciaMetros(lat, lng, escala.loja.latitude, escala.loja.longitude);
   if (dist > RAIO_CHECKIN_METROS) {
     redirect(`/d/${token}?checkin=longe`);
@@ -207,23 +207,28 @@ export async function responderConvocacao(formData: FormData) {
     where: { id: convocacaoId },
     include: { diarista: { select: { token: true, valorDiaria: true } } },
   });
-  if (!convocacao || convocacao.diarista.token !== token || convocacao.status !== "PENDENTE") return;
+  if (!convocacao || convocacao.diarista.token !== token || convocacao.status !== "PENDENTE") {
+    redirect(`/d/${token}`);
+  }
 
   if (resposta === "ACEITA") {
-    // Só aceita convocação se já tiver avaliado as diárias encerradas.
-    if (await temAvaliacaoPendente(convocacao.diaristaId)) return;
-    // Diarista bloqueada globalmente pelo RH não pode aceitar.
-    if (await temBloqueioGlobal(convocacao.diaristaId)) return;
-    // Respeita o limite de 2 diárias por semana na mesma loja (salvo liberação).
-    if (!(await podeMaisUmaNaSemana(convocacao.diaristaId, convocacao.lojaId, convocacao.data))) {
-      return;
+    // Guardas com aviso (em vez de falhar em silêncio).
+    if (await temAvaliacaoPendente(convocacao.diaristaId)) {
+      redirect(`/d/${token}?aceite=avaliar`);
     }
-    // Não pode aceitar se já tem uma diária nesse mesmo dia.
+    if (await temBloqueioGlobal(convocacao.diaristaId)) {
+      redirect(`/d/${token}?aceite=bloqueado`);
+    }
+    if (!(await podeMaisUmaNaSemana(convocacao.diaristaId, convocacao.lojaId, convocacao.data))) {
+      redirect(`/d/${token}?aceite=limite`);
+    }
     const escalaNoDia = await prisma.escala.findFirst({
       where: { diaristaId: convocacao.diaristaId, data: convocacao.data },
       select: { id: true },
     });
-    if (escalaNoDia) return;
+    if (escalaNoDia) {
+      redirect(`/d/${token}?aceite=jatem`);
+    }
 
     // Aceitar JÁ é a confirmação: cria a escala com os dados do convite.
     await prisma.$transaction([
@@ -266,13 +271,20 @@ export async function responderConvocacao(formData: FormData) {
         await notificarVagaPreenchida(convocacao.requisicaoId);
       }
     }
-  } else {
-    await prisma.convocacao.update({ where: { id: convocacaoId }, data: { status: "RECUSADA" } });
+
+    revalidatePath(`/d/${token}`);
+    revalidatePath("/escala");
+    revalidatePath("/loja");
+    revalidatePath("/");
+    redirect(`/d/${token}?aceite=ok`);
   }
 
+  await prisma.convocacao.update({ where: { id: convocacaoId }, data: { status: "RECUSADA" } });
   revalidatePath(`/d/${token}`);
   revalidatePath("/escala");
   revalidatePath("/loja");
+  revalidatePath("/");
+  redirect(`/d/${token}?aceite=recusado`);
 }
 
 export async function salvarPreferencias(formData: FormData) {

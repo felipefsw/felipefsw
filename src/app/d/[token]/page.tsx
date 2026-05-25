@@ -45,10 +45,10 @@ export default async function DiaristaLinkPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ checkin?: string; desistir?: string; dia?: string }>;
+  searchParams: Promise<{ checkin?: string; desistir?: string; dia?: string; aceite?: string }>;
 }) {
   const { token } = await params;
-  const { checkin, desistir, dia } = await searchParams;
+  const { checkin, desistir, dia, aceite } = await searchParams;
   const hoje = hojeISO();
   const desde = addDias(hoje, -14);
   // Diarista só se candidata a diárias de até 2 dias à frente.
@@ -241,7 +241,7 @@ export default async function DiaristaLinkPage({
         )}
         {checkin === "longe" && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
-            Você parece estar longe da loja (mais de 100 m). Faça o check-in quando chegar no local.
+            Você precisa estar a até 50 m da loja para fazer o check-in. Faça quando chegar no local.
           </div>
         )}
         {checkin === "semloc" && (
@@ -264,6 +264,36 @@ export default async function DiaristaLinkPage({
             Já passou do prazo (até 4h antes) para desistir desta diária.
           </div>
         )}
+        {aceite === "ok" && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800">
+            ✓ Convite aceito! Sua diária está confirmada — ela aparece em “Próximos dias”.
+          </div>
+        )}
+        {aceite === "recusado" && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm font-medium text-gray-700">
+            Convite recusado.
+          </div>
+        )}
+        {aceite === "jatem" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+            Você já tem uma diária nesse dia, então não dá para aceitar este convite.
+          </div>
+        )}
+        {aceite === "limite" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+            Você atingiu o limite de diárias nessa loja nesta semana.
+          </div>
+        )}
+        {aceite === "avaliar" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+            Avalie suas diárias já encerradas para poder aceitar novos convites.
+          </div>
+        )}
+        {aceite === "bloqueado" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+            Seu acesso está bloqueado pelo RH no momento.
+          </div>
+        )}
 
         {/* Convocações no topo: escolha a loja e confirme */}
         {diarista.convocacoes.length > 0 && (
@@ -273,17 +303,23 @@ export default async function DiaristaLinkPage({
               {diarista.convocacoes.map((c) => (
                 <li key={c.id} className="rounded-xl border border-amber-300 bg-amber-50 p-4">
                   <p className="font-medium text-gray-900">{c.loja.nome}</p>
-                  {enderecoCompleto(c.loja) && (
-                    <p className="text-sm text-gray-500">{enderecoCompleto(c.loja)}</p>
-                  )}
-                  <p className="mt-1 text-sm capitalize text-gray-700">
-                    {formatDateWithWeekday(c.data)}
-                    {c.horaInicio && c.horaFim ? ` · ${c.horaInicio}–${c.horaFim}` : ""}
+                  <p className="text-sm text-gray-700">
+                    {diarista.funcao ? `${diarista.funcao} · ` : ""}
+                    {c.horaInicio && c.horaFim ? `${c.horaInicio}–${c.horaFim} · ` : ""}
+                    <strong>{formatBRL(c.valor ?? diarista.valorDiaria)}</strong>
                   </p>
-                  {c.valor != null && (
-                    <p className="text-sm text-gray-700">
-                      Valor: <strong>{formatBRL(c.valor)}</strong>
-                    </p>
+                  <p className="mt-0.5 text-sm capitalize text-gray-700">
+                    {formatDateWithWeekday(c.data)}
+                  </p>
+                  {enderecoCompleto(c.loja) && (
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="min-w-0 text-xs text-gray-500">{enderecoCompleto(c.loja)}</p>
+                      <CopyButton
+                        text={enderecoCompleto(c.loja)}
+                        label="copiar"
+                        className="shrink-0 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-600"
+                      />
+                    </div>
                   )}
                   <div className="mt-3 flex gap-2">
                     {bloqueado ? (
