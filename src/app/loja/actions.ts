@@ -331,11 +331,13 @@ export async function convocarDiarista(formData: FormData) {
   ]);
   if (!diarista || jaConvocado || jaNoDia) {
     revalidatePath("/loja");
+    revalidatePath("/loja/requisicao/nova");
     return;
   }
 
   await prisma.convocacao.create({ data: { lojaId, diaristaId, data } });
   revalidatePath("/loja");
+  revalidatePath("/loja/requisicao/nova");
 }
 
 export async function bloquearDiaristaLoja(formData: FormData) {
