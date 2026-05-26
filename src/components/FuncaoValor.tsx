@@ -1,4 +1,4 @@
-import { labelClass } from "@/components/ui";
+import { inputClass, labelClass } from "@/components/ui";
 import { VALORES_DIARIA } from "@/lib/valoresDiaria";
 
 // Função e valor da diária por TOQUE (sem listas suspensas).
@@ -43,26 +43,19 @@ export default function FuncaoValor({
       </div>
 
       <div>
-        <p className={labelClass}>Valor da diária * (toque em um)</p>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        <label className={labelClass} htmlFor="valorDiaria">
+          Valor da diária *
+        </label>
+        <select id="valorDiaria" name="valorDiaria" required defaultValue="" className={inputClass}>
+          <option value="" disabled>
+            Escolha o valor
+          </option>
           {VALORES_DIARIA.map((v) => (
-            <label key={v.value}>
-              <input
-                type="radio"
-                name="valorDiaria"
-                value={v.value}
-                required
-                className="peer sr-only"
-              />
-              <span className="block cursor-pointer rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-gray-700 peer-checked:border-orange-600 peer-checked:bg-orange-50 peer-checked:text-orange-800 peer-checked:ring-2 peer-checked:ring-orange-300">
-                <span className="block text-sm font-bold">R$ {v.total}</span>
-                <span className="block text-[10px] text-gray-500 peer-checked:text-orange-700">
-                  {v.base}+10 transp.
-                </span>
-              </span>
-            </label>
+            <option key={v.value} value={v.value}>
+              R$ {v.total} ({v.base}+10 transp.)
+            </option>
           ))}
-        </div>
+        </select>
       </div>
     </>
   );
