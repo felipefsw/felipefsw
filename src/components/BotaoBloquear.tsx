@@ -4,8 +4,8 @@ import { useState } from "react";
 import { bloquearDiaristaLoja } from "@/app/loja/actions";
 import SubmitButton from "@/components/SubmitButton";
 
-// Botão "Bloquear". Para gestor com várias lojas, deixa escolher em quais lojas
-// bloquear; para loja avulsa (ou gestor de 1 loja), bloqueia a própria loja.
+// Botão "Bloquear" (lado loja/gestor) com motivo. Para gestor com várias lojas,
+// permite escolher as lojas; para loja avulsa, bloqueia a própria.
 export default function BotaoBloquear({
   diaristaId,
   lojas,
@@ -14,6 +14,7 @@ export default function BotaoBloquear({
   lojas?: { id: string; nome: string }[];
 }) {
   const [aberto, setAberto] = useState(false);
+  const [motivo, setMotivo] = useState("");
   const multi = (lojas?.length ?? 0) > 1;
 
   if (!aberto) {
@@ -28,6 +29,16 @@ export default function BotaoBloquear({
     );
   }
 
+  const campoMotivo = (
+    <textarea
+      value={motivo}
+      onChange={(e) => setMotivo(e.target.value)}
+      rows={2}
+      placeholder="Motivo (ex.: faltou sem avisar, conduta inadequada…)"
+      className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:border-red-500"
+    />
+  );
+
   if (multi) {
     return (
       <form
@@ -35,6 +46,8 @@ export default function BotaoBloquear({
         className="space-y-1.5 rounded-lg border border-red-200 bg-red-50 p-2"
       >
         <input type="hidden" name="diaristaId" value={diaristaId} />
+        <input type="hidden" name="motivo" value={motivo} />
+        {campoMotivo}
         <p className="text-xs font-medium text-gray-600">Bloquear nas lojas:</p>
         <div className="max-h-32 space-y-1 overflow-y-auto">
           {lojas!.map((l) => (
@@ -76,24 +89,28 @@ export default function BotaoBloquear({
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-gray-500">Bloquear por:</span>
-      {[7, 14, 21].map((dias) => (
-        <form key={dias} action={bloquearDiaristaLoja}>
-          <input type="hidden" name="diaristaId" value={diaristaId} />
-          <input type="hidden" name="dias" value={dias} />
-          <SubmitButton className="rounded-lg border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">
-            {dias}d
-          </SubmitButton>
-        </form>
-      ))}
-      <button
-        type="button"
-        onClick={() => setAberto(false)}
-        className="text-xs text-gray-400 underline"
-      >
-        cancelar
-      </button>
+    <div className="w-full space-y-1.5 rounded-lg border border-red-200 bg-red-50 p-2">
+      {campoMotivo}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-gray-500">Bloquear por:</span>
+        {[7, 14, 21].map((dias) => (
+          <form key={dias} action={bloquearDiaristaLoja}>
+            <input type="hidden" name="diaristaId" value={diaristaId} />
+            <input type="hidden" name="dias" value={dias} />
+            <input type="hidden" name="motivo" value={motivo} />
+            <SubmitButton className="rounded-lg border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">
+              {dias}d
+            </SubmitButton>
+          </form>
+        ))}
+        <button
+          type="button"
+          onClick={() => setAberto(false)}
+          className="text-xs text-gray-400 underline"
+        >
+          cancelar
+        </button>
+      </div>
     </div>
   );
 }

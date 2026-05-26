@@ -415,6 +415,7 @@ async function lojasDaSessao(): Promise<string[]> {
 export async function bloquearDiaristaLoja(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
   const dias = Number.parseInt(String(formData.get("dias") ?? ""), 10);
+  const motivo = String(formData.get("motivo") ?? "").trim() || null;
   if (!diaristaId || ![7, 14, 21].includes(dias)) return;
 
   const permitidas = await lojasDaSessao();
@@ -439,7 +440,7 @@ export async function bloquearDiaristaLoja(formData: FormData) {
   const novas = alvo.filter((id) => !jaBloq.has(id));
   if (novas.length > 0) {
     await prisma.bloqueio.createMany({
-      data: novas.map((lojaId) => ({ lojaId, diaristaId, origem: "LOJA", ate })),
+      data: novas.map((lojaId) => ({ lojaId, diaristaId, origem: "LOJA", ate, motivo })),
     });
   }
   revalidatePath("/loja");
