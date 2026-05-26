@@ -230,30 +230,51 @@ export default async function EditarDiaristaPage({
           Diarista bloqueada não pode ser escalada nem se inscrever naquela loja.
         </p>
 
+        {diarista.bloqueadoAte && diarista.bloqueadoAte > agora && (
+          <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+            <p className="font-semibold">
+              Bloqueio global ativo
+              {diarista.bloqueadoAte.getUTCFullYear() < 9999
+                ? ` até ${formatDate(diarista.bloqueadoAte.toISOString().slice(0, 10))}`
+                : " (para sempre)"}
+            </p>
+            {diarista.motivoBloqueio && (
+              <p className="mt-1 text-red-900">Motivo: {diarista.motivoBloqueio}</p>
+            )}
+          </div>
+        )}
+
         {bloqueios.length > 0 && (
           <ul className="mt-3 divide-y divide-gray-100">
             {bloqueios.map((b) => {
               const ativo = b.ate === null || b.ate > agora;
               return (
-                <li key={b.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span>
-                    <span className="font-medium text-gray-900">{b.loja.nome}</span>{" "}
-                    <span className={ativo ? "text-red-600" : "text-gray-400"}>
-                      {b.origem === "RH"
-                        ? "· permanente (RH)"
-                        : b.ate
-                          ? `· até ${formatDate(b.ate.toISOString().slice(0, 10))}`
-                          : ""}
-                      {!ativo ? " (expirado)" : ""}
+                <li key={b.id} className="py-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>
+                      <span className="font-medium text-gray-900">{b.loja.nome}</span>{" "}
+                      <span className={ativo ? "text-red-600" : "text-gray-400"}>
+                        {b.origem === "RH"
+                          ? "· permanente (RH)"
+                          : b.ate
+                            ? `· até ${formatDate(b.ate.toISOString().slice(0, 10))}`
+                            : ""}
+                        {!ativo ? " (expirado)" : ""}
+                      </span>
                     </span>
-                  </span>
-                  <form action={removerBloqueio}>
-                    <input type="hidden" name="id" value={b.id} />
-                    <input type="hidden" name="diaristaId" value={diarista.id} />
-                    <button type="submit" className="text-xs text-orange-700 underline">
-                      remover
-                    </button>
-                  </form>
+                    <form action={removerBloqueio}>
+                      <input type="hidden" name="id" value={b.id} />
+                      <input type="hidden" name="diaristaId" value={diarista.id} />
+                      <button type="submit" className="text-xs text-orange-700 underline">
+                        remover
+                      </button>
+                    </form>
+                  </div>
+                  {b.motivo && (
+                    <p className="mt-1 text-xs text-gray-600">
+                      <span className="font-medium text-gray-500">Motivo:</span> {b.motivo}
+                    </p>
+                  )}
                 </li>
               );
             })}
@@ -265,6 +286,12 @@ export default async function EditarDiaristaPage({
           <p className="mb-1 text-xs font-medium text-gray-600">
             Bloquear em uma ou várias lojas (marque as lojas):
           </p>
+          <textarea
+            name="motivo"
+            rows={2}
+            placeholder="Motivo do bloqueio (lista negra) — para o RH e as lojas lembrarem depois"
+            className="mb-2 w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-red-500"
+          />
           <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-2">
             {lojas.map((l) => {
               const jaBloq = bloqueios.some(

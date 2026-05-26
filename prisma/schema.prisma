@@ -109,6 +109,8 @@ model Diarista {
   // Bloqueio GLOBAL (RH): a diarista não recebe nenhuma diária enquanto estiver no futuro.
   // null = não bloqueada. Data bem distante = "para sempre".
   bloqueadoAte DateTime?
+  // Motivo do bloqueio global (lista negra), para o RH lembrar depois.
+  motivoBloqueio String?
   token       String      @unique @default(cuid()) // usado no link pessoal /d/[token]
   telegramChatId String? // vinculado quando a diarista inicia o bot do Telegram
   criadoEm    DateTime    @default(now())

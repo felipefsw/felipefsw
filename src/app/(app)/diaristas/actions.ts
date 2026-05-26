@@ -93,6 +93,7 @@ export async function bloquearPermanente(formData: FormData) {
 // Bloqueia a diarista em VÁRIAS lojas de uma vez (permanente, origem RH).
 export async function bloquearEmLojas(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
+  const motivo = String(formData.get("motivo") ?? "").trim() || null;
   const lojaIds = [...new Set(formData.getAll("lojaIds").map(String).filter(Boolean))];
   if (!diaristaId || lojaIds.length === 0) return;
 
@@ -104,7 +105,7 @@ export async function bloquearEmLojas(formData: FormData) {
   const novas = lojaIds.filter((id) => !jaBloqueadas.has(id));
   if (novas.length > 0) {
     await prisma.bloqueio.createMany({
-      data: novas.map((lojaId) => ({ diaristaId, lojaId, origem: "RH", ate: null })),
+      data: novas.map((lojaId) => ({ diaristaId, lojaId, origem: "RH", ate: null, motivo })),
     });
   }
   revalidatePath(`/diaristas/${diaristaId}`);
@@ -122,6 +123,7 @@ export async function removerBloqueio(formData: FormData) {
 export async function bloquearGlobal(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const dias = String(formData.get("dias") ?? "");
+  const motivo = String(formData.get("motivo") ?? "").trim() || null;
   if (!id) return;
 
   let ate: Date;
@@ -133,7 +135,10 @@ export async function bloquearGlobal(formData: FormData) {
     ate = new Date(Date.now() + n * 24 * 60 * 60 * 1000);
   }
 
-  await prisma.diarista.update({ where: { id }, data: { bloqueadoAte: ate } });
+  await prisma.diarista.update({
+    where: { id },
+    data: { bloqueadoAte: ate, motivoBloqueio: motivo },
+  });
   revalidatePath("/diaristas");
   revalidatePath(`/diaristas/${id}`);
 }
@@ -159,7 +164,10 @@ export async function redefinirSenhaDiarista(formData: FormData) {
 export async function desbloquearGlobal(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  await prisma.diarista.update({ where: { id }, data: { bloqueadoAte: null } });
+  await prisma.diarista.update({
+    where: { id },
+    data: { bloqueadoAte: null, motivoBloqueio: null },
+  });
   revalidatePath("/diaristas");
   revalidatePath(`/diaristas/${id}`);
 }
