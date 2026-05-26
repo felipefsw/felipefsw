@@ -13,9 +13,11 @@ export type EventoCalendario = {
 };
 
 const LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+const MAX_VISIVEIS = 4;
 
-// Calendário semanal (Seg–Dom) do diarista: verde = confirmada, azul = pendente,
-// vazio = livre. Navegação de semana instantânea (sem recarregar a página).
+// Calendário semanal HORIZONTAL (Seg–Dom em colunas), tipo Google Agenda em
+// versão compacta. Verde = confirmada, azul = pendente, vazio = livre.
+// Navegação de semana instantânea (sem recarregar).
 export default function CalendarioSemana({
   eventos,
   hoje,
@@ -28,8 +30,8 @@ export default function CalendarioSemana({
   const naSemanaAtual = inicio === inicioDaSemana(hoje);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-      <div className="mb-2 flex items-center justify-between">
+    <div className="rounded-2xl border border-gray-200 bg-white p-2 shadow-sm">
+      <div className="mb-2 flex items-center justify-between px-1">
         <button
           type="button"
           onClick={() => setInicio(addDias(inicio, -7))}
@@ -56,58 +58,63 @@ export default function CalendarioSemana({
         </button>
       </div>
 
-      <ul className="space-y-1">
+      <div className="grid grid-cols-7 gap-0.5">
         {dias.map((d, i) => {
-          const evs = eventos.filter((e) => e.data === d);
+          const evs = eventos
+            .filter((e) => e.data === d)
+            .sort((a, b) => (a.horaInicio ?? "").localeCompare(b.horaInicio ?? ""));
           const ehHoje = d === hoje;
+          const visiveis = evs.slice(0, MAX_VISIVEIS);
+          const ocultos = evs.length - visiveis.length;
           return (
-            <li
+            <div
               key={d}
-              className={`flex gap-2 rounded-xl px-2 py-1.5 transition ${
-                ehHoje ? "bg-orange-50" : ""
+              className={`flex min-h-[5.5rem] flex-col rounded-lg border p-1 ${
+                ehHoje ? "border-orange-300 bg-orange-50" : "border-gray-100"
               }`}
             >
-              <div className="w-9 shrink-0 text-center">
+              <div className="text-center">
                 <div
-                  className={`text-[11px] font-medium ${
+                  className={`text-[10px] font-medium ${
                     ehHoje ? "text-orange-700" : "text-gray-400"
                   }`}
                 >
                   {LABELS[i]}
                 </div>
                 <div
-                  className={`text-base font-bold leading-tight ${
+                  className={`text-sm font-bold leading-tight ${
                     ehHoje ? "text-orange-700" : "text-gray-800"
                   }`}
                 >
                   {d.slice(8, 10)}
                 </div>
               </div>
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 py-0.5">
-                {evs.length === 0 ? (
-                  <span className="text-xs text-gray-300">livre</span>
-                ) : (
-                  evs.map((e, idx) => (
-                    <span
-                      key={idx}
-                      className={`max-w-full truncate rounded-lg px-2 py-1 text-[11px] font-medium ${
-                        e.tipo === "confirmada"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {e.horaInicio && e.horaFim ? `${e.horaInicio}–${e.horaFim} · ` : ""}
-                      {e.loja}
-                    </span>
-                  ))
+              <div className="mt-1 flex-1 space-y-0.5">
+                {visiveis.map((e, idx) => (
+                  <div
+                    key={idx}
+                    title={`${e.loja}${
+                      e.horaInicio && e.horaFim ? ` (${e.horaInicio}–${e.horaFim})` : ""
+                    }`}
+                    className={`truncate rounded px-1 py-0.5 text-center text-[9px] font-medium leading-tight ${
+                      e.tipo === "confirmada"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {e.horaInicio ?? "•"}
+                  </div>
+                ))}
+                {ocultos > 0 && (
+                  <div className="text-center text-[9px] text-gray-400">+{ocultos}</div>
                 )}
               </div>
-            </li>
+            </div>
           );
         })}
-      </ul>
+      </div>
 
-      <div className="mt-2 flex items-center gap-3 px-1 text-[10px] text-gray-400">
+      <div className="mt-2 flex items-center justify-end gap-3 px-1 text-[10px] text-gray-400">
         <span className="flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-green-500" /> confirmada
         </span>

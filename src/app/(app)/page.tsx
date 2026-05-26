@@ -5,6 +5,7 @@ import { formatBRL, formatDateShort } from "@/lib/format";
 import { addDias, hojeISO, inicioDaSemana, isISODate } from "@/lib/dates";
 import { grupoDaLoja } from "@/lib/marcas";
 import BarraDia from "@/components/BarraDia";
+import CalendarioSemana from "@/components/CalendarioSemana";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +94,36 @@ export default async function InicioPage({
     }),
   ]);
 
+  // Janela do calendário semanal (cobre 5 semanas para a navegação client-side).
+  const calIni = addDias(hoje, -7);
+  const calFim = addDias(hoje, 28);
+  const [escalasCalendario, convitesCalendario] = await Promise.all([
+    prisma.escala.findMany({
+      where: { data: { gte: calIni, lte: calFim } },
+      select: { data: true, horaInicio: true, horaFim: true, loja: { select: { nome: true } } },
+    }),
+    prisma.convocacao.findMany({
+      where: { status: "PENDENTE", data: { gte: calIni, lte: calFim } },
+      select: { data: true, horaInicio: true, horaFim: true, loja: { select: { nome: true } } },
+    }),
+  ]);
+  const eventosCalendario = [
+    ...escalasCalendario.map((e) => ({
+      data: e.data,
+      horaInicio: e.horaInicio,
+      horaFim: e.horaFim,
+      loja: e.loja.nome,
+      tipo: "confirmada" as const,
+    })),
+    ...convitesCalendario.map((c) => ({
+      data: c.data,
+      horaInicio: c.horaInicio,
+      horaFim: c.horaFim,
+      loja: c.loja.nome,
+      tipo: "pendente" as const,
+    })),
+  ];
+
   const escalasPorMarca = agruparPorMarca(escalasHoje);
   const pendentesPorMarca = agruparPorMarca(pendentes);
   const requisicoesPorMarca = agruparPorMarca(requisicoesAbertas);
@@ -132,6 +163,11 @@ export default async function InicioPage({
         <h1 className="text-xl font-bold text-gray-900">Início</h1>
         <p className="text-sm text-gray-500">Resumo de hoje</p>
       </div>
+
+      <section>
+        <h2 className="mb-2 text-lg font-semibold text-gray-900">Semana</h2>
+        <CalendarioSemana eventos={eventosCalendario} hoje={hoje} />
+      </section>
 
       <section>
         <div className="mb-2 flex items-center justify-between">
