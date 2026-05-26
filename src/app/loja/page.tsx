@@ -21,6 +21,7 @@ import BotaoBloquear from "@/components/BotaoBloquear";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
 import CalendarioSemana from "@/components/CalendarioSemana";
 import { contextoLoja, getSessao } from "@/lib/auth";
+import { aprovarDiaristaCadastro } from "@/app/(app)/diaristas/actions";
 import {
   alternarLimiteSemana,
   aprovarCandidato,
@@ -163,6 +164,14 @@ export default async function LojaHome({
       : s === "RECUSADA"
         ? { txt: "recusou", cls: "bg-gray-200 text-gray-600" }
         : { txt: "aguardando", cls: "bg-amber-100 text-amber-700" };
+
+  // Cadastros aguardando aprovação (loja/gestor também pode aprovar).
+  const cadastrosPendentes = await prisma.diarista.findMany({
+    where: { aprovado: false, ativo: true },
+    orderBy: { criadoEm: "desc" },
+    select: { id: true, nome: true, cpf: true, funcao: true, telefone: true, fotoUrl: true },
+    take: 20,
+  });
 
   // Gestor: visão das vagas abertas em TODAS as suas lojas.
   const gestorLojas = ctx.gestorId
@@ -352,8 +361,44 @@ export default async function LojaHome({
       />
 
       <div data-tour="loja-convidar">
-        <CompartilharCadastro />
+        <CompartilharCadastro via={ctx.lojaId} />
       </div>
+
+      {cadastrosPendentes.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-amber-700">
+            Cadastros aguardando aprovação ({cadastrosPendentes.length})
+          </h2>
+          <div className="space-y-2">
+            {cadastrosPendentes.map((p) => (
+              <div
+                key={p.id}
+                className="rounded-xl border border-amber-200 bg-amber-50 p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Avatar nome={p.nome} fotoUrl={p.fotoUrl} className="h-9 w-9" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-gray-900">{p.nome}</span>
+                      <span className="block text-[11px] text-gray-500">
+                        {p.funcao ?? "sem função"}
+                        {p.cpf ? ` · CPF ${p.cpf}` : ""}
+                        {p.telefone ? ` · ${p.telefone}` : ""}
+                      </span>
+                    </span>
+                  </span>
+                  <form action={aprovarDiaristaCadastro}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <SubmitButton className="rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-700">
+                      ✓ Aprovar
+                    </SubmitButton>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {ctx.gestorId && gestorLojas.length > 0 && (
         <section data-tour="gestor-lojas">

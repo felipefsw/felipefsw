@@ -11,9 +11,9 @@ const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 export default async function SouDiaristaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vaga?: string; erro?: string }>;
+  searchParams: Promise<{ vaga?: string; via?: string; erro?: string }>;
 }) {
-  const { vaga, erro } = await searchParams;
+  const { vaga, via, erro } = await searchParams;
   return (
     <div className="mx-auto max-w-md">
       <header className="bg-neutral-900 px-5 py-6 text-white">
@@ -55,6 +55,7 @@ export default async function SouDiaristaPage({
         )}
         <form action={cadastrarDiarista} className="space-y-4">
           {vaga ? <input type="hidden" name="vaga" value={vaga} /> : null}
+          {via ? <input type="hidden" name="via" value={via} /> : null}
           {/* honeypot anti-bot: invisível para pessoas */}
           <input
             type="text"

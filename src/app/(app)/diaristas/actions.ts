@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { cpfValido, soCpfDigitos } from "@/lib/cpf";
 import { BLOQUEIO_PARA_SEMPRE } from "@/lib/limites";
+import { getSessao } from "@/lib/auth";
 
 // CPF (dígitos) já usado por outro diarista? Evita cadastro duplicado.
 async function cpfDuplicado(cpf: string, excetoId?: string): Promise<boolean> {
@@ -144,11 +145,18 @@ export async function bloquearGlobal(formData: FormData) {
 }
 
 // Aprova um autocadastro (libera a diarista para pegar diárias).
+// RH/TI, loja e gestor podem aprovar — diarista anônimo não.
 export async function aprovarDiaristaCadastro(formData: FormData) {
+  const sessao = await getSessao();
+  if (!sessao || (sessao.tipo !== "gestao" && sessao.tipo !== "loja" && sessao.tipo !== "gestor")) {
+    return;
+  }
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   await prisma.diarista.update({ where: { id }, data: { aprovado: true } });
   revalidatePath("/diaristas");
+  revalidatePath("/loja");
+  revalidatePath("/notificacoes");
   revalidatePath("/");
 }
 

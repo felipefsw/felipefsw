@@ -3,13 +3,15 @@
 import { useState } from "react";
 
 // Botao para RH/gestor/gerente convidar um diarista: manda o link do
-// auto-cadastro pelo WhatsApp (ou copia o link).
-export default function CompartilharCadastro() {
+// auto-cadastro pelo WhatsApp (ou copia o link). Com `via`, o cadastro
+// vindo desse link entra ja aprovado (foi convidado por alguem da equipe).
+export default function CompartilharCadastro({ via }: { via?: string }) {
   const [fone, setFone] = useState("");
   const [copiado, setCopiado] = useState(false);
 
   function linkCadastro() {
-    return `${window.location.origin}/sou-diarista`;
+    const sufixo = via ? `?via=${encodeURIComponent(via)}` : "";
+    return `${window.location.origin}/sou-diarista${sufixo}`;
   }
   function mensagem() {
     return `Olá! Faça seu cadastro de diarista nas Pizzarias RWP por aqui (leva 1 minuto): ${linkCadastro()}`;
