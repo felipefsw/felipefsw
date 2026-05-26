@@ -42,11 +42,8 @@ export async function cadastrarDiarista(formData: FormData) {
   });
   if (existentes.some((d) => soCpfDigitos(d.cpf) === cpfDigits)) redirect(erroUrl("cpfdup"));
 
-  // Cadastro vindo de um convite (link do RH/loja/gestor ou de uma vaga)
-  // entra JÁ aprovado. O resto fica pendente, aguardando aprovação.
-  const via = String(formData.get("via") ?? "").trim();
-  const veioPorConvite = Boolean(vagaParam) || Boolean(via);
-
+  // Todo autocadastro entra PENDENTE — RH/gestor/loja aprovam manualmente,
+  // independente de ter vindo por link compartilhado.
   const diarista = await prisma.diarista.create({
     data: {
       nome: `${nome} ${sobrenome}`,
@@ -57,7 +54,7 @@ export async function cadastrarDiarista(formData: FormData) {
       chavePix: chavePix || null,
       senha: gerarHashSenha(senha),
       observacoes: String(formData.get("observacoes") ?? "").trim() || null,
-      aprovado: veioPorConvite,
+      aprovado: false,
     },
   });
 
