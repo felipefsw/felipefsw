@@ -249,9 +249,15 @@ model Inscricao {
 model Avaliacao {
   id       String @id @default(cuid())
   estrelas Int    @default(0) // nota única de 1 a 5 (estilo iFood)
-  // Aspectos antigos (0-10) ficam só para histórico; novas avaliações usam estrelas.
-  pontualidade      Int?
-  limpeza           Int?
+  // Aspectos detalhados (1-5). Os de cima são os critérios pedidos pelo RH.
+  assiduidade  Int?
+  pontualidade Int?
+  padrao       Int?
+  organizacao  Int?
+  qualidade    Int?
+  limpeza      Int?
+  comunicacao  Int?
+  // Aspectos antigos (0-10) ficam só para histórico.
   educacao          Int?
   rapidez           Int?
   habilidadeTecnica Int?

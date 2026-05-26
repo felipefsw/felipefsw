@@ -246,11 +246,31 @@ export async function salvarAvaliacao(formData: FormData) {
   if (!escala) return;
 
   const comentario = String(formData.get("comentario") ?? "").trim() || null;
+  // Critérios opcionais (1-5). 0/vazio = não avaliado nesta dimensão.
+  const lerCriterio = (campo: string): number | null => {
+    const n = Number.parseInt(String(formData.get(campo) ?? ""), 10);
+    return Number.isFinite(n) && n >= 1 && n <= 5 ? n : null;
+  };
+  const detalhe = {
+    assiduidade: lerCriterio("assiduidade"),
+    pontualidade: lerCriterio("pontualidade"),
+    padrao: lerCriterio("padrao"),
+    organizacao: lerCriterio("organizacao"),
+    qualidade: lerCriterio("qualidade"),
+    limpeza: lerCriterio("limpeza"),
+    comunicacao: lerCriterio("comunicacao"),
+  };
 
   await prisma.avaliacao.upsert({
     where: { escalaId },
-    update: { estrelas, comentario },
-    create: { escalaId, diaristaId: escala.diaristaId, estrelas, comentario },
+    update: { estrelas, comentario, ...detalhe },
+    create: {
+      escalaId,
+      diaristaId: escala.diaristaId,
+      estrelas,
+      comentario,
+      ...detalhe,
+    },
   });
 
   revalidatePath("/escala");
