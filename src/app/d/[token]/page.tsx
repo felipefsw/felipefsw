@@ -13,6 +13,7 @@ import SubmitButton from "@/components/SubmitButton";
 import PushToggle from "@/components/PushToggle";
 import MarcaBadge from "@/components/MarcaBadge";
 import BarraDia from "@/components/BarraDia";
+import CalendarioSemana from "@/components/CalendarioSemana";
 import Avatar from "@/components/Avatar";
 import FotoUpload from "@/components/FotoUpload";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
@@ -106,6 +107,24 @@ export default async function DiaristaLinkPage({
 
   const proximas = diarista.escalas.filter((e) => e.data >= hoje);
   const recentes = diarista.escalas.filter((e) => e.data < hoje).reverse();
+
+  // Eventos do calendário semanal: escalas = confirmada (verde), convites = pendente (azul).
+  const eventosCalendario = [
+    ...diarista.escalas.map((e) => ({
+      data: e.data,
+      horaInicio: e.horaInicio,
+      horaFim: e.horaFim,
+      loja: e.loja.nome,
+      tipo: "confirmada" as const,
+    })),
+    ...diarista.convocacoes.map((c) => ({
+      data: c.data,
+      horaInicio: c.horaInicio,
+      horaFim: c.horaFim,
+      loja: c.loja.nome,
+      tipo: "pendente" as const,
+    })),
+  ];
 
   // Filtro de dia: ?dia=AAAA-MM-DD mostra só aquele dia; padrão = todas as próximas
   // (assim uma diária recém-aceita sempre aparece, mesmo que seja semana que vem).
@@ -298,6 +317,12 @@ export default async function DiaristaLinkPage({
             Seu acesso está bloqueado pelo RH no momento.
           </div>
         )}
+
+        {/* Calendário da semana: visão rápida das diárias (verde/azul) */}
+        <section>
+          <h2 className="mb-2 font-semibold text-gray-900">Minha semana</h2>
+          <CalendarioSemana eventos={eventosCalendario} hoje={hoje} />
+        </section>
 
         {/* Convocações no topo: escolha a loja e confirme */}
         {diarista.convocacoes.length > 0 && (
