@@ -13,8 +13,7 @@ import { hojeISO, maxAgendamentoISO } from "@/lib/dates";
 import { FUNCOES } from "@/lib/funcoes";
 import { opcoesHoraFim } from "@/lib/horariosOpcoes";
 import FuncaoValor from "@/components/FuncaoValor";
-import Avatar from "@/components/Avatar";
-import SubmitButton from "@/components/SubmitButton";
+import ConvocarSugeridos from "@/components/ConvocarSugeridos";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import { convocarDiarista, criarRequisicaoLoja } from "../../actions";
 
@@ -67,58 +66,27 @@ export default async function NovaRequisicaoLojaPage() {
             Os que mais trabalham, por função. Você pode convocar direto (escolha a data). Quem já
             tem diária no dia não é convocado.
           </p>
-          <div className="mt-2 space-y-2">
-            {sugestoesPorFuncao.map((g) => (
-              <details key={g.funcao} className="rounded-lg border border-gray-200">
-                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-gray-800">
-                  {g.funcao} ({g.lista.length})
-                </summary>
-                <ul className="divide-y divide-gray-100 px-3 pb-2">
-                  {g.lista.map((d, i) => (
-                    <li key={d.id} className="flex items-center justify-between gap-2 py-2">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="w-4 text-center text-xs font-bold text-gray-400">
-                          {i + 1}
-                        </span>
-                        <Avatar nome={d.nome} fotoUrl={d.fotoUrl} className="h-8 w-8" />
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium text-gray-900">
-                            {d.nome}
-                          </span>
-                          <span className="block text-[11px] text-gray-500">
-                            {d._count.escalas} diária(s)
-                          </span>
-                        </span>
-                      </span>
-                      <form action={convocarDiarista} className="flex shrink-0 items-center gap-1">
-                        <input type="hidden" name="diaristaId" value={d.id} />
-                        <input
-                          type="date"
-                          name="data"
-                          required
-                          min={hojeISO()}
-                          max={maxAgendamentoISO()}
-                          defaultValue={hojeISO()}
-                          className="rounded-lg border border-gray-300 bg-white px-1.5 py-1 text-xs"
-                        />
-                        <SubmitButton
-                          pendingLabel="…"
-                          className="rounded-lg bg-orange-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-orange-800"
-                        >
-                          Convocar
-                        </SubmitButton>
-                      </form>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            ))}
+          <div className="mt-2">
+            <ConvocarSugeridos
+              hoje={hojeISO()}
+              max={maxAgendamentoISO()}
+              acao={convocarDiarista}
+              grupos={sugestoesPorFuncao.map((g) => ({
+                funcao: g.funcao,
+                lista: g.lista.map((d) => ({
+                  id: d.id,
+                  nome: d.nome,
+                  fotoUrl: d.fotoUrl,
+                  diarias: d._count.escalas,
+                })),
+              }))}
+            />
           </div>
         </Card>
       )}
 
       <Card>
-        <form action={criarRequisicaoLoja} className="space-y-4">
+        <form action={criarRequisicaoLoja} className="space-y-3">
           {lojasDoGestor.length > 0 && (
             <div>
               <label className={labelClass} htmlFor="lojaId">
@@ -140,7 +108,7 @@ export default async function NovaRequisicaoLojaPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass} htmlFor="data">
                 Data *
@@ -172,7 +140,7 @@ export default async function NovaRequisicaoLojaPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass} htmlFor="horaInicio">
                 Início *
