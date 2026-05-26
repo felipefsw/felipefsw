@@ -46,7 +46,7 @@ export default async function NovaRequisicaoPage() {
     <div>
       <PageHeader title="Nova requisição" subtitle="A loja pede diaristas para um dia" />
       <Card>
-        <form action={createRequisicao} className="space-y-4">
+        <form action={createRequisicao} className="space-y-3">
           <div>
             <label className={labelClass} htmlFor="lojaId">
               Loja *
@@ -60,7 +60,7 @@ export default async function NovaRequisicaoPage() {
             </select>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass} htmlFor="data">
                 Data *
@@ -92,7 +92,7 @@ export default async function NovaRequisicaoPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass} htmlFor="horaInicio">
                 Início *

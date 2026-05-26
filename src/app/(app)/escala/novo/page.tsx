@@ -137,7 +137,7 @@ export default async function NovoAgendamentoPage({
 
       <Card>
         <h2 className="mb-3 font-semibold text-gray-900">Agendar manualmente</h2>
-        <form action={createEscala} className="space-y-4">
+        <form action={createEscala} className="space-y-3">
           <div>
             <label className={labelClass} htmlFor="diaristaId">
               Diarista *
@@ -171,7 +171,7 @@ export default async function NovoAgendamentoPage({
             </select>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass} htmlFor="data">
                 Data *
@@ -188,26 +188,17 @@ export default async function NovoAgendamentoPage({
               />
             </div>
             <div>
-              <p className={labelClass}>Valor da diária (toque em um)</p>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                <label>
-                  <input type="radio" name="valor" value="" defaultChecked className="peer sr-only" />
-                  <span className="block cursor-pointer rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-xs font-medium text-gray-700 peer-checked:border-orange-600 peer-checked:bg-orange-50 peer-checked:text-orange-800 peer-checked:ring-2 peer-checked:ring-orange-300">
-                    Padrão
-                  </span>
-                </label>
+              <label className={labelClass} htmlFor="valor">
+                Valor da diária
+              </label>
+              <select id="valor" name="valor" defaultValue="" className={inputClass}>
+                <option value="">Padrão da diarista</option>
                 {VALORES_DIARIA.map((v) => (
-                  <label key={v.value}>
-                    <input type="radio" name="valor" value={v.value} className="peer sr-only" />
-                    <span className="block cursor-pointer rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-gray-700 peer-checked:border-orange-600 peer-checked:bg-orange-50 peer-checked:text-orange-800 peer-checked:ring-2 peer-checked:ring-orange-300">
-                      <span className="block text-sm font-bold">R$ {v.total}</span>
-                      <span className="block text-[10px] text-gray-500 peer-checked:text-orange-700">
-                        {v.base}+10
-                      </span>
-                    </span>
-                  </label>
+                  <option key={v.value} value={v.value}>
+                    R$ {v.total} ({v.base}+10 transp.)
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
           </div>
 
