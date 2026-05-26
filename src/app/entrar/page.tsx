@@ -31,9 +31,10 @@ function Cabecalho() {
 export default async function EntrarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ perfil?: string }>;
+  searchParams: Promise<{ perfil?: string; q?: string }>;
 }) {
-  const { perfil } = await searchParams;
+  const { perfil, q } = await searchParams;
+  const busca = (q ?? "").trim();
   const sel = (PERFIS as readonly string[]).includes(perfil ?? "") ? (perfil as Perfil) : null;
 
   // Tela inicial: escolher o perfil (sem senha).
@@ -73,7 +74,10 @@ export default async function EntrarPage({
   const [diaristas, lojas, gestores] = await Promise.all([
     sel === "diarista"
       ? prisma.diarista.findMany({
-          where: { ativo: true },
+          where: {
+            ativo: true,
+            ...(busca ? { nome: { contains: busca, mode: "insensitive" as const } } : {}),
+          },
           orderBy: { nome: "asc" },
           select: { id: true, nome: true, fotoUrl: true, funcao: true },
         })
@@ -105,12 +109,39 @@ export default async function EntrarPage({
         <Card>
           <h2 className="font-semibold text-gray-900">Entrar como diarista</h2>
           <p className="mb-3 mt-1 text-sm text-gray-500">Toque no seu nome para entrar.</p>
+          <form method="get" className="mb-3 flex gap-2">
+            <input type="hidden" name="perfil" value="diarista" />
+            <input
+              type="search"
+              name="q"
+              defaultValue={busca}
+              placeholder="🔍 Buscar seu nome…"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-orange-600 focus:ring-2 focus:ring-orange-100"
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700"
+            >
+              Buscar
+            </button>
+          </form>
           {diaristas.length === 0 ? (
             <p className="text-sm text-gray-500">
-              Nenhuma diarista cadastrada.{" "}
-              <Link href="/sou-diarista" className="font-medium text-orange-700 underline">
-                Cadastre-se
-              </Link>
+              {busca ? (
+                <>
+                  Nenhuma diarista encontrada para “{busca}”.{" "}
+                  <Link href="/entrar?perfil=diarista" className="font-medium text-orange-700 underline">
+                    Limpar busca
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Nenhuma diarista cadastrada.{" "}
+                  <Link href="/sou-diarista" className="font-medium text-orange-700 underline">
+                    Cadastre-se
+                  </Link>
+                </>
+              )}
             </p>
           ) : (
             <div className="max-h-[60vh] space-y-1 overflow-y-auto">
