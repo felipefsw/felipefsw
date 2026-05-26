@@ -4,6 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import TrilhaAprendizado from "@/components/TrilhaAprendizado";
 import { TRILHA_RH, TRILHA_TI } from "@/lib/trilhas";
 import { getSessao, sessionSecretInseguro } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { sair } from "@/app/entrar/actions";
 
 export default async function AppLayout({
@@ -11,6 +12,14 @@ export default async function AppLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const sessao = await getSessao();
   if (!sessao || sessao.tipo !== "gestao") redirect("/entrar");
+
+  // Contagem do sino: cadastros pendentes + candidaturas pendentes + mensagens não lidas.
+  const [cadastrosPend, inscricoesPend, mensagensNL] = await Promise.all([
+    prisma.diarista.count({ where: { aprovado: false, ativo: true } }),
+    prisma.inscricao.count({ where: { status: "PENDENTE" } }),
+    prisma.mensagem.count({ where: { autor: "DIARISTA", lida: false } }),
+  ]);
+  const totalNotif = cadastrosPend + inscricoesPend + mensagensNL;
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col">
@@ -22,6 +31,18 @@ export default async function AppLayout({
             <span className="truncate">Gestão · Pizzarias RWP</span>
           </Link>
           <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/notificacoes"
+              aria-label="Notificações"
+              className="relative flex h-8 w-8 items-center justify-center rounded-full text-lg hover:bg-white/10"
+            >
+              🔔
+              {totalNotif > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                  {totalNotif > 99 ? "99+" : totalNotif}
+                </span>
+              )}
+            </Link>
             <span className="rounded-full bg-orange-600 px-2 py-0.5 text-xs font-medium">
               {sessao.nome ? (
                 <>
