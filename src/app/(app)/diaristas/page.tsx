@@ -104,7 +104,7 @@ export default async function DiaristasPage({
       />
 
       <div className="mb-4">
-        <CompartilharCadastro />
+        <CompartilharCadastro via="rh" />
       </div>
 
       {pendentes.length > 0 && (
