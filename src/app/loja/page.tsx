@@ -19,6 +19,7 @@ import PushToggleLoja from "@/components/PushToggleLoja";
 import FotosLojaUpload from "@/components/FotosLojaUpload";
 import BotaoBloquear from "@/components/BotaoBloquear";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
+import CalendarioSemana from "@/components/CalendarioSemana";
 import { contextoLoja, getSessao } from "@/lib/auth";
 import {
   alternarLimiteSemana,
@@ -132,6 +133,24 @@ export default async function LojaHome({
   const convocadoDiarista = new Set(convocacoesPendentes.map((c) => c.diaristaId));
   // Quem já tem diária (confirmada) num dia, para mostrar "confirmado".
   const escalaDiaristaData = new Set(escalas.map((e) => `${e.diaristaId}|${e.data}`));
+
+  // Eventos do calendário semanal: escalas = confirmada (verde); convites pendentes = pendente (azul).
+  const eventosCalendario = [
+    ...escalas.map((e) => ({
+      data: e.data,
+      horaInicio: e.horaInicio,
+      horaFim: e.horaFim,
+      loja: e.diarista.nome,
+      tipo: "confirmada" as const,
+    })),
+    ...convocacoesPendentes.map((c) => ({
+      data: c.data,
+      horaInicio: c.horaInicio,
+      horaFim: c.horaFim,
+      loja: c.diarista.nome,
+      tipo: "pendente" as const,
+    })),
+  ];
 
   // Convocações enviadas por requisição (vinculadas ou do mesmo dia da vaga).
   const convocadosDaReq = (reqId: string, dataReq: string) =>
@@ -318,6 +337,11 @@ export default async function LojaHome({
           vagas/convocações. →
         </a>
       )}
+
+      <section>
+        <h2 className="mb-2 font-semibold text-gray-900">Minha semana</h2>
+        <CalendarioSemana eventos={eventosCalendario} hoje={hoje} />
+      </section>
 
       <PushToggleLoja />
 
