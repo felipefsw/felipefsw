@@ -4,8 +4,6 @@ import { formatBRL, formatDateWithWeekday } from "@/lib/format";
 import { addDias, hojeISO, isISODate, podeDesistir, turnoFinalizado } from "@/lib/dates";
 import { medalhasDoDiarista } from "@/lib/medalhas";
 import { corDoTurno } from "@/lib/horarios";
-import { bairroCidade, ruaDaLoja } from "@/lib/loja";
-import { grupoDaLoja } from "@/lib/marcas";
 import { DIARIAS_CASHBACK, DIARIAS_CASHBACK_20 } from "@/lib/bonificacoes";
 import CopyButton from "@/components/CopyButton";
 import CheckinButton from "@/components/CheckinButton";
@@ -17,7 +15,6 @@ import CalendarioSemana from "@/components/CalendarioSemana";
 import Avatar from "@/components/Avatar";
 import FotoUpload from "@/components/FotoUpload";
 import ConfirmSubmit from "@/components/ConfirmSubmit";
-import ListaDiarias, { type DiariaItem } from "@/components/ListaDiarias";
 import ChatRH from "@/components/ChatRH";
 import TrilhaAprendizado from "@/components/TrilhaAprendizado";
 import { TRILHA_DIARISTA } from "@/lib/trilhas";
@@ -54,11 +51,9 @@ export default async function DiaristaLinkPage({
   const hoje = hojeISO();
   const desde = addDias(hoje, -14);
   // Diarista só se candidata a diárias de até 2 dias à frente.
-  const limiteCandidatura = addDias(hoje, 2);
 
   // Busca a diarista e as diárias disponíveis em paralelo (mais rápido).
-  const [diarista, disponiveisRaw] = await Promise.all([
-    prisma.diarista.findUnique({
+  const diarista = await prisma.diarista.findUnique({
       where: { token },
       include: {
         escalas: {
@@ -80,15 +75,9 @@ export default async function DiaristaLinkPage({
         },
         bonificacoes: { where: { pago: true }, orderBy: { criadoEm: "desc" } },
         mensagens: { orderBy: { criadoEm: "asc" }, take: 30 },
-        _count: { select: { avaliacoes: true } },
-      },
-    }),
-    prisma.requisicao.findMany({
-      where: { status: "ABERTA", data: { gte: hoje, lte: limiteCandidatura } },
-      include: { loja: true },
-      orderBy: { criadoEm: "desc" },
-    }),
-  ]);
+      _count: { select: { avaliacoes: true } },
+    },
+  });
 
   if (!diarista) {
     return (
@@ -140,78 +129,6 @@ export default async function DiaristaLinkPage({
   );
   const bloqueado = pendentesAvaliacao.length > 0;
 
-  const inscritoEm = new Set(diarista.inscricoes.map((i) => i.requisicaoId));
-  const convidadoEm = new Set(diarista.convidadoEm.map((r) => r.id));
-
-  const lojasBloqueadas = new Set(diarista.bloqueios.map((b) => b.lojaId));
-  // Dias em que a diarista já tem diária e lojas/dias em que já foi convocada.
-  const datasComEscala = new Set(diarista.escalas.map((e) => e.data));
-  const convocadoLojaData = new Set(
-    diarista.convocacoes.map((c) => `${c.lojaId}|${c.data}`),
-  );
-  // Vagas (mais novas primeiro): tira loja bloqueada, dias que já trabalha e
-  // vagas da loja/dia em que já foi convocada (responde pelo convite).
-  // Só mostra vagas da função da diarista (ou vagas sem função definida).
-  const disponiveis = disponiveisRaw.filter(
-    (r) =>
-      !lojasBloqueadas.has(r.lojaId) &&
-      !datasComEscala.has(r.data) &&
-      !convocadoLojaData.has(`${r.lojaId}|${r.data}`) &&
-      (!r.funcao || !diarista.funcao || r.funcao === diarista.funcao),
-  );
-
-  // Nota das lojas (avaliação dos diaristas), para o filtro "nota".
-  const lojaIdsDisp = [...new Set(disponiveis.map((r) => r.lojaId))];
-  const avalLojas = lojaIdsDisp.length
-    ? await prisma.avaliacaoLoja.findMany({
-        where: { lojaId: { in: lojaIdsDisp } },
-        select: {
-          lojaId: true,
-          ambiente: true,
-          tratamento: true,
-          pagamentoEmDia: true,
-          organizacao: true,
-          seguranca: true,
-        },
-      })
-    : [];
-  const notaAcc = new Map<string, { soma: number; qtd: number }>();
-  for (const a of avalLojas) {
-    const m = (a.ambiente + a.tratamento + a.pagamentoEmDia + a.organizacao + a.seguranca) / 5 / 2;
-    const cur = notaAcc.get(a.lojaId) ?? { soma: 0, qtd: 0 };
-    cur.soma += m;
-    cur.qtd += 1;
-    notaAcc.set(a.lojaId, cur);
-  }
-  const notaDaLoja = (id: string): number | null => {
-    const c = notaAcc.get(id);
-    return c ? c.soma / c.qtd : null;
-  };
-
-  const itensDiarias: DiariaItem[] = disponiveis.map((r) => {
-    const g = grupoDaLoja(r.loja.nome);
-    return {
-      id: r.id,
-      lojaId: r.lojaId,
-      lojaNome: r.loja.nome,
-      marcaLabel: g.label,
-      marcaOrdem: g.ordem,
-      rua: ruaDaLoja(r.loja),
-      enderecoCompleto: enderecoCompleto(r.loja) || ruaDaLoja(r.loja),
-      bairroCidade: bairroCidade(r.loja),
-      lat: r.loja.latitude,
-      lng: r.loja.longitude,
-      data: r.data,
-      horaInicio: r.horaInicio,
-      horaFim: r.horaFim,
-      valor: r.valorDiaria,
-      funcao: r.funcao,
-      inscrito: inscritoEm.has(r.id),
-      convidado: convidadoEm.has(r.id),
-      nota: notaDaLoja(r.lojaId),
-    };
-  });
-
   const medalhas = await medalhasDoDiarista(diarista.id);
 
   return (
@@ -238,9 +155,6 @@ export default async function DiaristaLinkPage({
       <nav className="sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-gray-200 bg-white px-4 py-2 text-sm">
         <a href="#proximas" className="whitespace-nowrap rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-800">
           📅 Minhas diárias
-        </a>
-        <a href="#vagas" data-tour="diarista-vagas" className="whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
-          📋 Vagas
         </a>
         <Link
           href={`/d/${token}/guia`}
@@ -561,13 +475,6 @@ export default async function DiaristaLinkPage({
           </a>
         )}
 
-        <Link
-          href={`/d/${token}/perto`}
-          className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-center text-base font-bold text-white shadow-sm hover:bg-orange-700"
-        >
-          📍 Encontrar diárias perto de mim
-        </Link>
-
         {!diarista.bonificacoes.some((b) => b.tipo === "CASHBACK_5") &&
           diarista._count.avaliacoes < DIARIAS_CASHBACK && (
             <div className="rounded-xl border border-orange-200 bg-white p-4 shadow-sm">
@@ -632,21 +539,6 @@ export default async function DiaristaLinkPage({
             </ul>
           </div>
         )}
-
-        <section id="vagas" className="scroll-mt-14">
-          <h2 className="mb-2 font-semibold text-gray-900">Agende sua diária</h2>
-          {!diarista.aprovado ? (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-              ⏳ Disponível assim que o RH aprovar seu cadastro.
-            </div>
-          ) : bloqueado ? (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-              🔒 Avalie sua(s) última(s) diária(s) acima para liberar novas vagas.
-            </div>
-          ) : (
-            <ListaDiarias token={token} itens={itensDiarias} />
-          )}
-        </section>
 
         {recentes.length > 0 && (
           <section>

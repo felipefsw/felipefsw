@@ -54,9 +54,9 @@ function statusLabel(s: string) {
 export default async function LojaHome({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string; dia?: string }>;
+  searchParams: Promise<{ erro?: string; dia?: string; ok?: string }>;
 }) {
-  const { erro, dia } = await searchParams;
+  const { erro, dia, ok } = await searchParams;
   const ctx = contextoLoja(await getSessao());
   if (!ctx) redirect("/entrar");
   const lojaId = ctx.lojaId;
@@ -345,6 +345,37 @@ export default async function LojaHome({
           Você tem {pendentes} diária(s) para avaliar. Toque aqui para avaliar agora e liberar novas
           vagas/convocações. →
         </a>
+      )}
+
+      {ok === "convocada" && (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800">
+          ✓ Convite enviado! A diarista vai ver no app dela.
+        </div>
+      )}
+      {erro === "convocar_jadiaria" && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+          A diarista já tem uma diária nesse dia — por isso não foi convocada.
+        </div>
+      )}
+      {erro === "convocar_jaconvocada" && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+          Essa diarista já tem um convite pendente para esse dia nesta loja.
+        </div>
+      )}
+      {erro === "convocar_bloqueada" && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          Essa diarista está bloqueada pelo RH no momento.
+        </div>
+      )}
+      {erro === "convocar_nao_encontrada" && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          Não encontrei essa diarista (talvez tenha sido removida).
+        </div>
+      )}
+      {erro === "convocar_dados" && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+          Não consegui convocar — dados incompletos (data faltando ou fora da janela).
+        </div>
       )}
 
       <section>
