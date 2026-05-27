@@ -358,7 +358,9 @@ export async function convocarDiarista(formData: FormData) {
   const diaristaId = String(formData.get("diaristaId") ?? "");
   const data = String(formData.get("data") ?? "");
   const requisicaoId = String(formData.get("requisicaoId") ?? "") || null;
-  if (!diaristaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) return;
+  if (!diaristaId || !isISODate(data) || !dentroDaJanelaAgendamento(data)) {
+    redirect("/loja?erro=convocar_dados");
+  }
   if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
   // Garante que o diarista existe, não está já convocado, sem diária nesse dia e sem bloqueio global.
@@ -377,10 +379,10 @@ export async function convocarDiarista(formData: FormData) {
         })
       : Promise.resolve(null),
   ]);
-  if (!diarista || jaConvocado || jaNoDia || bloqGlobal) {
-    revalidatePath("/loja");
-    return;
-  }
+  if (!diarista) redirect("/loja?erro=convocar_nao_encontrada");
+  if (bloqGlobal) redirect("/loja?erro=convocar_bloqueada");
+  if (jaNoDia) redirect("/loja?erro=convocar_jadiaria");
+  if (jaConvocado) redirect("/loja?erro=convocar_jaconvocada");
 
   // Quando a convocação vem de uma requisição, leva o horário/valor dela (e a vincula).
   const convocacao = await prisma.convocacao.create({
@@ -396,6 +398,7 @@ export async function convocarDiarista(formData: FormData) {
   });
   await notificarConvite(convocacao.id);
   revalidatePath("/loja");
+  redirect("/loja?ok=convocada");
 }
 
 // Lojas que a sessão pode gerenciar (loja avulsa = a sua; gestor = todas as dele).
