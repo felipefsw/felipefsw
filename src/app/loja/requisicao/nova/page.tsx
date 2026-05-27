@@ -24,8 +24,15 @@ export default async function NovaRequisicaoLojaPage() {
   const ctx = contextoLoja(sessao);
   if (!ctx) redirect("/entrar");
 
+  // Só os diaristas no banco desta loja (gestor: o banco das lojas dele).
   const diaristas = await prisma.diarista.findMany({
-    where: { ativo: true },
+    where: {
+      ativo: true,
+      aprovado: true,
+      lojasNoBanco: ctx.gestorId
+        ? { some: { loja: { gestores: { some: { id: ctx.gestorId } } } } }
+        : { some: { lojaId: ctx.lojaId } },
+    },
     orderBy: { nome: "asc" },
     select: {
       id: true,

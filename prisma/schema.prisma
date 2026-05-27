@@ -40,7 +40,24 @@ model Loja {
   bloqueios   Bloqueio[]
   convocacoes Convocacao[]
   diaristasPreferem Diarista[] @relation("LojaPreferida")
+  diaristasNoBanco BancoLoja[]
   pushLojas   PushLoja[]
+}
+
+// Banco/pool de diaristas de cada loja: só os diaristas listados aqui podem
+// ser alocados/convocados por aquela loja (ou gestor dela). RH/TI veem todas.
+// Diaristas entram aqui via: cadastro vindo do link da loja, aprovação por
+// gestor/loja, ou (na migração) histórico de escalas.
+model BancoLoja {
+  lojaId     String
+  diaristaId String
+  criadoEm   DateTime @default(now())
+  loja       Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
+
+  @@id([lojaId, diaristaId])
+  @@index([lojaId])
+  @@index([diaristaId])
 }
 
 // Inscrição de push da loja/gestor (para lembrete de pagamento, etc.).
@@ -126,6 +143,9 @@ model Diarista {
   mensagens   Mensagem[]
   // Lojas que a diarista prefere trabalhar (apenas um norte, não obriga).
   lojasPreferidas Loja[] @relation("LojaPreferida")
+  // Lojas no banco/escopo desta diarista — só essas lojas/gestores podem
+  // alocar/convocar. (RH/TI veem todas.) Vazio = orfão, visível só pelo RH.
+  lojasNoBanco BancoLoja[]
 }
 
 // Chat entre o diarista e o RH (avisos, dúvidas, imprevistos).
