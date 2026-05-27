@@ -44,6 +44,15 @@ export async function cadastrarDiarista(formData: FormData) {
 
   // Todo autocadastro entra PENDENTE — RH/gestor/loja aprovam manualmente,
   // independente de ter vindo por link compartilhado.
+  // Se o link veio de uma loja específica (via=<lojaId>), liga a diarista ao
+  // banco daquela loja (só ela e o gestor/RH conseguirão alocá-la).
+  const via = String(formData.get("via") ?? "").trim();
+  let lojaDoConvite: string | null = null;
+  if (via && via !== "rh") {
+    const loja = await prisma.loja.findUnique({ where: { id: via }, select: { id: true } });
+    if (loja) lojaDoConvite = loja.id;
+  }
+
   const diarista = await prisma.diarista.create({
     data: {
       nome: `${nome} ${sobrenome}`,
@@ -55,6 +64,9 @@ export async function cadastrarDiarista(formData: FormData) {
       senha: gerarHashSenha(senha),
       observacoes: String(formData.get("observacoes") ?? "").trim() || null,
       aprovado: false,
+      ...(lojaDoConvite
+        ? { lojasNoBanco: { create: { lojaId: lojaDoConvite } } }
+        : {}),
     },
   });
 

@@ -364,7 +364,7 @@ export async function convocarDiarista(formData: FormData) {
   if (await temPendenteAvaliacao(lojaId)) redirect("/loja?erro=avalie");
 
   // Garante que o diarista existe, não está já convocado, sem diária nesse dia e sem bloqueio global.
-  const [diarista, jaConvocado, jaNoDia, bloqGlobal, requisicao] = await Promise.all([
+  const [diarista, jaConvocado, jaNoDia, bloqGlobal, requisicao, noBanco] = await Promise.all([
     prisma.diarista.findUnique({ where: { id: diaristaId }, select: { id: true } }),
     prisma.convocacao.findFirst({
       where: { lojaId, diaristaId, data, status: "PENDENTE" },
@@ -378,8 +378,13 @@ export async function convocarDiarista(formData: FormData) {
           select: { id: true, horaInicio: true, horaFim: true, valorDiaria: true },
         })
       : Promise.resolve(null),
+    prisma.bancoLoja.findUnique({
+      where: { lojaId_diaristaId: { lojaId, diaristaId } },
+      select: { lojaId: true },
+    }),
   ]);
   if (!diarista) redirect("/loja?erro=convocar_nao_encontrada");
+  if (!noBanco) redirect("/loja?erro=convocar_fora_banco");
   if (bloqGlobal) redirect("/loja?erro=convocar_bloqueada");
   if (jaNoDia) redirect("/loja?erro=convocar_jadiaria");
   if (jaConvocado) redirect("/loja?erro=convocar_jaconvocada");

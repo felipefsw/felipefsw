@@ -165,9 +165,15 @@ export default async function LojaHome({
         ? { txt: "recusou", cls: "bg-gray-200 text-gray-600" }
         : { txt: "aguardando", cls: "bg-amber-100 text-amber-700" };
 
-  // Cadastros aguardando aprovação (loja/gestor também pode aprovar).
+  // Cadastros aguardando aprovação — só os do banco desta loja (ou das lojas do gestor).
   const cadastrosPendentes = await prisma.diarista.findMany({
-    where: { aprovado: false, ativo: true },
+    where: {
+      aprovado: false,
+      ativo: true,
+      lojasNoBanco: ctx.gestorId
+        ? { some: { loja: { gestores: { some: { id: ctx.gestorId } } } } }
+        : { some: { lojaId: ctx.lojaId } },
+    },
     orderBy: { criadoEm: "desc" },
     select: { id: true, nome: true, cpf: true, funcao: true, telefone: true, fotoUrl: true },
     take: 20,
@@ -370,6 +376,11 @@ export default async function LojaHome({
       {erro === "convocar_nao_encontrada" && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
           Não encontrei essa diarista (talvez tenha sido removida).
+        </div>
+      )}
+      {erro === "convocar_fora_banco" && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+          Essa diarista não está no banco da sua loja. Aprove o cadastro dela primeiro (na seção “Cadastros aguardando aprovação”).
         </div>
       )}
       {erro === "convocar_dados" && (

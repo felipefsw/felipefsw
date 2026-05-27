@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { cpfValido, soCpfDigitos } from "@/lib/cpf";
 import { BLOQUEIO_PARA_SEMPRE } from "@/lib/limites";
-import { getSessao } from "@/lib/auth";
+import { contextoLoja, getSessao } from "@/lib/auth";
 
 // CPF (dígitos) já usado por outro diarista? Evita cadastro duplicado.
 async function cpfDuplicado(cpf: string, excetoId?: string): Promise<boolean> {
@@ -146,6 +146,7 @@ export async function bloquearGlobal(formData: FormData) {
 
 // Aprova um autocadastro (libera a diarista para pegar diárias).
 // RH/TI, loja e gestor podem aprovar — diarista anônimo não.
+// Loja/gestor que aprova também adiciona a diarista ao banco da(s) sua(s) loja(s).
 export async function aprovarDiaristaCadastro(formData: FormData) {
   const sessao = await getSessao();
   if (!sessao || (sessao.tipo !== "gestao" && sessao.tipo !== "loja" && sessao.tipo !== "gestor")) {
@@ -153,7 +154,27 @@ export async function aprovarDiaristaCadastro(formData: FormData) {
   }
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+
+  // Loja/gestor: descobre quais lojas vinculam a diarista no aprovador.
+  let lojasParaVincular: string[] = [];
+  const ctx = contextoLoja(sessao);
+  if (ctx?.gestorId) {
+    const lojas = await prisma.loja.findMany({
+      where: { gestores: { some: { id: ctx.gestorId } } },
+      select: { id: true },
+    });
+    lojasParaVincular = lojas.map((l) => l.id);
+  } else if (ctx?.lojaId) {
+    lojasParaVincular = [ctx.lojaId];
+  }
+
   await prisma.diarista.update({ where: { id }, data: { aprovado: true } });
+  if (lojasParaVincular.length > 0) {
+    await prisma.bancoLoja.createMany({
+      data: lojasParaVincular.map((lojaId) => ({ diaristaId: id, lojaId })),
+      skipDuplicates: true,
+    });
+  }
   revalidatePath("/diaristas");
   revalidatePath("/loja");
   revalidatePath("/notificacoes");
