@@ -4,7 +4,7 @@ import { EmptyState, PageHeader, inputClass } from "@/components/ui";
 import ConfirmDeleteLoja from "@/components/ConfirmDeleteLoja";
 import MarcaBadge from "@/components/MarcaBadge";
 import ClickMagicoBotao from "@/components/ClickMagicoBotao";
-import { grupoDaLoja } from "@/lib/marcas";
+import { coresDaMarca, grupoDaLoja } from "@/lib/marcas";
 import { getSessao } from "@/lib/auth";
 import { deleteLoja, toggleLojaAtivo } from "./actions";
 
@@ -118,51 +118,46 @@ export default async function LojasPage({
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
                 {g.label} ({g.itens.length})
               </h2>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {g.itens.map((loja) => {
                   const vagas = loja.requisicoes.reduce((s, r) => s + r.quantidade, 0);
-                  const porFuncao = new Map<string, number>();
-                  for (const r of loja.requisicoes)
-                    porFuncao.set(r.funcao ?? "Qualquer", (porFuncao.get(r.funcao ?? "Qualquer") ?? 0) + r.quantidade);
+                  const cores = coresDaMarca(loja.nome);
                   return (
-                  <div key={loja.id} className="rounded-xl border border-gray-200 bg-white p-3">
-                    <Link href={`/lojas/${loja.id}`} className="block">
+                  <div key={loja.id} className={`flex aspect-square flex-col overflow-hidden rounded-2xl shadow-sm ${cores.bg} ${cores.text} ${!loja.ativo ? "opacity-60" : ""}`}>
+                    <Link href={`/lojas/${loja.id}`} prefetch className="flex flex-1 flex-col p-3">
                       <div className="flex items-center gap-2">
-                        <MarcaBadge nome={loja.nome} className="h-6 w-6 shrink-0 rounded" />
-                        <span className="truncate text-sm font-semibold text-gray-900">
-                          {loja.nome}
-                        </span>
+                        <MarcaBadge nome={loja.nome} className={`h-7 w-7 shrink-0 rounded p-0.5 ${cores.selo}`} />
+                        {vagas > 0 && (
+                          <span className="ml-auto rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-gray-900">
+                            {vagas} vaga{vagas > 1 ? "s" : ""}
+                          </span>
+                        )}
                       </div>
+                      <p className="mt-2 line-clamp-2 text-base font-bold leading-tight">
+                        {loja.nome}
+                      </p>
                       {(loja.bairro || loja.cidade) && (
-                        <p className="mt-0.5 truncate text-xs text-gray-500">
+                        <p className={`mt-0.5 line-clamp-2 text-[11px] ${cores.sub}`}>
                           {[loja.bairro, loja.cidade].filter(Boolean).join(" · ")}
                         </p>
                       )}
-                      <p className="mt-0.5 truncate text-[11px] text-gray-500">
-                        <span className="text-gray-400">Gestor/gerente:</span>{" "}
-                        {loja.gestores.length > 0
-                          ? loja.gestores.map((g) => g.nome).join(", ")
-                          : "—"}
-                      </p>
-                      {vagas > 0 ? (
-                        <p className="mt-1 text-[11px] font-semibold text-amber-700">
-                          {vagas} vaga(s):{" "}
-                          {[...porFuncao.entries()].map(([f, n]) => `${f} (${n})`).join(", ")}
+                      <div className="mt-auto pt-2">
+                        <p className={`truncate text-[11px] ${cores.sub}`}>
+                          {loja.gestores.length > 0
+                            ? loja.gestores.map((g) => g.nome).join(", ")
+                            : "sem gestor"}
                         </p>
-                      ) : (
-                        <p className="mt-1 text-[11px] text-gray-400">sem vagas abertas</p>
-                      )}
-                      <p className="mt-0.5 text-[11px] text-gray-400">
-                        {loja._count.escalas} agend.
-                        {!loja.ativo && " · inativa"}
-                      </p>
+                        {!loja.ativo && (
+                          <p className={`text-[10px] font-semibold ${cores.sub}`}>inativa</p>
+                        )}
+                      </div>
                     </Link>
-                    <div className="mt-2 flex flex-wrap gap-1.5 border-t border-gray-100 pt-2">
-                      <form action={toggleLojaAtivo}>
+                    <div className="flex gap-1 border-t border-white/20 bg-black/10 px-2 py-1">
+                      <form action={toggleLojaAtivo} className="flex-1">
                         <input type="hidden" name="id" value={loja.id} />
                         <button
                           type="submit"
-                          className="rounded border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600 hover:bg-gray-50"
+                          className="w-full rounded bg-white/80 px-2 py-0.5 text-[10px] font-medium text-gray-800 hover:bg-white"
                         >
                           {loja.ativo ? "Desativar" : "Reativar"}
                         </button>
@@ -172,7 +167,7 @@ export default async function LojasPage({
                           id={loja.id}
                           nome={loja.nome}
                           action={deleteLoja}
-                          className="rounded border border-red-200 bg-white px-2 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50"
+                          className="flex-1 rounded bg-white/80 px-2 py-0.5 text-[10px] font-medium text-red-700 hover:bg-white"
                         />
                       )}
                     </div>
