@@ -42,6 +42,7 @@ model Loja {
   diaristasPreferem Diarista[] @relation("LojaPreferida")
   diaristasNoBanco BancoLoja[]
   pushLojas   PushLoja[]
+  execAgentes ExecAgente[]
 }
 
 // Banco/pool de diaristas de cada loja: só os diaristas listados aqui podem
@@ -362,4 +363,55 @@ model AvaliacaoLoja {
   diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
 
   @@index([lojaId])
+}
+
+// =====================================================================
+// RWP Master OS — Agentes de IA (Auditor Financeiro, Mentor RH, P&D, etc).
+// =====================================================================
+
+// Definição de um Agente: identidade + System Prompt + modelo.
+// Cada Agente é uma "Skill" reutilizável que pode ser executada várias vezes
+// com entradas diferentes (ex.: o Auditor Financeiro processa um relatório do
+// Saipos por vez). O System Prompt é editável pelo RH/TI pelo painel.
+model Agente {
+  id           String       @id @default(cuid())
+  slug         String       @unique // ex.: "auditor-financeiro", "mentor-rh", "pd"
+  nome         String
+  descricao    String
+  systemPrompt String       // texto longo, definido pelo RH/TI
+  modelo       String       @default("claude-opus-4-7")
+  ativo        Boolean      @default(true)
+  criadoEm     DateTime     @default(now())
+  atualizadoEm DateTime     @updatedAt
+  execucoes    ExecAgente[]
+}
+
+// Cada execução de um Agente: registra a entrada bruta colada pelo usuário,
+// a resposta do modelo (Markdown), e métricas (tokens, cache, duração).
+model ExecAgente {
+  id           String    @id @default(cuid())
+  status       String    @default("PENDENTE") // PENDENTE | PROCESSANDO | CONCLUIDA | ERRO
+  titulo       String? // rótulo livre (ex.: "Saipos — Centro — 28/05")
+  entrada      String // texto bruto colado pelo usuário
+  saida        String? // resposta do modelo (Markdown)
+  erro         String?
+  modelo       String?
+  inputTokens  Int?
+  outputTokens Int?
+  cacheCreate  Int? // tokens criados em cache (prompt caching)
+  cacheRead    Int? // tokens lidos do cache (hit)
+  duracaoMs    Int?
+  criadoEm     DateTime  @default(now())
+  concluidoEm  DateTime?
+
+  agenteId String
+  agente   Agente @relation(fields: [agenteId], references: [id], onDelete: Cascade)
+
+  // Opcional: a qual loja o relatório/auditoria se refere. SetNull para preservar histórico.
+  lojaId String?
+  loja   Loja?   @relation(fields: [lojaId], references: [id], onDelete: SetNull)
+
+  @@index([agenteId])
+  @@index([lojaId])
+  @@index([criadoEm])
 }

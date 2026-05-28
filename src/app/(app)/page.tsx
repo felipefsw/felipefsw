@@ -332,6 +332,16 @@ export default async function InicioPage({
         👥 Criar usuário (lojista, gestor, RH, TI, diarista)
       </Link>
 
+      <Link
+        href="/os"
+        className="block rounded-xl border border-orange-300 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-3 shadow-sm hover:from-orange-100 hover:to-amber-100"
+      >
+        <p className="text-sm font-semibold text-orange-900">🧠 RWP Master OS</p>
+        <p className="mt-0.5 text-xs text-orange-800">
+          Agentes de IA: auditoria financeira do Saipos, P&D, mentor de RH
+        </p>
+      </Link>
+
       <section>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Escalados hoje ({escalasHoje.length})</h2>
