@@ -1,0 +1,89 @@
+/*
+  Design system do site público da Rede RWP.
+  Tudo fica sob a classe .rwp-site (aplicada no layout do site) para não vazar
+  para o app de gestão de diaristas, que compartilha o mesmo globals.css.
+
+  Princípios vindos da auditoria:
+  - Fonte de INTERFACE neutra (system-ui). A "cara de marca" (condensada,
+    caixa-alta) fica reservada a TÍTULOS CURTOS via .rwp-display.
+  - Sistema semântico de cores: 1 cor primária de ação (laranja), vermelho para
+    risco, verde para sucesso. Estados sempre com texto/ícone, nunca só cor.
+  - Contraste mínimo 4,5:1 nos textos; foco sempre visível; alvos de toque >= 44px.
+*/
+
+.rwp-site {
+  /* Superfícies escuras (identidade RWP) */
+  --rwp-ink: #0c0c0e;
+  --rwp-ink-2: #16161a;
+  --rwp-ink-3: #1f1f25;
+
+  /* Laranja de ação da marca (contraste AA com texto branco em botões) */
+  --rwp-orange: #ee5a24;
+  --rwp-orange-strong: #d94b18;
+
+  /* Texto */
+  --rwp-on-dark: #f6f5f3;
+  --rwp-on-dark-muted: #c3c3c0; /* ~7:1 sobre --rwp-ink */
+  --rwp-on-light: #1a1a1c;
+  --rwp-on-light-muted: #55555b; /* ~7:1 sobre branco */
+
+  /* Semânticas */
+  --rwp-risk: #d92d20;
+  --rwp-success: #157f3c;
+  --rwp-warning: #a15c07;
+
+  /* Bordas / superfícies claras */
+  --rwp-line: #e6e5e2;
+  --rwp-surface: #ffffff;
+  --rwp-surface-2: #f6f5f3;
+
+  color: var(--rwp-on-light);
+  background: var(--rwp-surface);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  line-height: 1.55;
+}
+
+/* Título curto com "cara de marca": condensado, caixa-alta, espaçado.
+   Usar SOMENTE em títulos curtos (hero, seções), nunca em texto corrido. */
+.rwp-display {
+  font-family: "Arial Narrow", "Roboto Condensed", "Segoe UI Semibold", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+/* Foco visível e consistente em toda a área do site. */
+.rwp-site :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--rwp-orange);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Alvo de toque confortável (>=44px) para controles do site. */
+.rwp-site .rwp-tap {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Link "pular para o conteúdo" (acessibilidade de teclado). */
+.rwp-skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--rwp-ink);
+  color: var(--rwp-on-dark);
+  padding: 0.75rem 1rem;
+  border-radius: 0 0 8px 0;
+}
+.rwp-skip:focus {
+  left: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rwp-site * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
