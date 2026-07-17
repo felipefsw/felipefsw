@@ -13,6 +13,7 @@ export default function ParaFranqueadosPage() {
     <>
       <Secao tom="escura">
         <TituloSecao
+          nivel={1}
           tom="escura"
           sobrescrito="Para franqueados"
           titulo="Consultoria que mostra o desvio, explica a causa e acompanha a correção"

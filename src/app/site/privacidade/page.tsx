@@ -35,6 +35,7 @@ export default function PrivacidadePage() {
     <>
       <Secao tom="escura" className="!py-12">
         <TituloSecao
+          nivel={1}
           tom="escura"
           sobrescrito="Privacidade"
           titulo="Política de privacidade"

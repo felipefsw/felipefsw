@@ -44,6 +44,7 @@ export default function ContatoPage() {
     <>
       <Secao tom="escura">
         <TituloSecao
+          nivel={1}
           tom="escura"
           sobrescrito="Fale conosco"
           titulo="Escolha o canal certo e a gente responde"

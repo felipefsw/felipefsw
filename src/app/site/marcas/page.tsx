@@ -13,6 +13,7 @@ export default function MarcasPage() {
     <>
       <Secao tom="escura">
         <TituloSecao
+          nivel={1}
           tom="escura"
           sobrescrito="Nossas marcas"
           titulo="Uma rede, quatro jeitos de amar pizza"

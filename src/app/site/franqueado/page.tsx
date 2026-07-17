@@ -39,6 +39,7 @@ export default function FranqueadoPage() {
     <>
       <Secao tom="escura">
         <TituloSecao
+          nivel={1}
           tom="escura"
           sobrescrito="Seja franqueado"
           titulo="Abra uma pizzaria com uma rede que já sabe gerir"

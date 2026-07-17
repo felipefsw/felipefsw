@@ -134,19 +134,24 @@ export function TituloSecao({
   titulo,
   descricao,
   tom = "clara",
+  nivel = 2,
 }: {
   sobrescrito?: string;
   titulo: string;
   descricao?: string;
   tom?: "clara" | "escura";
+  // Nível do título: use 1 no herói da página (um H1 por página) e 2 nas seções.
+  nivel?: 1 | 2;
 }) {
   const corTexto = tom === "escura" ? "text-[var(--rwp-on-dark-muted)]" : "text-[var(--rwp-on-light-muted)]";
+  const Titulo = nivel === 1 ? "h1" : "h2";
+  const tamanho = nivel === 1 ? "text-4xl sm:text-5xl" : "text-3xl sm:text-4xl";
   return (
     <div className="max-w-2xl">
       {sobrescrito && (
-        <p className={`rwp-display mb-2 text-xs tracking-[0.2em] text-[var(--rwp-orange)]`}>{sobrescrito}</p>
+        <p className="rwp-display mb-2 text-xs tracking-[0.2em] text-[var(--rwp-orange)]">{sobrescrito}</p>
       )}
-      <h2 className="rwp-display text-3xl sm:text-4xl">{titulo}</h2>
+      <Titulo className={`rwp-display ${tamanho}`}>{titulo}</Titulo>
       {descricao && <p className={`mt-3 text-base ${corTexto}`}>{descricao}</p>}
     </div>
   );

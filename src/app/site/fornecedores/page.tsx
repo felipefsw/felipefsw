@@ -19,6 +19,7 @@ export default function FornecedoresPage() {
     <>
       <Secao tom="escura">
         <TituloSecao
+          nivel={1}
           tom="escura"
           sobrescrito="Fornecedores e parceiros"
           titulo="Cresça junto com a rede"

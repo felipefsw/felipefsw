@@ -18,6 +18,7 @@ export default async function EncontrarPage({
     <>
       <Secao tom="escura" className="!py-12">
         <TituloSecao
+          nivel={1}
           tom="escura"
           sobrescrito="Encontrar pizzaria"
           titulo="Onde tem pizza da rede pertinho de você"

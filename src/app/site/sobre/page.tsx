@@ -32,6 +32,7 @@ export default function SobrePage() {
     <>
       <Secao tom="escura">
         <TituloSecao
+          nivel={1}
           tom="escura"
           sobrescrito="Nossa história"
           titulo="Nascemos da pizza. Crescemos com gestão."
