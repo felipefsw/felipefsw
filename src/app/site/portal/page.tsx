@@ -11,6 +11,11 @@ const TELAS = [
     titulo: "Termômetro Explicável 2.0",
     texto: "A nota de saúde decomposta por dimensão, com meta, tendência, causa, fonte e confiança do dado.",
   },
+  {
+    href: "/site/portal/ifood",
+    titulo: "Operação iFood Segura",
+    texto: "A rotina do dia (Agora, Pedidos, Cardápio, Avaliações) separada da administração técnica e com ambiente sempre explícito.",
+  },
 ];
 
 export default function PortalIntro() {

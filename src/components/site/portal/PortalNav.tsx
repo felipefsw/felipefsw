@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ABAS = [
   { href: "/site/portal/cockpit", rotulo: "Cockpit Diário" },
   { href: "/site/portal/termometro", rotulo: "Termômetro Explicável" },
+  { href: "/site/portal/ifood", rotulo: "Operação iFood" },
 ];
 
 export default function PortalNav() {
