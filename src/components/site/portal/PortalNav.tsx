@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 
 const ABAS = [
   { href: "/site/portal/cockpit", rotulo: "Cockpit Diário" },
+  { href: "/site/portal/minhas-lojas", rotulo: "Minhas Lojas" },
   { href: "/site/portal/termometro", rotulo: "Termômetro Explicável" },
   { href: "/site/portal/ifood", rotulo: "Operação iFood" },
   { href: "/site/portal/ponto", rotulo: "Ponto" },
   { href: "/site/portal/qualidade", rotulo: "Qualidade" },
   { href: "/site/portal/rh", rotulo: "RH e DP" },
   { href: "/site/portal/diaristas", rotulo: "Diaristas" },
+  { href: "/site/portal/chamados", rotulo: "Chamados TI" },
   { href: "/site/portal/ranking", rotulo: "Ranking" },
 ];
 

@@ -41,6 +41,16 @@ const TELAS = [
     titulo: "Ranking de lojas",
     texto: "Lojas ordenadas pela nota ponderada dos indicadores, com pesos visíveis e filtro por gestor.",
   },
+  {
+    href: "/site/portal/minhas-lojas",
+    titulo: "Minhas Lojas (gestor)",
+    texto: "Visão multiloja do gestor: saúde, equipe do dia, vagas em andamento e pendências críticas por unidade.",
+  },
+  {
+    href: "/site/portal/chamados",
+    titulo: "TI — Chamados com robô",
+    texto: "A loja fala com o assistente, que resolve pela base de conhecimento e escala à TI só o que precisa de técnico.",
+  },
 ];
 
 export default function PortalIntro() {
