@@ -16,6 +16,31 @@ const TELAS = [
     titulo: "Operação iFood Segura",
     texto: "A rotina do dia (Agora, Pedidos, Cardápio, Avaliações) separada da administração técnica e com ambiente sempre explícito.",
   },
+  {
+    href: "/site/portal/ponto",
+    titulo: "Ponto Eletrônico — Hoje",
+    texto: "Quem está trabalhando agora, quem faltou e quem ainda vai entrar, com atrasos e banco de horas.",
+  },
+  {
+    href: "/site/portal/qualidade",
+    titulo: "Dashboard de Qualidade",
+    texto: "Faturamento, ticket, nota iFood, auditoria de qualidade, segurança alimentar, padrão de loja e planos de ação.",
+  },
+  {
+    href: "/site/portal/rh",
+    titulo: "RH e DP",
+    texto: "Funcionários, férias, processos seletivos, vagas, fardamento e a tabela de cargos e salários.",
+  },
+  {
+    href: "/site/portal/diaristas",
+    titulo: "Diaristas",
+    texto: "Pool confiável: escala do dia, disponibilidade, taxa de preenchimento, no-show e avaliação.",
+  },
+  {
+    href: "/site/portal/ranking",
+    titulo: "Ranking de lojas",
+    texto: "Lojas ordenadas pela nota ponderada dos indicadores, com pesos visíveis e filtro por gestor.",
+  },
 ];
 
 export default function PortalIntro() {
