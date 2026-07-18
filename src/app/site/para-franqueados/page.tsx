@@ -19,8 +19,11 @@ export default function ParaFranqueadosPage() {
           titulo="Consultoria que mostra o desvio, explica a causa e acompanha a correção"
           descricao="O portal da RWP não entrega apenas gráficos e PDFs. Entrega um método: cada sinal vira uma ação com dono, prazo, evidência e verificação de resultado."
         />
-        <div className="mt-8">
-          <BotaoLink href="/entrar" variante="clara">
+        <div className="mt-8 flex flex-wrap gap-3">
+          <BotaoLink href="/site/portal" variante="primaria">
+            Ver prévia do portal
+          </BotaoLink>
+          <BotaoLink href="/entrar" variante="secundaria">
             Acessar o portal
           </BotaoLink>
         </div>
