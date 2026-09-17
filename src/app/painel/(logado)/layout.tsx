@@ -15,6 +15,7 @@ export default async function PainelLogadoLayout({
   const ctx = await contextoPainel();
   const lojas = await lojasDoAcesso(ctx.acesso);
   const ehAdmin = podeEditar(ctx.acesso, ctx.storeId, "usuarios");
+  const podeEnviar = podeEditar(ctx.acesso, ctx.storeId, "operacao");
 
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col">
@@ -54,6 +55,17 @@ export default async function PainelLogadoLayout({
           </div>
         </div>
       </header>
+
+      <nav className="flex gap-1 overflow-x-auto border-b border-[var(--painel-borda)] px-4 py-2 text-sm">
+        <Link href="/painel" className="shrink-0 rounded-lg px-2 py-1 hover:bg-white/5">
+          Início
+        </Link>
+        {podeEnviar ? (
+          <Link href="/painel/enviar" className="shrink-0 rounded-lg px-2 py-1 hover:bg-white/5">
+            Enviar
+          </Link>
+        ) : null}
+      </nav>
 
       {sessionSecretInseguro() ? (
         <div className="border-b border-[var(--painel-vermelho)]/40 bg-[var(--painel-vermelho)]/10 px-4 py-2 text-xs font-medium text-[var(--painel-vermelho)]">

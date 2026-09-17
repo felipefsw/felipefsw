@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 // Os módulos da seção 7 do book, na ordem dos sprints da seção 12.
 const MODULOS = [
-  { nome: "Enviar relatórios", descricao: "Saipos, iFood, ponto e cupom do CD", sprint: 1 },
+  { nome: "Enviar relatórios", descricao: "Saipos, iFood, ponto e cupom do CD", sprint: 1, href: "/painel/enviar" },
   { nome: "Vendas 360", descricao: "Hora a hora, dia da semana e previsão", sprint: 1 },
   { nome: "Placar da semana", descricao: "Meta, presença, checklists e prêmio", sprint: 2 },
   { nome: "CMV diário", descricao: "Contagem, cupom e desvio por item", sprint: 3 },
@@ -93,17 +93,35 @@ export default async function PainelHome() {
         da seção 12 do book.
       </p>
       <ul className="space-y-2">
-        {MODULOS.map((m) => (
-          <li key={m.nome} className={`${superficie} flex items-center justify-between gap-3 p-3`}>
-            <div className="min-w-0">
-              <p className="truncate font-semibold">{m.nome}</p>
-              <p className="truncate text-sm text-[var(--painel-texto-fraco)]">{m.descricao}</p>
-            </div>
-            <span className="shrink-0 rounded-full border border-[var(--painel-borda)] px-2 py-0.5 text-xs text-[var(--painel-texto-fraco)]">
-              Sprint {m.sprint}
-            </span>
-          </li>
-        ))}
+        {MODULOS.map((m) => {
+          const conteudo = (
+            <>
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{m.nome}</p>
+                <p className="truncate text-sm text-[var(--painel-texto-fraco)]">{m.descricao}</p>
+              </div>
+              <span className="shrink-0 rounded-full border border-[var(--painel-borda)] px-2 py-0.5 text-xs text-[var(--painel-texto-fraco)]">
+                {"href" in m ? "abrir" : `Sprint ${m.sprint}`}
+              </span>
+            </>
+          );
+          return (
+            <li key={m.nome}>
+              {"href" in m ? (
+                <Link
+                  href={m.href as string}
+                  className={`${superficie} flex items-center justify-between gap-3 p-3 hover:bg-white/5`}
+                >
+                  {conteudo}
+                </Link>
+              ) : (
+                <div className={`${superficie} flex items-center justify-between gap-3 p-3`}>
+                  {conteudo}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       <p className="mt-6 text-center text-xs text-[var(--painel-texto-fraco)]">
