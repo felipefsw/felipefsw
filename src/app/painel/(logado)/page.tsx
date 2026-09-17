@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // Os módulos da seção 7 do book, na ordem dos sprints da seção 12.
 const MODULOS = [
   { nome: "Enviar relatórios", descricao: "Saipos, iFood, ponto e cupom do CD", sprint: 1, href: "/painel/enviar" },
-  { nome: "Vendas 360", descricao: "Hora a hora, dia da semana e previsão", sprint: 1 },
+  { nome: "Vendas 360", descricao: "Hora a hora, dia da semana e previsão", sprint: 1, href: "/painel/vendas" },
   { nome: "Placar da semana", descricao: "Meta, presença, checklists e prêmio", sprint: 2 },
   { nome: "CMV diário", descricao: "Contagem, cupom e desvio por item", sprint: 3 },
   { nome: "Dashboard do dia", descricao: "Previsão ao vivo, massa e motoboys", sprint: 4 },

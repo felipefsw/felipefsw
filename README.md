@@ -105,8 +105,21 @@ schema e testes.
 papel por loja, login próprio, seletor de loja, tema, e o admin de usuários e
 de parâmetros.
 
-Os módulos (Enviar, Vendas 360, Placar, CMV, Dashboard do dia, Escala,
-Entregadores, iFood 360) entram um sprint por vez, na ordem da seção 12 do book.
+**Sprint 1 (enviar e vendas).** A tela **Enviar relatórios** lê o "Vendas por
+período" do Saipos e grava os pedidos; mandar o mesmo arquivo de novo não
+duplica nada. A tela **Vendas 360** mostra o faturamento do período, a média de
+cada dia da semana com mínimo e máximo, o mapa de calor por hora, o dia a dia e
+a previsão dos próximos 14 dias.
+
+Os outros módulos (Placar, CMV, Dashboard do dia, Escala, Entregadores,
+iFood 360) entram um sprint por vez, na ordem da seção 12 do book.
+
+### Ainda falta, para fechar o Sprint 1
+
+- os demais leitores do Saipos e do iFood (itens vendidos, fechamento, tempo de
+  produção, relatório de pedidos do iFood);
+- o teste 3 da seção 11, que fixa os números reais da WLP1 — ele só roda quando
+  um export de verdade estiver em `/docs/samples/`.
 
 ## Coisas que o painel nunca faz
 

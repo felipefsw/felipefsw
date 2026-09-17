@@ -65,6 +65,9 @@ export default async function PainelLogadoLayout({
             Enviar
           </Link>
         ) : null}
+        <Link href="/painel/vendas" className="shrink-0 rounded-lg px-2 py-1 hover:bg-white/5">
+          Vendas 360
+        </Link>
       </nav>
 
       {sessionSecretInseguro() ? (
