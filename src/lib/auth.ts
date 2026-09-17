@@ -6,7 +6,9 @@ export type Sessao =
   | { tipo: "gestao"; perfil: "rh" | "ti"; nome?: string; papel?: string }
   | { tipo: "loja"; lojaId: string }
   | { tipo: "gestor"; gestorId: string; lojaId: string }
-  | { tipo: "diarista"; diaristaId: string };
+  | { tipo: "diarista"; diaristaId: string }
+  // Painel do Gestor: usuário da tabela `profiles` + a loja aberta no momento.
+  | { tipo: "painel"; userId: string; storeId: string };
 
 const COOKIE = "sessao";
 const SECRET = process.env.SESSION_SECRET || "dev-secret-troque-no-vercel";

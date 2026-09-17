@@ -68,3 +68,58 @@ POSTGRES_PRISMA_URL="<pooled>" POSTGRES_URL_NON_POOLING="<direta>" npx tsx prism
 | `npm run build` | gera a versão de produção |
 | `npm run db:seed` | carrega dados de exemplo |
 | `npx prisma studio` | abre uma tela para ver/editar os dados do banco |
+
+---
+
+# Painel do Gestor
+
+No mesmo app existe um segundo produto, em `/painel`: o **Painel do Gestor** das
+pizzarias da rede (faturamento, CMV diário, metas e prêmio da semana, checklists,
+escala, previsão do dia). Ele é construído a partir do documento
+[`/docs/BUILD_BOOK.md`](docs/BUILD_BOOK.md), que é a fonte única de regras,
+schema e testes.
+
+## Como entrar
+
+1. Rode `npm run db:seed:painel` uma vez (cria as lojas, a equipe, os turnos,
+   os parâmetros, os feriados e o usuário administrador).
+2. Abra `/painel/entrar` e entre com o e-mail e a senha do administrador
+   (veja `.env.example` para mudar o padrão).
+3. Em **Admin › Usuários** você cria as outras pessoas e escolhe o papel de
+   cada uma em cada loja.
+
+## Papéis
+
+| Papel | Enxerga | Mexe em |
+| --- | --- | --- |
+| Administrador da rede | todas as lojas | tudo |
+| Gestor | as lojas dele | meta da semana, parâmetros, equipe, escala; aprova o fechamento |
+| Gerente | a loja dele | presença, checklists, contagem, envio de relatórios |
+| Equipe | a loja dele | nada (só vê o placar e a TV) |
+| Auditor | as lojas designadas | avaliação, pesagens e fotos |
+| CD | todas as lojas | cupons e entregas |
+
+## O que já está pronto
+
+**Sprint 0 (base).** Banco com as 45 tabelas da seção 4 do book, travas de
+papel por loja, login próprio, seletor de loja, tema, e o admin de usuários e
+de parâmetros.
+
+Os módulos (Enviar, Vendas 360, Placar, CMV, Dashboard do dia, Escala,
+Entregadores, iFood 360) entram um sprint por vez, na ordem da seção 12 do book.
+
+## Coisas que o painel nunca faz
+
+- **Não inventa número.** Se falta um dado, aparece uma pendência amarela
+  dizendo o que enviar — nunca um valor estimado.
+- **Não muda o passado.** Trocar um parâmetro cria uma linha nova com a data em
+  que ele passa a valer; os cálculos dos dias anteriores continuam iguais.
+- **Não mistura dia civil com dia de trabalho.** O dia operacional vai das 06h00
+  às 05h59 do dia seguinte, então um pedido da 01h30 conta no dia anterior.
+
+## Comandos
+
+| Comando | O que faz |
+| --- | --- |
+| `npm run db:seed:painel` | carrega os dados da seção 10 do book |
+| `npm test` | roda os testes de aceite (seção 11 do book) |

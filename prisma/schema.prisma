@@ -42,6 +42,8 @@ model Loja {
   diaristasPreferem Diarista[] @relation("LojaPreferida")
   diaristasNoBanco BancoLoja[]
   pushLojas   PushLoja[]
+  // Painel do Gestor: a mesma loja vista pelo outro app (opcional).
+  painel      Store?
 }
 
 // Banco/pool de diaristas de cada loja: só os diaristas listados aqui podem
@@ -362,4 +364,1198 @@ model AvaliacaoLoja {
   diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
 
   @@index([lojaId])
+}
+
+// ============================================================================
+// PAINEL DO GESTOR — schema da seção 4 do /docs/BUILD_BOOK.md
+// ============================================================================
+// Os nomes de tabela e de coluna são EXATAMENTE os do book (via @@map/@map),
+// para que as fórmulas da seção 6 e os testes da seção 11 mapeiem 1:1.
+//
+// Adaptações necessárias por este repo ser Next.js + Prisma (e não Supabase):
+//  - `profiles` também guarda o login (email/senha), porque não existe o
+//    `auth.users` do Supabase. O `id` do profile é o `user_id` do book.
+//  - RLS do Postgres vira checagem de papel na camada de dados
+//    (src/lib/painel/papeis.ts), com a mesma regra da seção 3.
+//  - `updated_at` usa @updatedAt do Prisma no lugar do trigger SQL.
+//  - Os `check (... in ...)` do book viram enums do Postgres com os MESMOS
+//    valores em texto.
+//  - `stores.loja_id` é o único campo fora do book: liga a loja do Painel à
+//    loja já cadastrada no app de diaristas, para não haver dois cadastros.
+//
+// Dinheiro e quantidades usam `numeric` (Decimal), como o book pede — diferente
+// do app de diaristas, que usa centavos inteiros.
+// ============================================================================
+
+enum PapelPainel {
+  admin_rede
+  gestor
+  gerente
+  equipe
+  auditor
+  cd
+
+  @@map("papel_painel")
+}
+
+enum FuncaoEmpregado {
+  producao
+  atendimento
+  lider_producao
+  gerente
+  diarista
+  entregador
+
+  @@map("funcao_empregado")
+}
+
+enum RegimeEmpregado {
+  SEIS_POR_UM  @map("6x1")
+  CINCO_POR_DOIS @map("5x2")
+  diarista
+
+  @@map("regime_empregado")
+}
+
+enum UnidadeIngrediente {
+  kg
+  bola
+  un
+
+  @@map("unidade_ingrediente")
+}
+
+enum TamanhoReceita {
+  G
+  P
+  broto
+
+  @@map("tamanho_receita")
+}
+
+enum CategoriaReceita {
+  salgada
+  doce
+  borda
+
+  @@map("categoria_receita")
+}
+
+enum StatusUpload {
+  recebido
+  processado
+  alerta
+  rejeitado
+
+  @@map("status_upload")
+}
+
+enum TipoPedido {
+  D
+  B
+
+  @@map("tipo_pedido")
+}
+
+enum TipoItemVendido {
+  produto
+  metade
+  borda
+  bebida
+  outro
+
+  @@map("tipo_item_vendido")
+}
+
+// P=presente A=atraso F=falta T=atestado O=folga S=saída antecipada
+enum StatusPresenca {
+  P
+  A
+  F
+  T
+  O
+  S
+
+  @@map("status_presenca")
+}
+
+enum OrigemPresenca {
+  ponto
+  gerente
+
+  @@map("origem_presenca")
+}
+
+enum StatusCmv {
+  ok
+  bloco
+  pendente
+
+  @@map("status_cmv")
+}
+
+enum NomeChecklist {
+  Abertura
+  Pico
+  Fechamento
+
+  @@map("nome_checklist")
+}
+
+enum StatusSemana {
+  aberta
+  fechada
+  aprovada
+  paga
+
+  @@map("status_semana")
+}
+
+enum TipoAuditoria {
+  nutricao
+  rede
+
+  @@map("tipo_auditoria")
+}
+
+// ---------------------------------------------------------------- organização
+
+model Brand {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  stores Store[]
+
+  @@map("brands")
+}
+
+model Store {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brandId   String?  @map("brand_id") @db.Uuid
+  name      String
+  shortName String?  @map("short_name")
+  cnpj      String?
+  address   String?
+  city      String?
+  openTime  DateTime? @map("open_time") @db.Time(0)
+  closeTime DateTime? @map("close_time") @db.Time(0)
+  tz        String   @default("America/Fortaleza")
+  active    Boolean  @default(true)
+  // Fora do book: liga à loja já cadastrada no app de diaristas.
+  lojaId    String?  @unique @map("loja_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  brand Brand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  loja  Loja?  @relation(fields: [lojaId], references: [id], onDelete: SetNull)
+
+  memberships         Membership[]
+  employees           Employee[]
+  shifts              Shift[]
+  params              Param[]
+  recipes             Recipe[]
+  uploads             Upload[]
+  orders              Order[]
+  itemsSold           ItemSold[]
+  dailyClose          DailyClose[]
+  productionHours     ProductionHour[]
+  statusTimes         StatusTime[]
+  courierSettlements  CourierSettlement[]
+  customers           Customer[]
+  ifoodOrders         IfoodOrder[]
+  ifoodMetrics        IfoodMetric[]
+  attendance          Attendance[]
+  stockCounts         StockCount[]
+  cdDeliveries        CdDelivery[]
+  internalConsumption InternalConsumption[]
+  cmvDaily            CmvDaily[]
+  cmvItemDaily        CmvItemDaily[]
+  weekTargets         WeekTarget[]
+  weekIndicators      WeekIndicator[]
+  checklistTemplates  ChecklistTemplate[]
+  checklistMarks      ChecklistMark[]
+  weekSettlements     WeekSettlement[]
+  leaderMonths        LeaderMonth[]
+  managerMonths       ManagerMonth[]
+  audits              Audit[]
+  weighings           Weighing[]
+  gamificationPoints  GamificationPoint[]
+  alerts              Alert[]
+  aiAnalyses          AiAnalysis[]
+  tvTokens            TvToken[]
+
+  @@map("stores")
+}
+
+// No book este é o `profiles` ligado ao auth do Supabase. Aqui ele também
+// guarda o login, porque a autenticação é própria (cookie assinado).
+model Profile {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  phone      String?
+  avatarUrl  String?  @map("avatar_url")
+  email      String   @unique
+  senha      String? // hash; null = primeiro acesso pelo link
+  tokenSenha String?  @unique @map("token_senha")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy  String?  @map("created_by") @db.Uuid
+
+  memberships Membership[]
+
+  @@map("profiles")
+}
+
+model Membership {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String      @map("user_id") @db.Uuid
+  storeId   String      @map("store_id") @db.Uuid
+  role      PapelPainel
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?     @map("created_by") @db.Uuid
+
+  user  Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([storeId])
+  @@map("memberships")
+}
+
+// ------------------------------------------------------------ equipe e turnos
+
+model Employee {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId        String           @map("store_id") @db.Uuid
+  name           String
+  role           FuncaoEmpregado
+  regime         RegimeEmpregado
+  shiftPref      String?          @map("shift_pref")
+  admissionDate  DateTime?        @map("admission_date") @db.Date
+  monthlyCost    Decimal?         @map("monthly_cost") @db.Decimal(14, 2)
+  dailyRate      Decimal?         @map("daily_rate") @db.Decimal(14, 2)
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy      String?          @map("created_by") @db.Uuid
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  attendance Attendance[]
+  payouts    Payout[]
+  leaderMonths  LeaderMonth[]
+  managerMonths ManagerMonth[]
+  disputes      Dispute[]
+  gamificationPoints GamificationPoint[]
+
+  @@index([storeId])
+  @@map("employees")
+}
+
+// store_id null = turno da rede.
+// A 14:00-23:00 (15:30-16:30), A2 14:30-23:30, C 15:30-00:30 (16:30-17:30),
+// B 17:00-02:00 (22:00-23:00)
+model Shift {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId    String?   @map("store_id") @db.Uuid
+  code       String
+  label      String
+  startTime  DateTime  @map("start_time") @db.Time(0)
+  endTime    DateTime  @map("end_time") @db.Time(0)
+  breakStart DateTime? @map("break_start") @db.Time(0)
+  breakEnd   DateTime? @map("break_end") @db.Time(0)
+  paidHours  Decimal   @map("paid_hours") @db.Decimal(6, 2)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy  String?   @map("created_by") @db.Uuid
+
+  store Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("shifts")
+}
+
+// ------------------------------------------------- parâmetros com vigência
+// store_id null = parâmetro da rede. Ver a lista de chaves na seção 4 do book.
+
+model Param {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId   String?  @map("store_id") @db.Uuid
+  key       String
+  valueNum  Decimal? @map("value_num") @db.Decimal(14, 4)
+  valueText String?  @map("value_text")
+  validFrom DateTime @map("valid_from") @db.Date
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  store Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, key, validFrom])
+  @@index([key])
+  @@map("params")
+}
+
+// -------------------------------------------------- cardápio, ficha e preços
+
+model Ingredient {
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code      String             @unique
+  name      String
+  unit      UnidadeIngrediente
+  packLabel String?            @map("pack_label")
+  packSize  Decimal?           @map("pack_size") @db.Decimal(12, 3)
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?            @map("created_by") @db.Uuid
+
+  prices              CdPrice[]
+  recipeItems         RecipeItem[]
+  stockCounts         StockCount[]
+  cdDeliveries        CdDelivery[]
+  cmvItemDaily        CmvItemDaily[]
+
+  @@map("ingredients")
+}
+
+model CdPrice {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ingredientId String   @map("ingredient_id") @db.Uuid
+  price        Decimal  @db.Decimal(14, 4)
+  validFrom    DateTime @map("valid_from") @db.Date
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([ingredientId, validFrom])
+  @@map("cd_prices")
+}
+
+// store_id null = ficha da rede.
+model Recipe {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String?          @map("store_id") @db.Uuid
+  productName String           @map("product_name")
+  size        TamanhoReceita
+  category    CategoriaReceita
+  validFrom   DateTime         @map("valid_from") @db.Date
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?          @map("created_by") @db.Uuid
+
+  store Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  items               RecipeItem[]
+  aliases             ProductAlias[]
+  itemsSold           ItemSold[]
+  internalConsumption InternalConsumption[]
+  weighings           Weighing[]
+
+  @@index([storeId])
+  @@map("recipes")
+}
+
+// massa em 'bola' = 1
+model RecipeItem {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipeId     String  @map("recipe_id") @db.Uuid
+  ingredientId String  @map("ingredient_id") @db.Uuid
+  grams        Decimal @db.Decimal(12, 3)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, ingredientId])
+  @@map("recipe_items")
+}
+
+// "1/2 calabresa", "sertao" -> Sertaneja etc.
+model ProductAlias {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  alias     String   @unique
+  recipeId  String   @map("recipe_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+  @@map("product_aliases")
+}
+
+// ---------------------------------------------------------------- ingestão
+// kind: saipos_vendas, saipos_itens, saipos_fechamento, saipos_tempo_producao,
+// saipos_tempo_status, saipos_acerto, saipos_clientes, ifood_pedidos,
+// ifood_vendas, ifood_cardapio, ifood_anuncios_print, ifood_promocoes_print,
+// cd_cupom, contagem, ponto
+
+model Upload {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String       @map("store_id") @db.Uuid
+  kind        String
+  filePath    String?      @map("file_path")
+  sha256      String       @unique
+  status      StatusUpload @default(recebido)
+  summary     Json?
+  extracted   Json?
+  error       String?
+  periodStart DateTime?    @map("period_start") @db.Date
+  periodEnd   DateTime?    @map("period_end") @db.Date
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?      @map("created_by") @db.Uuid
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  orders             Order[]
+  itemsSold          ItemSold[]
+  dailyClose         DailyClose[]
+  productionHours    ProductionHour[]
+  statusTimes        StatusTime[]
+  courierSettlements CourierSettlement[]
+  customers          Customer[]
+  ifoodOrders        IfoodOrder[]
+  ifoodMetrics       IfoodMetric[]
+  cdDeliveries       CdDelivery[]
+
+  @@index([storeId, kind])
+  @@map("uploads")
+}
+
+// ------------------------------------------------------------------- fatos
+
+model Order {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String      @map("store_id") @db.Uuid
+  externalId  String      @map("external_id")
+  soldAt      DateTime    @map("sold_at") @db.Timestamptz(6)
+  opsDate     DateTime    @map("ops_date") @db.Date
+  channel     String?
+  orderType   TipoPedido? @map("order_type")
+  itemsValue  Decimal?    @map("items_value") @db.Decimal(14, 2)
+  deliveryFee Decimal?    @map("delivery_fee") @db.Decimal(14, 2)
+  surcharge   Decimal?    @db.Decimal(14, 2)
+  discount    Decimal?    @db.Decimal(14, 2)
+  total       Decimal?    @db.Decimal(14, 2)
+  courierPay  Decimal?    @map("courier_pay") @db.Decimal(14, 2)
+  courierName String?     @map("courier_name")
+  district    String?
+  cancelled   Boolean     @default(false)
+  uploadId    String?     @map("upload_id") @db.Uuid
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?     @map("created_by") @db.Uuid
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  upload Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, externalId, soldAt])
+  @@index([storeId, opsDate])
+  @@index([storeId, soldAt])
+  @@map("orders")
+}
+
+model ItemSold {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String          @map("store_id") @db.Uuid
+  periodStart DateTime        @map("period_start") @db.Date
+  periodEnd   DateTime        @map("period_end") @db.Date
+  productName String          @map("product_name")
+  optionName  String?         @map("option_name")
+  qty         Int
+  value       Decimal?        @db.Decimal(14, 2)
+  kind        TipoItemVendido
+  recipeId    String?         @map("recipe_id") @db.Uuid
+  uploadId    String?         @map("upload_id") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?         @map("created_by") @db.Uuid
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  recipe Recipe? @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  upload Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, periodStart, periodEnd])
+  @@map("items_sold")
+}
+
+model DailyClose {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId       String   @map("store_id") @db.Uuid
+  opsDate       DateTime @map("ops_date") @db.Date
+  totalFaturado Decimal  @map("total_faturado") @db.Decimal(14, 2)
+  qtyOrders     Int      @map("qty_orders")
+  source        String?
+  uploadId      String?  @map("upload_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy     String?  @map("created_by") @db.Uuid
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  upload Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, opsDate])
+  @@map("daily_close")
+}
+
+model ProductionHour {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId   String   @map("store_id") @db.Uuid
+  opsDate   DateTime @map("ops_date") @db.Date
+  hour      Int
+  items     Int
+  avgSec    Decimal? @map("avg_sec") @db.Decimal(10, 2)
+  maxSec    Decimal? @map("max_sec") @db.Decimal(10, 2)
+  uploadId  String?  @map("upload_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  upload Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, opsDate, hour])
+  @@index([storeId, opsDate])
+  @@map("production_hours")
+}
+
+// status: Cozinha, Pizza Pronta, Saiu para entrega, Entregue
+model StatusTime {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String   @map("store_id") @db.Uuid
+  periodStart DateTime @map("period_start") @db.Date
+  periodEnd   DateTime @map("period_end") @db.Date
+  status      String
+  n           Int
+  avgSec      Decimal? @map("avg_sec") @db.Decimal(10, 2)
+  maxSec      Decimal? @map("max_sec") @db.Decimal(10, 2)
+  uploadId    String?  @map("upload_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  upload Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, periodStart, periodEnd, status])
+  @@map("status_times")
+}
+
+model CourierSettlement {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  periodStart    DateTime @map("period_start") @db.Date
+  periodEnd      DateTime @map("period_end") @db.Date
+  courierName    String   @map("courier_name")
+  fleet          String?
+  deliveries     Int
+  fee            Decimal? @db.Decimal(14, 2)
+  days           Int?
+  valueDelivered Decimal? @map("value_delivered") @db.Decimal(14, 2)
+  uploadId       String?  @map("upload_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy      String?  @map("created_by") @db.Uuid
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  upload Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, periodStart, periodEnd, courierName])
+  @@map("courier_settlements")
+}
+
+model Customer {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId        String    @map("store_id") @db.Uuid
+  externalId     String    @map("external_id")
+  name           String?
+  phone          String?
+  district       String?
+  lifetimeOrders Int?      @map("lifetime_orders")
+  lifetimeValue  Decimal?  @map("lifetime_value") @db.Decimal(14, 2)
+  lastOrder      DateTime? @map("last_order") @db.Date
+  uploadId       String?   @map("upload_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy      String?   @map("created_by") @db.Uuid
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  upload Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, externalId])
+  @@index([storeId, lastOrder])
+  @@map("customers")
+}
+
+// Só status = CONCLUIDO entra nos cálculos; cancelados ficam para a taxa de cancelamento.
+model IfoodOrder {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  ifoodId        String   @unique @map("ifood_id")
+  orderedAt      DateTime @map("ordered_at") @db.Timestamptz(6)
+  opsDate        DateTime @map("ops_date") @db.Date
+  status         String
+  items          Decimal? @db.Decimal(14, 2)
+  paid           Decimal? @db.Decimal(14, 2)
+  deliveryFee    Decimal? @map("delivery_fee") @db.Decimal(14, 2)
+  incentiveIfood Decimal? @map("incentive_ifood") @db.Decimal(14, 2)
+  incentiveStore Decimal? @map("incentive_store") @db.Decimal(14, 2)
+  serviceFee     Decimal? @map("service_fee") @db.Decimal(14, 2)
+  fees           Decimal? @db.Decimal(14, 2)
+  net            Decimal? @db.Decimal(14, 2)
+  payment        String?
+  uploadId       String?  @map("upload_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy      String?  @map("created_by") @db.Uuid
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  upload Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, opsDate])
+  @@map("ifood_orders")
+}
+
+model IfoodMetric {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId      String   @map("store_id") @db.Uuid
+  periodStart  DateTime @map("period_start") @db.Date
+  periodEnd    DateTime @map("period_end") @db.Date
+  visits       Int?
+  itemViews    Int?     @map("item_views")
+  cart         Int?
+  completed    Int?
+  conversion   Decimal? @db.Decimal(7, 3)
+  newCustomers Int?     @map("new_customers")
+  adsSpend     Decimal? @map("ads_spend") @db.Decimal(14, 2)
+  adsVisits    Int?     @map("ads_visits")
+  adsOrders    Int?     @map("ads_orders")
+  adsSales     Decimal? @map("ads_sales") @db.Decimal(14, 2)
+  promoStore   Decimal? @map("promo_store") @db.Decimal(14, 2)
+  promoIfood   Decimal? @map("promo_ifood") @db.Decimal(14, 2)
+  rating       Decimal? @db.Decimal(4, 2)
+  cancelPct    Decimal? @map("cancel_pct") @db.Decimal(7, 3)
+  callsPct     Decimal? @map("calls_pct") @db.Decimal(7, 3)
+  source       String?
+  uploadId     String?  @map("upload_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  upload Upload? @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, periodStart, periodEnd, source])
+  @@map("ifood_metrics")
+}
+
+model Attendance {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String         @map("store_id") @db.Uuid
+  employeeId  String         @map("employee_id") @db.Uuid
+  opsDate     DateTime       @map("ops_date") @db.Date
+  status      StatusPresenca
+  minutesLate Int?           @map("minutes_late")
+  source      OrigemPresenca
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?        @map("created_by") @db.Uuid
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, employeeId, opsDate])
+  @@index([storeId, opsDate])
+  @@map("attendance")
+}
+
+// -------------------------------------------------------------- CMV diário
+
+model StockCount {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId      String    @map("store_id") @db.Uuid
+  countDate    DateTime  @map("count_date") @db.Date
+  countedAt    DateTime? @map("counted_at") @db.Timestamptz(6)
+  ingredientId String    @map("ingredient_id") @db.Uuid
+  qty          Decimal   @db.Decimal(12, 3)
+  unit         String?
+  note         String?
+  photoPath    String?   @map("photo_path")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?   @map("created_by") @db.Uuid
+
+  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, countDate, ingredientId])
+  @@index([storeId, countDate])
+  @@map("stock_counts")
+}
+
+model CdDelivery {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId      String   @map("store_id") @db.Uuid
+  deliveredAt  DateTime @map("delivered_at") @db.Timestamptz(6)
+  cdOrderNo    Int?     @map("cd_order_no")
+  ingredientId String   @map("ingredient_id") @db.Uuid
+  qty          Decimal  @db.Decimal(12, 3)
+  unit         String?
+  unitPrice    Decimal? @map("unit_price") @db.Decimal(14, 4)
+  uploadId     String?  @map("upload_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  upload     Upload?    @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, deliveredAt])
+  @@index([storeId, cdOrderNo])
+  @@map("cd_deliveries")
+}
+
+// Sempre com sabor real; entra no CMV teórico.
+model InternalConsumption {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId   String   @map("store_id") @db.Uuid
+  opsDate   DateTime @map("ops_date") @db.Date
+  recipeId  String   @map("recipe_id") @db.Uuid
+  qty       Decimal  @db.Decimal(12, 3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, opsDate, recipeId])
+  @@map("internal_consumption")
+}
+
+model CmvDaily {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId          String    @map("store_id") @db.Uuid
+  opsDate          DateTime  @map("ops_date") @db.Date
+  totalFaturado    Decimal?  @map("total_faturado") @db.Decimal(14, 2)
+  consumptionValue Decimal?  @map("consumption_value") @db.Decimal(14, 2)
+  cmvRealPct       Decimal?  @map("cmv_real_pct") @db.Decimal(7, 3)
+  cmvTheoPct       Decimal?  @map("cmv_theo_pct") @db.Decimal(7, 3)
+  blockGroup       Int?      @map("block_group")
+  status           StatusCmv
+  details          Json?
+  paramsVersion    DateTime? @map("params_version") @db.Date
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy        String?   @map("created_by") @db.Uuid
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, opsDate])
+  @@map("cmv_daily")
+}
+
+// Desvio = real / teórico − 1 (positivo = prejuízo; negativo = qualidade em risco).
+model CmvItemDaily {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId      String   @map("store_id") @db.Uuid
+  opsDate      DateTime @map("ops_date") @db.Date
+  ingredientId String   @map("ingredient_id") @db.Uuid
+  initial      Decimal? @db.Decimal(12, 3)
+  received     Decimal? @db.Decimal(12, 3)
+  final        Decimal? @db.Decimal(12, 3)
+  consumed     Decimal? @db.Decimal(12, 3)
+  theo         Decimal? @db.Decimal(12, 3)
+  deviationPct Decimal? @map("deviation_pct") @db.Decimal(7, 3)
+  value        Decimal? @db.Decimal(14, 2)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, opsDate, ingredientId])
+  @@index([storeId, opsDate])
+  @@map("cmv_item_daily")
+}
+
+// ------------------------------------------------- metas, semana e prêmio
+
+model WeekTarget {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId        String   @map("store_id") @db.Uuid
+  weekStart      DateTime @map("week_start") @db.Date
+  targetRevenue  Decimal? @map("target_revenue") @db.Decimal(14, 2)
+  targetPizzas   Int?     @map("target_pizzas")
+  targetCmv      Decimal? @map("target_cmv") @db.Decimal(7, 3)
+  targetRating   Decimal? @map("target_rating") @db.Decimal(4, 2)
+  message        String?
+  setBy          String?  @map("set_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy      String?  @map("created_by") @db.Uuid
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, weekStart])
+  @@map("week_targets")
+}
+
+model WeekIndicator {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId       String   @map("store_id") @db.Uuid
+  weekStart     DateTime @map("week_start") @db.Date
+  revenue       Decimal? @db.Decimal(14, 2)
+  orders        Int?
+  pizzas        Int?
+  ticket        Decimal? @db.Decimal(14, 2)
+  cancelPct     Decimal? @map("cancel_pct") @db.Decimal(7, 3)
+  counterPct    Decimal? @map("counter_pct") @db.Decimal(7, 3)
+  prodTimeAvg   Decimal? @map("prod_time_avg") @db.Decimal(7, 3)
+  cmvPct        Decimal? @map("cmv_pct") @db.Decimal(7, 3)
+  rating        Decimal? @db.Decimal(4, 2)
+  callsPct      Decimal? @map("calls_pct") @db.Decimal(7, 3)
+  nutritionPct  Decimal? @map("nutrition_pct") @db.Decimal(7, 3)
+  gramaturaOk   Boolean? @map("gramatura_ok")
+  source        Json?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy     String?  @map("created_by") @db.Uuid
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, weekStart])
+  @@map("week_indicators")
+}
+
+// store_id null = modelo da rede.
+model ChecklistTemplate {
+  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId   String?       @map("store_id") @db.Uuid
+  name      NomeChecklist
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?       @map("created_by") @db.Uuid
+
+  store Store?          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items ChecklistItem[]
+
+  @@unique([storeId, name])
+  @@map("checklist_templates")
+}
+
+model ChecklistItem {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  templateId         String   @map("template_id") @db.Uuid
+  position           Int
+  text               String
+  referencePhotoPath String?  @map("reference_photo_path")
+  requiresPhoto      Boolean  @default(false) @map("requires_photo")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy          String?  @map("created_by") @db.Uuid
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  marks    ChecklistMark[]
+
+  @@unique([templateId, position])
+  @@map("checklist_items")
+}
+
+model ChecklistMark {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId      String    @map("store_id") @db.Uuid
+  opsDate      DateTime  @map("ops_date") @db.Date
+  itemId       String    @map("item_id") @db.Uuid
+  done         Boolean   @default(false)
+  doneAt       DateTime? @map("done_at") @db.Timestamptz(6)
+  doneBy       String?   @map("done_by") @db.Uuid
+  evidencePath String?   @map("evidence_path")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?   @map("created_by") @db.Uuid
+
+  store Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  item  ChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, opsDate, itemId])
+  @@index([storeId, opsDate])
+  @@map("checklist_marks")
+}
+
+// aberta -> fechada (domingo 06h05) -> aprovada (gestor) -> paga
+model WeekSettlement {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId        String       @map("store_id") @db.Uuid
+  weekStart      DateTime     @map("week_start") @db.Date
+  status         StatusSemana @default(aberta)
+  gates          Json?
+  teamPrizes     Json?        @map("team_prizes")
+  hitTargets     Int?         @map("hit_targets")
+  measuredTargets Int?        @map("measured_targets")
+  totalPayout    Decimal?     @map("total_payout") @db.Decimal(14, 2)
+  closedAt       DateTime?    @map("closed_at") @db.Timestamptz(6)
+  approvedBy     String?      @map("approved_by") @db.Uuid
+  paidAt         DateTime?    @map("paid_at") @db.Timestamptz(6)
+  paramsVersion  DateTime?    @map("params_version") @db.Date
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy      String?      @map("created_by") @db.Uuid
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  payouts  Payout[]
+  disputes Dispute[]
+
+  @@unique([storeId, weekStart])
+  @@map("week_settlements")
+}
+
+model Payout {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  settlementId String   @map("settlement_id") @db.Uuid
+  employeeId   String   @map("employee_id") @db.Uuid
+  eligible     Boolean  @default(false)
+  reasons      String[]
+  presence     Decimal? @db.Decimal(14, 2)
+  cmv          Decimal? @db.Decimal(14, 2)
+  pizzas       Decimal? @db.Decimal(14, 2)
+  quality      Decimal? @db.Decimal(14, 2)
+  excellence   Decimal? @db.Decimal(14, 2)
+  streak       Decimal? @db.Decimal(14, 2)
+  total        Decimal? @db.Decimal(14, 2)
+  streakWeeks  Int?     @map("streak_weeks")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  settlement WeekSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  employee   Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([settlementId, employeeId])
+  @@map("payouts")
+}
+
+model LeaderMonth {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String   @map("store_id") @db.Uuid
+  month       DateTime @db.Date
+  employeeId  String   @map("employee_id") @db.Uuid
+  blocks      Json?
+  score       Decimal? @db.Decimal(7, 3)
+  accelerator Boolean  @default(false)
+  prize       Decimal? @db.Decimal(14, 2)
+  commission  Decimal? @db.Decimal(14, 2)
+  gates       Json?
+  total       Decimal? @db.Decimal(14, 2)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, month, employeeId])
+  @@map("leader_month")
+}
+
+model ManagerMonth {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String   @map("store_id") @db.Uuid
+  month       DateTime @db.Date
+  employeeId  String   @map("employee_id") @db.Uuid
+  blocks      Json?
+  score       Decimal? @db.Decimal(7, 3)
+  accelerator Boolean  @default(false)
+  prize       Decimal? @db.Decimal(14, 2)
+  bonus110    Decimal? @db.Decimal(14, 2)
+  commission  Decimal? @db.Decimal(14, 2)
+  gates       Json?
+  total       Decimal? @db.Decimal(14, 2)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, month, employeeId])
+  @@map("manager_month")
+}
+
+// Contestação em até 48 h depois do fechamento.
+model Dispute {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  settlementId String   @map("settlement_id") @db.Uuid
+  employeeId   String   @map("employee_id") @db.Uuid
+  text         String
+  status       String   @default("aberta")
+  resolvedBy   String?  @map("resolved_by") @db.Uuid
+  resolution   String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  settlement WeekSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  employee   Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([settlementId])
+  @@map("disputes")
+}
+
+// ----------------------------------- auditoria, gamificação, alertas e IA
+
+model Audit {
+  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId   String        @map("store_id") @db.Uuid
+  auditDate DateTime      @map("audit_date") @db.Date
+  kind      TipoAuditoria
+  score     Decimal?      @db.Decimal(7, 3)
+  blocks    Json?
+  photos    String[]
+  auditorId String?       @map("auditor_id") @db.Uuid
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?       @map("created_by") @db.Uuid
+
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  weighings Weighing[]
+
+  @@index([storeId, auditDate])
+  @@map("audits")
+}
+
+model Weighing {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId   String   @map("store_id") @db.Uuid
+  auditId   String?  @map("audit_id") @db.Uuid
+  recipeId  String   @map("recipe_id") @db.Uuid
+  expectedG Decimal  @map("expected_g") @db.Decimal(12, 3)
+  measuredG Decimal  @map("measured_g") @db.Decimal(12, 3)
+  ok        Boolean
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  audit  Audit? @relation(fields: [auditId], references: [id], onDelete: SetNull)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("weighings")
+}
+
+model GamificationRule {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key       String
+  points    Int
+  validFrom DateTime @map("valid_from") @db.Date
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  @@unique([key, validFrom])
+  @@map("gamification_rules")
+}
+
+// employee_id null = ponto da loja (não de uma pessoa).
+model GamificationPoint {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId    String   @map("store_id") @db.Uuid
+  weekStart  DateTime @map("week_start") @db.Date
+  employeeId String?  @map("employee_id") @db.Uuid
+  key        String
+  points     Int
+  detail     String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy  String?  @map("created_by") @db.Uuid
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, weekStart])
+  @@map("gamification_points")
+}
+
+// kinds: cmv_fora_regua, contagem_nao_enviada, dia_abaixo_previsao_20h,
+// tempo_producao_13, checklist_nao_feito, fechamento_pendente,
+// placar_semanal, ranking_mensal
+model Alert {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId   String    @map("store_id") @db.Uuid
+  kind      String
+  payload   Json?
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  status    String    @default("pendente")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?   @map("created_by") @db.Uuid
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, kind])
+  @@map("alerts")
+}
+
+model AiAnalysis {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId     String    @map("store_id") @db.Uuid
+  module      String
+  periodStart DateTime? @map("period_start") @db.Date
+  periodEnd   DateTime? @map("period_end") @db.Date
+  promptHash  String?   @map("prompt_hash")
+  text        String
+  model       String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?   @map("created_by") @db.Uuid
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, module])
+  @@map("ai_analyses")
+}
+
+// Feriado se comporta como sábado (seção 6.1).
+model Holiday {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  date        DateTime @unique @db.Date
+  name        String
+  behavesLike String   @default("Sáb") @map("behaves_like")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+
+  @@map("holidays")
+}
+
+// Modo TV (seção 8): token de leitura por loja.
+model TvToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId   String   @map("store_id") @db.Uuid
+  token     String   @unique
+  expires   DateTime @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy String?  @map("created_by") @db.Uuid
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("tv_tokens")
 }

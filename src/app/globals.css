@@ -73,3 +73,44 @@ main {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Painel do Gestor — tema da seção 13 do /docs/BUILD_BOOK.md ===== */
+/* Fica preso ao [data-tema="painel"] para não mexer no app de diaristas. */
+[data-tema="painel"] {
+  --painel-fundo: #0c0c0c;
+  --painel-superficie: #141414;
+  --painel-borda: #262626;
+  --painel-texto: #f3eee8;
+  --painel-texto-fraco: #9a938a;
+  --painel-laranja: #ff4b1f;
+  --painel-dourado: #f5c451;
+  --painel-verde: #2f9e5e;
+  --painel-amarelo: #f5c451;
+  --painel-vermelho: #e0392b;
+
+  background: var(--painel-fundo);
+  color: var(--painel-texto);
+  font-family: var(--fonte-painel-corpo), system-ui, sans-serif;
+}
+
+/* Números grandes primeiro, explicação embaixo (seção 1). */
+[data-tema="painel"] h1,
+[data-tema="painel"] h2,
+[data-tema="painel"] h3,
+[data-tema="painel"] .painel-numero {
+  font-family: var(--fonte-painel-titulo), system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+[data-tema="painel"] input,
+[data-tema="painel"] select,
+[data-tema="painel"] textarea {
+  background: var(--painel-fundo);
+  color: var(--painel-texto);
+  border-color: var(--painel-borda);
+}
+
+[data-tema="painel"] input::placeholder,
+[data-tema="painel"] textarea::placeholder {
+  color: var(--painel-texto-fraco);
+}
