@@ -24,6 +24,7 @@ export async function entrarComoGestao(formData: FormData) {
     perfil: m.perfil === "ti" ? "ti" : "rh",
     nome: m.nome,
     papel: m.papel ?? undefined,
+    membroId: m.id,
   });
   redirect("/");
 }
@@ -69,10 +70,8 @@ export async function entrarDiarista(formData: FormData) {
   const d = diaristas.find((x) => soDigitos(x.cpf ?? "") === cpf);
 
   if (!d) {
-    // não cadastrado ainda → leva ao cadastro
     redirect("/sou-diarista");
   }
-  // Primeiro acesso é pelo link pessoal (enviado no WhatsApp), não pelo CPF.
   if (!d.senha) {
     redirect("/entrar?perfil=diarista&erro=semsenha");
   }
@@ -83,57 +82,7 @@ export async function entrarDiarista(formData: FormData) {
   redirect(`/d/${d.token}`);
 }
 
-// ============================================================================
-// ACESSO TEMPORÁRIO SEM SENHA (fase de ajustes do app)
-// Qualquer pessoa entra escolhendo o perfil, sem login/senha.
-// REMOVER e voltar aos fluxos com senha (entrarComoLoja/Gestor/Gestao/Diarista)
-// quando o app estiver redondo.
-// ============================================================================
-
-export async function entrarLojaDireto(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  const loja = await prisma.loja.findUnique({ where: { id }, select: { id: true } });
-  if (!loja) redirect("/entrar?perfil=lojista");
-  await setSessao({ tipo: "loja", lojaId: loja.id });
-  redirect("/loja");
-}
-
-export async function entrarGestorDireto(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  const gestor = await prisma.gestor.findUnique({
-    where: { id },
-    include: { lojas: { where: { ativo: true }, select: { id: true }, orderBy: { nome: "asc" } } },
-  });
-  if (!gestor) redirect("/entrar?perfil=gestor");
-  await setSessao({ tipo: "gestor", gestorId: gestor.id, lojaId: gestor.lojas[0]?.id ?? "" });
-  redirect("/loja");
-}
-
-export async function entrarDiaristaDireto(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  const d = await prisma.diarista.findUnique({
-    where: { id },
-    select: { id: true, token: true },
-  });
-  if (!d) redirect("/entrar?perfil=diarista");
-  await entrarDiaristaSessao(d.id);
-  redirect(`/d/${d.token}`);
-}
-
-export async function entrarGestaoDireto(formData: FormData) {
-  const perfil = String(formData.get("perfil") ?? "") === "ti" ? "ti" : "rh";
-  await setSessao({ tipo: "gestao", perfil, nome: perfil === "ti" ? "TI" : "RH" });
-  redirect("/");
-}
-
 export async function sair() {
   await limparSessao();
   redirect("/entrar");
-}
-
-// TEMPORÁRIO: acesso de configuração sem senha, para a fase inicial.
-// REMOVER quando o login por senha/link estiver ativo (é uma porta aberta).
-export async function entrarConfiguracao() {
-  await setSessao({ tipo: "gestao", perfil: "rh", nome: "Configuração" });
-  redirect("/");
 }

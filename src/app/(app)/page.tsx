@@ -331,6 +331,12 @@ export default async function InicioPage({
       >
         👥 Criar usuário (lojista, gestor, RH, TI, diarista)
       </Link>
+      <Link
+        href="/modulos"
+        className="block rounded-xl border border-dashed border-orange-300 bg-orange-50 px-4 py-3 text-center text-sm font-medium text-orange-900 shadow-sm hover:bg-orange-100"
+      >
+        📦 Módulos (migração rederwp)
+      </Link>
 
       <section>
         <div className="mb-2 flex items-center justify-between">

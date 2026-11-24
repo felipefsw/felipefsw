@@ -32,6 +32,8 @@ model Loja {
   permiteMais2Semana Boolean @default(false)
   fotos       String[]     @default([]) // até 5 fotos do ambiente (URLs)
   vantagens   String? // texto com as vantagens de fazer diária nesta loja
+  // ID da loja no MySQL do rederwp (migração domínio a domínio).
+  rederwpId   Int?         @unique
   criadoEm    DateTime     @default(now())
   gestores    Gestor[]     @relation("GestorLojas") // uma loja pode ter vários gestores (sócios)
   escalas     Escala[]
@@ -104,6 +106,11 @@ model Membro {
   senha      String? // hash; null = primeiro acesso (define a senha pelo link)
   tokenSenha String?  @unique // link secreto p/ definir/resetar a senha
   ativo      Boolean  @default(true)
+  // Flags granulares espelhando roles_acess do rederwp (ex.: "ponto_dashboard").
+  // Vazio = usa o pacote padrão do perfil (rh/ti) em src/lib/permissoes.ts.
+  permissoes String[] @default([])
+  // ID do usuário em acesso.id no rederwp (quando houver vínculo).
+  rederwpAcessoId Int? @unique
   criadoEm   DateTime @default(now())
 }
 
@@ -120,6 +127,8 @@ model Diarista {
   valorDiaria Int         @default(0) // centavos
   observacoes String?
   ativo       Boolean     @default(true)
+  // ID em diaristas.id no MySQL do rederwp (sync Fase 1).
+  rederwpId   Int?        @unique
   // Aprovação do RH para quem se autocadastrou pelo link. Cadastros antigos e os
   // criados pelo próprio RH nascem aprovados (default true); autocadastro entra como false.
   aprovado    Boolean     @default(true)
@@ -362,4 +371,47 @@ model AvaliacaoLoja {
   diarista   Diarista @relation(fields: [diaristaId], references: [id], onDelete: Cascade)
 
   @@index([lojaId])
+}
+
+// -----------------------------------------------------------------------------
+// Migração rederwp → felipefsw (Fase 0+)
+// -----------------------------------------------------------------------------
+
+// Liga/desliga módulos portados do rederwp sem quebrar o app de diaristas.
+model ModuloFlag {
+  id           String   @id @default(cuid())
+  slug         String   @unique // ex.: "diaristas" | "ponto" | "rh"
+  ativo        Boolean  @default(false)
+  fase         Int      @default(0)
+  titulo       String
+  descricao    String?
+  atualizadoEm DateTime @updatedAt
+  criadoEm     DateTime @default(now())
+}
+
+// Log idempotente dos jobs de inventário/sync com o MySQL do rederwp.
+model SyncRun {
+  id          String    @id @default(cuid())
+  dominio     String // diaristas | lojas | inventario | ...
+  tipo        String // inventario | sync | cutover
+  status      String    @default("rodando") // rodando | ok | erro
+  resumo      String? // JSON textual com contagens
+  erro        String?
+  iniciadoEm  DateTime  @default(now())
+  terminadoEm DateTime?
+
+  @@index([dominio, iniciadoEm])
+}
+
+// Diária legada do rederwp ainda não convertida (staging da Fase 1).
+model EscalaRederwpMap {
+  id              String   @id @default(cuid())
+  rederwpDiariaId Int      @unique
+  escalaId        String? // preenchido após criar Escala no Postgres
+  payload         String // JSON da linha MySQL no momento do sync
+  status          String   @default("pendente") // pendente | importada | ignorada
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+
+  @@index([status])
 }

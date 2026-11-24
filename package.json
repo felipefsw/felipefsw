@@ -4,17 +4,24 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && next build",
+    "db:deploy": "node scripts/db-deploy.mjs",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "modulos:seed": "tsx scripts/seed-modulos.ts",
+    "rederwp:inventario": "tsx scripts/rederwp-inventario.ts",
+    "rederwp:sync-diaristas": "tsx scripts/rederwp-sync-diaristas.ts",
+    "rederwp:sync-lojas": "tsx scripts/rederwp-sync-lojas.ts",
+    "rederwp:sync-usuarios": "tsx scripts/rederwp-sync-usuarios.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "mysql2": "^3.24.6",
     "next": "16.2.6",
     "prisma": "^6.19.3",
     "react": "19.2.4",
